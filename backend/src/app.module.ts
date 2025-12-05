@@ -3,8 +3,9 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 
 import { PrismaModule } from './common/prisma/prisma.module';
+import { HealthModule } from './health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
-// import { UsersModule } from './modules/users/users.module';
+import { UsersModule } from './modules/users/users.module';
 // import { TestsModule } from './modules/tests/tests.module';
 // import { ConsultationsModule } from './modules/consultations/consultations.module';
 // import { PaymentsModule } from './modules/payments/payments.module';
@@ -28,9 +29,12 @@ import { AuthModule } from './modules/auth/auth.module';
     // Database
     PrismaModule,
 
+    // Health check
+    HealthModule,
+
     // Feature modules
     AuthModule,
-    // UsersModule,
+    UsersModule,
     // TestsModule,
     // ConsultationsModule,
     // PaymentsModule,
