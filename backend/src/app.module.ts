@@ -4,7 +4,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 
 import { PrismaModule } from './common/prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
-// import { UsersModule } from './modules/users/users.module';
+import { UsersModule } from './modules/users/users.module';
 // import { TestsModule } from './modules/tests/tests.module';
 // import { ConsultationsModule } from './modules/consultations/consultations.module';
 // import { PaymentsModule } from './modules/payments/payments.module';
@@ -30,7 +30,7 @@ import { AuthModule } from './modules/auth/auth.module';
 
     // Feature modules
     AuthModule,
-    // UsersModule,
+    UsersModule,
     // TestsModule,
     // ConsultationsModule,
     // PaymentsModule,
