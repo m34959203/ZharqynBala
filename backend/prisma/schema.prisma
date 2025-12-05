@@ -40,6 +40,8 @@ model User {
   isVerified    Boolean   @default(false) @map("is_verified")
   isActive      Boolean   @default(true) @map("is_active")
 
+  refreshToken  String?   @map("refresh_token")
+
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
   lastLoginAt   DateTime? @map("last_login_at")
@@ -85,8 +87,8 @@ model Child {
   birthDate   DateTime  @map("birth_date")
   gender      Gender
 
-  school      String?
-  grade       Int?
+  schoolName  String?   @map("school_name")
+  grade       String?
 
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")

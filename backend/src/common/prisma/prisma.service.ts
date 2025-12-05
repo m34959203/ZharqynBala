@@ -22,11 +22,14 @@ export class PrismaService
     }
 
     const models = Reflect.ownKeys(this).filter(
-      (key) => key[0] !== '_' && key[0] !== '$',
-    );
+      (key) => {
+        if (typeof key !== 'string') return false;
+        return key[0] !== '_' && key[0] !== '$';
+      },
+    ) as string[];
 
     return Promise.all(
-      models.map((modelKey) => this[modelKey].deleteMany()),
+      models.map((modelKey) => (this as any)[modelKey].deleteMany()),
     );
   }
 }
