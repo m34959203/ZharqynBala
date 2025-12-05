@@ -1,0 +1,594 @@
+// Prisma Schema for Zharqyn Bala
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ПОЛЬЗОВАТЕЛИ И АУТЕНТИФИКАЦИЯ
+// ============================================
+
+enum UserRole {
+  PARENT
+  PSYCHOLOGIST
+  SCHOOL
+  ADMIN
+}
+
+enum Language {
+  RU
+  KZ
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  phone         String?   @unique
+  passwordHash  String    @map("password_hash")
+  role          UserRole  @default(PARENT)
+
+  firstName     String    @map("first_name")
+  lastName      String    @map("last_name")
+  avatarUrl     String?   @map("avatar_url")
+
+  language      Language  @default(RU)
+  isVerified    Boolean   @default(false) @map("is_verified")
+  isActive      Boolean   @default(true) @map("is_active")
+
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  lastLoginAt   DateTime? @map("last_login_at")
+
+  // Relations
+  children      Child[]
+  psychologist  Psychologist?
+  school        School?
+
+  // Audit
+  securityLogs  SecurityLog[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  token        String   @unique
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("refresh_tokens")
+  @@index([userId])
+}
+
+// ============================================
+// ДЕТИ
+// ============================================
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+model Child {
+  id          String    @id @default(uuid())
+  parentId    String    @map("parent_id")
+  parent      User      @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  firstName   String    @map("first_name")
+  lastName    String    @map("last_name")
+  birthDate   DateTime  @map("birth_date")
+  gender      Gender
+
+  school      String?
+  grade       Int?
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  testSessions TestSession[]
+  consultations Consultation[]
+
+  @@map("children")
+  @@index([parentId])
+}
+
+// ============================================
+// ПСИХОЛОГИ
+// ============================================
+
+model Psychologist {
+  id                String   @id @default(uuid())
+  userId            String   @unique @map("user_id")
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  specialization    String[]
+  experienceYears   Int      @map("experience_years")
+  education         String
+  certificateUrl    String?  @map("certificate_url")
+
+  hourlyRate        Int      @map("hourly_rate")
+  bio               String?
+
+  isApproved        Boolean  @default(false) @map("is_approved")
+  isAvailable       Boolean  @default(true) @map("is_available")
+
+  rating            Float    @default(0)
+  totalConsultations Int     @default(0) @map("total_consultations")
+
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  consultations     Consultation[]
+  availability      PsychologistAvailability[]
+
+  @@map("psychologists")
+}
+
+model PsychologistAvailability {
+  id             String       @id @default(uuid())
+  psychologistId String       @map("psychologist_id")
+  psychologist   Psychologist @relation(fields: [psychologistId], references: [id], onDelete: Cascade)
+
+  dayOfWeek      Int          @map("day_of_week") // 0-6 (Monday-Sunday)
+  startTime      String       @map("start_time")  // HH:MM
+  endTime        String       @map("end_time")    // HH:MM
+
+  @@map("psychologist_availability")
+  @@index([psychologistId])
+}
+
+// ============================================
+// ШКОЛЫ
+// ============================================
+
+model School {
+  id              String   @id @default(uuid())
+  userId          String   @unique @map("user_id")
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  schoolName      String   @map("school_name")
+  region          String
+  city            String
+  address         String
+
+  contactPerson   String   @map("contact_person")
+  contactPhone    String   @map("contact_phone")
+
+  subscriptionUntil DateTime? @map("subscription_until")
+  totalStudents   Int      @default(0) @map("total_students")
+
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  classes         SchoolClass[]
+
+  @@map("schools")
+}
+
+model SchoolClass {
+  id            String   @id @default(uuid())
+  schoolId      String   @map("school_id")
+  school        School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  grade         Int
+  letter        String
+  academicYear  String   @map("academic_year")
+
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // Relations
+  students      Student[]
+  groupTests    GroupTest[]
+
+  @@map("school_classes")
+  @@unique([schoolId, grade, letter, academicYear])
+  @@index([schoolId])
+}
+
+model Student {
+  id          String      @id @default(uuid())
+  classId     String      @map("class_id")
+  class       SchoolClass @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  firstName   String      @map("first_name")
+  lastName    String      @map("last_name")
+  birthDate   DateTime    @map("birth_date")
+  gender      Gender
+
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  @@map("students")
+  @@index([classId])
+}
+
+// ============================================
+// ТЕСТЫ И ДИАГНОСТИКИ
+// ============================================
+
+enum TestCategory {
+  ANXIETY
+  MOTIVATION
+  ATTENTION
+  EMOTIONS
+  CAREER
+  SELF_ESTEEM
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  SCALE
+  YES_NO
+  TEXT
+}
+
+model Test {
+  id              String       @id @default(uuid())
+
+  titleRu         String       @map("title_ru")
+  titleKz         String       @map("title_kz")
+  descriptionRu   String       @map("description_ru")
+  descriptionKz   String       @map("description_kz")
+
+  category        TestCategory
+  ageMin          Int          @map("age_min")
+  ageMax          Int          @map("age_max")
+
+  durationMinutes Int          @map("duration_minutes")
+  price           Int          @default(0)
+
+  isActive        Boolean      @default(true) @map("is_active")
+  isPremium       Boolean      @default(false) @map("is_premium")
+
+  order           Int          @default(0)
+
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  questions       Question[]
+  sessions        TestSession[]
+  groupTests      GroupTest[]
+
+  @@map("tests")
+}
+
+model Question {
+  id            String       @id @default(uuid())
+  testId        String       @map("test_id")
+  test          Test         @relation(fields: [testId], references: [id], onDelete: Cascade)
+
+  questionTextRu String      @map("question_text_ru")
+  questionTextKz String      @map("question_text_kz")
+  questionType   QuestionType @map("question_type")
+
+  order         Int
+  isRequired    Boolean      @default(true) @map("is_required")
+
+  // Relations
+  options       AnswerOption[]
+  answers       Answer[]
+
+  @@map("questions")
+  @@index([testId])
+}
+
+model AnswerOption {
+  id            String   @id @default(uuid())
+  questionId    String   @map("question_id")
+  question      Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  optionTextRu  String   @map("option_text_ru")
+  optionTextKz  String   @map("option_text_kz")
+  score         Int
+
+  order         Int
+
+  // Relations
+  answers       Answer[]
+
+  @@map("answer_options")
+  @@index([questionId])
+}
+
+// ============================================
+// ПРОХОЖДЕНИЕ ТЕСТОВ
+// ============================================
+
+enum SessionStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+model TestSession {
+  id              String        @id @default(uuid())
+  testId          String        @map("test_id")
+  test            Test          @relation(fields: [testId], references: [id])
+
+  childId         String        @map("child_id")
+  child           Child         @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  status          SessionStatus @default(IN_PROGRESS)
+  currentQuestion Int?          @map("current_question")
+
+  startedAt       DateTime      @default(now()) @map("started_at")
+  completedAt     DateTime?     @map("completed_at")
+
+  // Relations
+  answers         Answer[]
+  result          Result?
+
+  @@map("test_sessions")
+  @@index([childId])
+  @@index([testId])
+}
+
+model Answer {
+  id              String       @id @default(uuid())
+  sessionId       String       @map("session_id")
+  session         TestSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  questionId      String       @map("question_id")
+  question        Question     @relation(fields: [questionId], references: [id])
+
+  answerOptionId  String?      @map("answer_option_id")
+  answerOption    AnswerOption? @relation(fields: [answerOptionId], references: [id])
+
+  textAnswer      String?      @map("text_answer")
+
+  answeredAt      DateTime     @default(now()) @map("answered_at")
+
+  @@map("answers")
+  @@index([sessionId])
+}
+
+// ============================================
+// РЕЗУЛЬТАТЫ
+// ============================================
+
+model Result {
+  id              String      @id @default(uuid())
+  sessionId       String      @unique @map("session_id")
+  session         TestSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  totalScore      Int         @map("total_score")
+  maxScore        Int         @map("max_score")
+
+  interpretation  String
+  recommendations String
+
+  pdfUrl          String?     @map("pdf_url")
+
+  createdAt       DateTime    @default(now()) @map("created_at")
+
+  @@map("results")
+}
+
+// ============================================
+// КОНСУЛЬТАЦИИ
+// ============================================
+
+enum ConsultationStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model Consultation {
+  id              String             @id @default(uuid())
+
+  psychologistId  String             @map("psychologist_id")
+  psychologist    Psychologist       @relation(fields: [psychologistId], references: [id])
+
+  parentId        String             @map("parent_id")
+  childId         String             @map("child_id")
+  child           Child              @relation(fields: [childId], references: [id])
+
+  scheduledAt     DateTime           @map("scheduled_at")
+  durationMinutes Int                @map("duration_minutes") @default(60)
+
+  status          ConsultationStatus @default(SCHEDULED)
+  meetingUrl      String?            @map("meeting_url")
+
+  price           Int
+  notes           String?
+
+  rating          Int?
+  review          String?
+
+  createdAt       DateTime           @default(now()) @map("created_at")
+  completedAt     DateTime?          @map("completed_at")
+
+  @@map("consultations")
+  @@index([psychologistId])
+  @@index([childId])
+}
+
+// ============================================
+// ПОДПИСКИ
+// ============================================
+
+enum SubscriptionPlan {
+  BASIC
+  STANDARD
+  PREMIUM
+  FAMILY
+}
+
+model Subscription {
+  id               String           @id @default(uuid())
+  userId           String           @map("user_id")
+
+  plan             SubscriptionPlan
+  startedAt        DateTime         @default(now()) @map("started_at")
+  expiresAt        DateTime         @map("expires_at")
+
+  isActive         Boolean          @default(true) @map("is_active")
+  autoRenew        Boolean          @default(false) @map("auto_renew")
+
+  diagnosticsLeft  Int              @default(0) @map("diagnostics_left")
+
+  createdAt        DateTime         @default(now()) @map("created_at")
+
+  @@map("subscriptions")
+  @@index([userId])
+}
+
+// ============================================
+// ПЛАТЕЖИ
+// ============================================
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentType {
+  DIAGNOSTIC
+  CONSULTATION
+  SUBSCRIPTION
+}
+
+enum PaymentProvider {
+  KASPI
+  PAYBOX
+}
+
+model Payment {
+  id            String          @id @default(uuid())
+  userId        String          @map("user_id")
+
+  amount        Int
+  currency      String          @default("KZT")
+
+  paymentType   PaymentType     @map("payment_type")
+  relatedId     String?         @map("related_id") // ID of test, consultation, or subscription
+
+  provider      PaymentProvider
+  externalId    String?         @map("external_id")
+
+  status        PaymentStatus   @default(PENDING)
+
+  createdAt     DateTime        @default(now()) @map("created_at")
+  completedAt   DateTime?       @map("completed_at")
+
+  @@map("payments")
+  @@index([userId])
+  @@index([status])
+}
+
+// ============================================
+// ШКОЛЫ - МАССОВЫЕ ДИАГНОСТИКИ
+// ============================================
+
+model GroupTest {
+  id              String      @id @default(uuid())
+  schoolId        String      @map("school_id")
+  classId         String      @map("class_id")
+  class           SchoolClass @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  testId          String      @map("test_id")
+  test            Test        @relation(fields: [testId], references: [id])
+
+  assignedAt      DateTime    @default(now()) @map("assigned_at")
+  deadline        DateTime?
+
+  completedCount  Int         @default(0) @map("completed_count")
+  totalCount      Int         @map("total_count")
+
+  @@map("group_tests")
+  @@index([classId])
+  @@index([testId])
+}
+
+// ============================================
+// БЕЗОПАСНОСТЬ И АУДИТ
+// ============================================
+
+enum SecurityEventType {
+  LOGIN
+  LOGOUT
+  FAILED_LOGIN
+  DATA_ACCESS
+  PERMISSION_CHANGE
+  MFA_DISABLED
+  PASSWORD_CHANGE
+}
+
+model SecurityLog {
+  id          String             @id @default(uuid())
+  userId      String?            @map("user_id")
+  user        User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  eventType   SecurityEventType  @map("event_type")
+  ipAddress   String             @map("ip_address")
+  userAgent   String             @map("user_agent")
+
+  metadata    Json?
+
+  createdAt   DateTime           @default(now()) @map("created_at")
+
+  @@map("security_logs")
+  @@index([userId])
+  @@index([eventType])
+  @@index([createdAt])
+}
+
+// ============================================
+// КОНТЕНТ
+// ============================================
+
+model Course {
+  id             String   @id @default(uuid())
+
+  titleRu        String   @map("title_ru")
+  titleKz        String   @map("title_kz")
+  descriptionRu  String   @map("description_ru")
+  descriptionKz  String   @map("description_kz")
+
+  thumbnailUrl   String   @map("thumbnail_url")
+
+  isPremium      Boolean  @default(false) @map("is_premium")
+  price          Int      @default(0)
+
+  order          Int      @default(0)
+
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  lessons        Lesson[]
+
+  @@map("courses")
+}
+
+model Lesson {
+  id             String   @id @default(uuid())
+  courseId       String   @map("course_id")
+  course         Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  titleRu        String   @map("title_ru")
+  titleKz        String   @map("title_kz")
+
+  videoUrl       String   @map("video_url")
+  durationMinutes Int     @map("duration_minutes")
+
+  order          Int
+
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@map("lessons")
+  @@index([courseId])
+}
