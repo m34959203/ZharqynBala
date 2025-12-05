@@ -5,6 +5,9 @@
 # Stage 1: Builder
 FROM node:20-alpine AS builder
 
+# Устанавливаем OpenSSL (требуется для Prisma)
+RUN apk add --no-cache openssl
+
 WORKDIR /app
 
 # Копируем package files
@@ -28,8 +31,8 @@ RUN npm run build
 # ===================================
 FROM node:20-alpine AS runner
 
-# Устанавливаем dumb-init для корректной обработки сигналов
-RUN apk add --no-cache dumb-init
+# Устанавливаем dumb-init и OpenSSL (требуется для Prisma)
+RUN apk add --no-cache dumb-init openssl
 
 WORKDIR /app
 
