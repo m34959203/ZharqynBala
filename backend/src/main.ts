@@ -28,8 +28,10 @@ async function bootstrap() {
   // Cookies
   app.use(cookieParser());
 
-  // Global prefix
-  app.setGlobalPrefix(configService.get('API_PREFIX') || 'api');
+  // Global prefix (exclude health endpoint for Railway healthcheck)
+  app.setGlobalPrefix(configService.get('API_PREFIX') || 'api', {
+    exclude: ['health'],
+  });
 
   // Versioning
   app.enableVersioning({
