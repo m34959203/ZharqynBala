@@ -1,6 +1,5 @@
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
-import GitHubProvider from "next-auth/providers/github";
 import CredentialsProvider from "next-auth/providers/credentials";
 import type { AuthOptions } from "next-auth";
 import { authApi } from "./api";
@@ -20,11 +19,31 @@ export const authOptions: AuthOptions = {
       },
     }),
 
-    // GitHub OAuth
-    GitHubProvider({
-      clientId: process.env.GITHUB_CLIENT_ID || "",
-      clientSecret: process.env.GITHUB_CLIENT_SECRET || "",
-    }),
+    // Mail.ru OAuth
+    {
+      id: "mailru",
+      name: "Mail.ru",
+      type: "oauth",
+      authorization: {
+        url: "https://oauth.mail.ru/login",
+        params: {
+          scope: "userinfo",
+          response_type: "code",
+        },
+      },
+      token: "https://oauth.mail.ru/token",
+      userinfo: "https://oauth.mail.ru/userinfo",
+      clientId: process.env.MAILRU_CLIENT_ID || "",
+      clientSecret: process.env.MAILRU_CLIENT_SECRET || "",
+      profile(profile) {
+        return {
+          id: profile.id || profile.email,
+          name: `${profile.first_name || ""} ${profile.last_name || ""}`.trim(),
+          email: profile.email,
+          image: profile.image || profile.avatar || null,
+        };
+      },
+    },
 
     // Email/Password (Credentials)
     CredentialsProvider({
@@ -85,8 +104,8 @@ export const authOptions: AuthOptions = {
     },
 
     async signIn({ account, profile }) {
-      // OAuth вход (Google, GitHub)
-      if (account?.provider === "google" || account?.provider === "github") {
+      // OAuth вход (Google, Mail.ru)
+      if (account?.provider === "google" || account?.provider === "mailru") {
         try {
           // TODO: Отправить OAuth данные на backend для создания/обновления пользователя
           // Пока что просто разрешаем вход
