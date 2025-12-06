@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: "Жарқын Бала - Платформа психологической диагностики детей",
@@ -14,7 +15,7 @@ export default function RootLayout({
   return (
     <html lang="ru">
       <body className="antialiased">
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
