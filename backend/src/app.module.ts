@@ -6,9 +6,10 @@ import { PrismaModule } from './common/prisma/prisma.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
-// import { TestsModule } from './modules/tests/tests.module';
-// import { ConsultationsModule } from './modules/consultations/consultations.module';
-// import { PaymentsModule } from './modules/payments/payments.module';
+import { TestsModule } from './modules/tests/tests.module';
+import { ResultsModule } from './modules/results/results.module';
+import { PaymentsModule } from './modules/payments/payments.module';
+import { AiModule } from './modules/ai/ai.module';
 
 @Module({
   imports: [
@@ -35,9 +36,10 @@ import { UsersModule } from './modules/users/users.module';
     // Feature modules
     AuthModule,
     UsersModule,
-    // TestsModule,
-    // ConsultationsModule,
-    // PaymentsModule,
+    TestsModule,
+    ResultsModule,
+    PaymentsModule,
+    AiModule,
   ],
 })
 export class AppModule {}
