@@ -28,9 +28,9 @@ async function bootstrap() {
   // Cookies
   app.use(cookieParser());
 
-  // Global prefix (exclude health endpoint for Railway healthcheck)
+  // Global prefix (exclude health and root endpoints)
   app.setGlobalPrefix(configService.get('API_PREFIX') || 'api', {
-    exclude: ['health'],
+    exclude: ['health', '/', ''],
   });
 
   // Versioning
