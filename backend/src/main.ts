@@ -51,25 +51,23 @@ async function bootstrap() {
     }),
   );
 
-  // Swagger documentation
-  if (configService.get('NODE_ENV') !== 'production') {
-    const config = new DocumentBuilder()
-      .setTitle('Zharqyn Bala API')
-      .setDescription('Онлайн-платформа психологической диагностики детей')
-      .setVersion('1.0')
-      .addBearerAuth()
-      .addTag('auth', 'Аутентификация и авторизация')
-      .addTag('users', 'Управление пользователями')
-      .addTag('children', 'Управление профилями детей')
-      .addTag('tests', 'Психологические тесты')
-      .addTag('consultations', 'Консультации с психологами')
-      .addTag('payments', 'Платежи')
-      .addTag('schools', 'Функции для школ')
-      .build();
+  // Swagger documentation (enabled in all environments)
+  const config = new DocumentBuilder()
+    .setTitle('Zharqyn Bala API')
+    .setDescription('Онлайн-платформа психологической диагностики детей')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .addTag('auth', 'Аутентификация и авторизация')
+    .addTag('users', 'Управление пользователями')
+    .addTag('children', 'Управление профилями детей')
+    .addTag('tests', 'Психологические тесты')
+    .addTag('results', 'Результаты тестирования')
+    .addTag('payments', 'Платежи')
+    .addTag('ai', 'AI интерпретация')
+    .build();
 
-    const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('api/docs', app, document);
-  }
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document);
 
   const port = configService.get('PORT') || 8080;
   await app.listen(port);
