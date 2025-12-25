@@ -1,65 +1,23 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
+// Map our audit actions to SecurityEventType enum
 export enum AuditAction {
-  // Authentication
   LOGIN = 'LOGIN',
   LOGOUT = 'LOGOUT',
-  REGISTER = 'REGISTER',
-  PASSWORD_RESET = 'PASSWORD_RESET',
+  FAILED_LOGIN = 'FAILED_LOGIN',
   PASSWORD_CHANGE = 'PASSWORD_CHANGE',
-
-  // User actions
-  PROFILE_UPDATE = 'PROFILE_UPDATE',
-  ACCOUNT_DELETE = 'ACCOUNT_DELETE',
-
-  // Children
-  CHILD_CREATE = 'CHILD_CREATE',
-  CHILD_UPDATE = 'CHILD_UPDATE',
-  CHILD_DELETE = 'CHILD_DELETE',
-
-  // Tests
-  TEST_START = 'TEST_START',
-  TEST_COMPLETE = 'TEST_COMPLETE',
-  TEST_ABANDON = 'TEST_ABANDON',
-
-  // Payments
-  PAYMENT_INITIATE = 'PAYMENT_INITIATE',
-  PAYMENT_COMPLETE = 'PAYMENT_COMPLETE',
-  PAYMENT_FAIL = 'PAYMENT_FAIL',
-  PAYMENT_REFUND = 'PAYMENT_REFUND',
-  SUBSCRIPTION_ACTIVATE = 'SUBSCRIPTION_ACTIVATE',
-  SUBSCRIPTION_CANCEL = 'SUBSCRIPTION_CANCEL',
-
-  // Consultations
-  CONSULTATION_BOOK = 'CONSULTATION_BOOK',
-  CONSULTATION_CANCEL = 'CONSULTATION_CANCEL',
-  CONSULTATION_COMPLETE = 'CONSULTATION_COMPLETE',
-
-  // Admin actions
-  ADMIN_USER_UPDATE = 'ADMIN_USER_UPDATE',
-  ADMIN_USER_DELETE = 'ADMIN_USER_DELETE',
-  ADMIN_SETTINGS_UPDATE = 'ADMIN_SETTINGS_UPDATE',
-  ADMIN_TEST_CREATE = 'ADMIN_TEST_CREATE',
-  ADMIN_TEST_UPDATE = 'ADMIN_TEST_UPDATE',
-  ADMIN_TEST_DELETE = 'ADMIN_TEST_DELETE',
-
-  // Data access
-  DATA_EXPORT = 'DATA_EXPORT',
-  RESULT_VIEW = 'RESULT_VIEW',
-  RESULT_SHARE = 'RESULT_SHARE',
+  DATA_ACCESS = 'DATA_ACCESS',
+  PERMISSION_CHANGE = 'PERMISSION_CHANGE',
+  MFA_DISABLED = 'MFA_DISABLED',
 }
 
 interface AuditLogEntry {
   userId?: string;
   action: AuditAction;
-  resource?: string;
-  resourceId?: string;
-  details?: Record<string, any>;
-  ip?: string;
-  userAgent?: string;
-  success?: boolean;
-  errorMessage?: string;
+  ip: string;
+  userAgent: string;
+  metadata?: Record<string, any>;
 }
 
 @Injectable()
@@ -70,23 +28,19 @@ export class AuditService {
 
   async log(entry: AuditLogEntry): Promise<void> {
     try {
-      await this.prisma.auditLog.create({
+      // Use SecurityLog model which exists in schema
+      await this.prisma.securityLog.create({
         data: {
           userId: entry.userId,
-          action: entry.action,
-          resource: entry.resource,
-          resourceId: entry.resourceId,
-          details: entry.details || {},
-          ip: entry.ip,
+          eventType: entry.action as any, // Maps to SecurityEventType enum
+          ipAddress: entry.ip,
           userAgent: entry.userAgent,
-          success: entry.success ?? true,
-          errorMessage: entry.errorMessage,
-          createdAt: new Date(),
+          metadata: entry.metadata || {},
         },
       });
 
       this.logger.log(
-        `Audit: ${entry.action} by ${entry.userId || 'anonymous'} on ${entry.resource || 'system'}`,
+        `Audit: ${entry.action} by ${entry.userId || 'anonymous'}`,
       );
     } catch (error) {
       this.logger.error(`Failed to write audit log: ${error.message}`);
@@ -97,7 +51,6 @@ export class AuditService {
   async getAuditLogs(filters: {
     userId?: string;
     action?: AuditAction;
-    resource?: string;
     startDate?: Date;
     endDate?: Date;
     page?: number;
@@ -106,8 +59,7 @@ export class AuditService {
     const where: any = {};
 
     if (filters.userId) where.userId = filters.userId;
-    if (filters.action) where.action = filters.action;
-    if (filters.resource) where.resource = filters.resource;
+    if (filters.action) where.eventType = filters.action;
 
     if (filters.startDate || filters.endDate) {
       where.createdAt = {};
@@ -119,18 +71,18 @@ export class AuditService {
     const limit = filters.limit || 50;
 
     const [data, total] = await Promise.all([
-      this.prisma.auditLog.findMany({
+      this.prisma.securityLog.findMany({
         where,
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
         include: {
           user: {
-            select: { id: true, email: true, name: true },
+            select: { id: true, email: true, firstName: true, lastName: true },
           },
         },
       }),
-      this.prisma.auditLog.count({ where }),
+      this.prisma.securityLog.count({ where }),
     ]);
 
     return { data, total };
@@ -140,7 +92,7 @@ export class AuditService {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    return this.prisma.auditLog.findMany({
+    return this.prisma.securityLog.findMany({
       where: {
         userId,
         createdAt: { gte: startDate },
@@ -154,22 +106,17 @@ export class AuditService {
     const startDate = new Date();
     startDate.setHours(startDate.getHours() - hours);
 
-    return this.prisma.auditLog.findMany({
+    return this.prisma.securityLog.findMany({
       where: {
         createdAt: { gte: startDate },
-        action: {
-          in: [
-            AuditAction.LOGIN,
-            AuditAction.PASSWORD_RESET,
-            AuditAction.PASSWORD_CHANGE,
-            AuditAction.ACCOUNT_DELETE,
-          ],
+        eventType: {
+          in: ['LOGIN', 'FAILED_LOGIN', 'PASSWORD_CHANGE'],
         },
       },
       orderBy: { createdAt: 'desc' },
       include: {
         user: {
-          select: { id: true, email: true, name: true },
+          select: { id: true, email: true, firstName: true, lastName: true },
         },
       },
     });
@@ -179,11 +126,10 @@ export class AuditService {
     const startDate = new Date();
     startDate.setMinutes(startDate.getMinutes() - minutes);
 
-    return this.prisma.auditLog.count({
+    return this.prisma.securityLog.count({
       where: {
-        ip,
-        success: false,
-        action: AuditAction.LOGIN,
+        ipAddress: ip,
+        eventType: 'FAILED_LOGIN',
         createdAt: { gte: startDate },
       },
     });
@@ -194,11 +140,10 @@ export class AuditService {
     oneHourAgo.setHours(oneHourAgo.getHours() - 1);
 
     // Find IPs with multiple failed logins
-    const failedLogins = await this.prisma.auditLog.groupBy({
-      by: ['ip'],
+    const failedLogins = await this.prisma.securityLog.groupBy({
+      by: ['ipAddress'],
       where: {
-        action: AuditAction.LOGIN,
-        success: false,
+        eventType: 'FAILED_LOGIN',
         createdAt: { gte: oneHourAgo },
       },
       _count: { id: true },
@@ -208,10 +153,11 @@ export class AuditService {
     });
 
     // Find users with unusual activity patterns
-    const unusualPatterns = await this.prisma.auditLog.groupBy({
+    const unusualPatterns = await this.prisma.securityLog.groupBy({
       by: ['userId'],
       where: {
         createdAt: { gte: oneHourAgo },
+        userId: { not: null },
       },
       _count: { id: true },
       having: {
@@ -220,12 +166,12 @@ export class AuditService {
     });
 
     return [
-      ...failedLogins.map((f) => ({
+      ...failedLogins.map((f: any) => ({
         type: 'failed_logins',
-        ip: f.ip,
+        ip: f.ipAddress,
         count: f._count.id,
       })),
-      ...unusualPatterns.map((u) => ({
+      ...unusualPatterns.map((u: any) => ({
         type: 'high_activity',
         userId: u.userId,
         count: u._count.id,
@@ -238,7 +184,7 @@ export class AuditService {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
 
-    const result = await this.prisma.auditLog.deleteMany({
+    const result = await this.prisma.securityLog.deleteMany({
       where: {
         createdAt: { lt: cutoffDate },
       },

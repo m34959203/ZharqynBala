@@ -18,7 +18,14 @@ export class SentryService implements OnModuleInit {
     }
 
     try {
-      this.sentry = await import('@sentry/node');
+      // Dynamic import to avoid build error if @sentry/node is not installed
+      // @ts-ignore - Module might not be installed
+      this.sentry = await import('@sentry/node').catch(() => null);
+
+      if (!this.sentry) {
+        this.logger.warn('Sentry package not installed, error tracking disabled');
+        return;
+      }
 
       this.sentry.init({
         dsn,

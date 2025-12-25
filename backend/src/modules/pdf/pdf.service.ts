@@ -234,7 +234,12 @@ export class PdfService {
     // In production, use puppeteer or similar for PDF generation
     // For now, we'll return a simple HTML-to-PDF conversion
     try {
-      const puppeteer = await import('puppeteer');
+      // @ts-ignore - puppeteer is optional dependency
+      const puppeteer = await import('puppeteer').catch(() => null);
+      if (!puppeteer) {
+        this.logger.warn('Puppeteer not installed, returning HTML');
+        return Buffer.from(html, 'utf-8');
+      }
       const browser = await puppeteer.launch({
         headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox'],

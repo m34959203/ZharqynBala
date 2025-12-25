@@ -37,7 +37,7 @@ export class SchoolsController {
   constructor(private readonly schoolsService: SchoolsService) {}
 
   @Post()
-  @Roles('ADMIN', 'SCHOOL_ADMIN')
+  @Roles('ADMIN', 'SCHOOL')
   @ApiOperation({ summary: 'Create a new school' })
   @ApiResponse({ status: 201, type: SchoolResponseDto })
   async create(@Body() dto: CreateSchoolDto): Promise<SchoolResponseDto> {
@@ -53,7 +53,7 @@ export class SchoolsController {
   }
 
   @Get(':id')
-  @Roles('ADMIN', 'SCHOOL_ADMIN', 'TEACHER')
+  @Roles('ADMIN', 'SCHOOL')
   @ApiOperation({ summary: 'Get school by ID' })
   @ApiResponse({ status: 200, type: SchoolResponseDto })
   async findOne(@Param('id', ParseUUIDPipe) id: string): Promise<SchoolResponseDto> {
@@ -61,7 +61,7 @@ export class SchoolsController {
   }
 
   @Patch(':id')
-  @Roles('ADMIN', 'SCHOOL_ADMIN')
+  @Roles('ADMIN', 'SCHOOL')
   @ApiOperation({ summary: 'Update school' })
   @ApiResponse({ status: 200, type: SchoolResponseDto })
   async update(
@@ -79,7 +79,7 @@ export class SchoolsController {
   }
 
   @Get(':id/stats')
-  @Roles('ADMIN', 'SCHOOL_ADMIN')
+  @Roles('ADMIN', 'SCHOOL')
   @ApiOperation({ summary: 'Get school statistics' })
   @ApiResponse({ status: 200, type: SchoolStatsDto })
   async getStats(@Param('id', ParseUUIDPipe) id: string): Promise<SchoolStatsDto> {
@@ -87,14 +87,14 @@ export class SchoolsController {
   }
 
   @Get(':id/classes')
-  @Roles('ADMIN', 'SCHOOL_ADMIN', 'TEACHER')
+  @Roles('ADMIN', 'SCHOOL')
   @ApiOperation({ summary: 'Get school classes' })
   async getClasses(@Param('id', ParseUUIDPipe) id: string) {
     return this.schoolsService.getClasses(id);
   }
 
   @Post(':id/students')
-  @Roles('ADMIN', 'SCHOOL_ADMIN')
+  @Roles('ADMIN', 'SCHOOL')
   @ApiOperation({ summary: 'Add student to school' })
   async addStudent(
     @Param('id', ParseUUIDPipe) id: string,
@@ -104,7 +104,7 @@ export class SchoolsController {
   }
 
   @Post(':id/import')
-  @Roles('ADMIN', 'SCHOOL_ADMIN')
+  @Roles('ADMIN', 'SCHOOL')
   @ApiOperation({ summary: 'Import students from Excel' })
   async importStudents(
     @Param('id', ParseUUIDPipe) id: string,
@@ -114,7 +114,7 @@ export class SchoolsController {
   }
 
   @Get(':id/reports')
-  @Roles('ADMIN', 'SCHOOL_ADMIN')
+  @Roles('ADMIN', 'SCHOOL')
   @ApiOperation({ summary: 'Get school reports' })
   async getReports(
     @Param('id', ParseUUIDPipe) id: string,

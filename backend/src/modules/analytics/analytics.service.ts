@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
-interface DashboardMetrics {
+export interface DashboardMetrics {
   users: {
     total: number;
     active: number;
@@ -32,14 +32,14 @@ interface DashboardMetrics {
   };
 }
 
-interface UserAnalytics {
+export interface UserAnalytics {
   registrationTrend: { date: string; count: number }[];
   retentionRate: number;
   activeUsersByDay: { date: string; count: number }[];
   topRegions: { region: string; count: number }[];
 }
 
-interface TestAnalytics {
+export interface TestAnalytics {
   completionRate: number;
   averageTimeToComplete: number;
   scoreDistribution: { range: string; count: number }[];
@@ -47,7 +47,7 @@ interface TestAnalytics {
   trendByMonth: { month: string; count: number; avgScore: number }[];
 }
 
-interface ChildAnalytics {
+export interface ChildAnalytics {
   ageDistribution: { age: number; count: number }[];
   genderDistribution: { gender: string; count: number }[];
   progressTrends: { category: string; improvement: number }[];
@@ -92,28 +92,37 @@ export class AnalyticsService {
 
     const ageGroups = this.groupByAge(children.map((c) => c.birthDate));
 
-    // Tests metrics
+    // Tests metrics - Result is linked through session
     const [totalTests, testsThisMonth, allResults] = await Promise.all([
       this.prisma.result.count(),
       this.prisma.result.count({ where: { createdAt: { gte: startOfMonth } } }),
       this.prisma.result.findMany({
-        select: { score: true, maxScore: true, testId: true },
-        include: { test: { select: { title: true } } },
+        select: {
+          totalScore: true,
+          maxScore: true,
+          session: {
+            select: {
+              testId: true,
+              test: { select: { titleRu: true } },
+            },
+          },
+        },
       }),
     ]);
 
     const avgScore = allResults.length > 0
       ? Math.round(
-          allResults.reduce((sum, r) => sum + (r.score / r.maxScore) * 100, 0) /
+          allResults.reduce((sum, r) => sum + (r.totalScore / r.maxScore) * 100, 0) /
             allResults.length,
         )
       : 0;
 
     const testCounts = new Map<string, { id: string; title: string; count: number }>();
     allResults.forEach((r) => {
-      const existing = testCounts.get(r.testId) || { id: r.testId, title: r.test.title, count: 0 };
+      const testId = r.session.testId;
+      const existing = testCounts.get(testId) || { id: testId, title: r.session.test.titleRu, count: 0 };
       existing.count++;
-      testCounts.set(r.testId, existing);
+      testCounts.set(testId, existing);
     });
 
     const popularTests = Array.from(testCounts.values())
@@ -121,7 +130,7 @@ export class AnalyticsService {
       .slice(0, 5);
 
     // Revenue metrics
-    const [totalRevenue, revenueThisMonth, revenueLastMonth, paymentsByPlan] =
+    const [totalRevenue, revenueThisMonth, revenueLastMonth] =
       await Promise.all([
         this.prisma.payment.aggregate({
           _sum: { amount: true },
@@ -138,11 +147,6 @@ export class AnalyticsService {
             createdAt: { gte: startOfLastMonth, lt: endOfLastMonth },
           },
         }),
-        this.prisma.payment.groupBy({
-          by: ['metadata'],
-          _sum: { amount: true },
-          where: { status: 'COMPLETED' },
-        }),
       ]);
 
     const revenueGrowth = (revenueLastMonth._sum.amount || 0) > 0
@@ -153,13 +157,13 @@ export class AnalyticsService {
         )
       : 100;
 
-    // Consultations metrics
+    // Consultations metrics - schema uses SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED
     const [totalConsultations, completedConsultations, upcomingConsultations, cancelledConsultations] =
       await Promise.all([
         this.prisma.consultation.count(),
         this.prisma.consultation.count({ where: { status: 'COMPLETED' } }),
         this.prisma.consultation.count({
-          where: { status: 'CONFIRMED', scheduledAt: { gte: now } },
+          where: { status: 'SCHEDULED', scheduledAt: { gte: now } },
         }),
         this.prisma.consultation.count({ where: { status: 'CANCELLED' } }),
       ]);
@@ -245,22 +249,27 @@ export class AnalyticsService {
   }
 
   async getTestAnalytics(testId?: string): Promise<TestAnalytics> {
-    const where = testId ? { testId } : {};
+    const sessionWhere = testId ? { testId } : {};
 
+    // Result is linked through session, uses totalScore/maxScore
     const results = await this.prisma.result.findMany({
-      where,
-      include: { test: true, categories: true },
+      where: testId ? { session: { testId } } : {},
+      include: {
+        session: {
+          include: { test: true },
+        },
+      },
     });
 
     // Completion rate
-    const sessions = await this.prisma.testSession.count({ where: testId ? { testId } : {} });
+    const sessions = await this.prisma.testSession.count({ where: sessionWhere });
     const completed = await this.prisma.testSession.count({
-      where: { ...where, status: 'COMPLETED' },
+      where: { ...sessionWhere, status: 'COMPLETED' },
     });
     const completionRate = sessions > 0 ? Math.round((completed / sessions) * 100) : 0;
 
     // Score distribution
-    const scores = results.map((r) => Math.round((r.score / r.maxScore) * 100));
+    const scores = results.map((r) => Math.round((r.totalScore / r.maxScore) * 100));
     const scoreDistribution = [
       { range: '0-20%', count: scores.filter((s) => s < 20).length },
       { range: '20-40%', count: scores.filter((s) => s >= 20 && s < 40).length },
@@ -269,15 +278,14 @@ export class AnalyticsService {
       { range: '80-100%', count: scores.filter((s) => s >= 80).length },
     ];
 
-    // Category performance
+    // Category performance - based on test categories from TestCategory enum
     const categoryScores = new Map<string, { total: number; count: number }>();
     results.forEach((r) => {
-      r.categories.forEach((c) => {
-        const existing = categoryScores.get(c.name) || { total: 0, count: 0 };
-        existing.total += (c.score / c.maxScore) * 100;
-        existing.count++;
-        categoryScores.set(c.name, existing);
-      });
+      const category = r.session.test.category;
+      const existing = categoryScores.get(category) || { total: 0, count: 0 };
+      existing.total += (r.totalScore / r.maxScore) * 100;
+      existing.count++;
+      categoryScores.set(category, existing);
     });
 
     const categoryPerformance = Array.from(categoryScores.entries()).map(
@@ -293,7 +301,7 @@ export class AnalyticsService {
       const month = r.createdAt.toISOString().slice(0, 7);
       const existing = monthlyData.get(month) || { count: 0, totalScore: 0 };
       existing.count++;
-      existing.totalScore += (r.score / r.maxScore) * 100;
+      existing.totalScore += (r.totalScore / r.maxScore) * 100;
       monthlyData.set(month, existing);
     });
 
@@ -315,14 +323,20 @@ export class AnalyticsService {
   }
 
   async getChildAnalytics(userId?: string): Promise<ChildAnalytics> {
-    const where = userId ? { userId } : {};
+    // Child uses parentId, not userId
+    const where = userId ? { parentId: userId } : {};
 
+    // Child has testSessions relation, not results
     const children = await this.prisma.child.findMany({
       where,
       include: {
-        results: {
-          include: { categories: true },
-          orderBy: { createdAt: 'desc' },
+        testSessions: {
+          where: { status: 'COMPLETED' },
+          include: {
+            result: true,
+            test: true,
+          },
+          orderBy: { completedAt: 'desc' },
         },
       },
     });
@@ -349,18 +363,20 @@ export class AnalyticsService {
       ([gender, count]) => ({ gender, count }),
     );
 
-    // Progress trends
+    // Progress trends by test category
     const categoryProgress = new Map<string, number[]>();
     children.forEach((c) => {
-      const sortedResults = c.results.sort(
-        (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
-      );
-      sortedResults.forEach((r) => {
-        r.categories.forEach((cat) => {
-          const scores = categoryProgress.get(cat.name) || [];
-          scores.push((cat.score / cat.maxScore) * 100);
-          categoryProgress.set(cat.name, scores);
-        });
+      const sessionsWithResults = c.testSessions
+        .filter((s) => s.result)
+        .sort((a, b) => (a.completedAt?.getTime() || 0) - (b.completedAt?.getTime() || 0));
+
+      sessionsWithResults.forEach((session) => {
+        if (session.result) {
+          const category = session.test.category;
+          const scores = categoryProgress.get(category) || [];
+          scores.push((session.result.totalScore / session.result.maxScore) * 100);
+          categoryProgress.set(category, scores);
+        }
       });
     });
 
@@ -377,30 +393,36 @@ export class AnalyticsService {
     // At-risk children (average score < 40%)
     const atRiskChildren = children
       .filter((c) => {
-        if (c.results.length === 0) return false;
+        const sessionsWithResults = c.testSessions.filter((s) => s.result);
+        if (sessionsWithResults.length === 0) return false;
         const avgScore =
-          c.results.reduce((sum, r) => sum + (r.score / r.maxScore) * 100, 0) /
-          c.results.length;
+          sessionsWithResults.reduce(
+            (sum, s) => sum + (s.result!.totalScore / s.result!.maxScore) * 100,
+            0,
+          ) / sessionsWithResults.length;
         return avgScore < 40;
       })
       .map((c) => {
+        const sessionsWithResults = c.testSessions.filter((s) => s.result);
         const avgScore =
-          c.results.reduce((sum, r) => sum + (r.score / r.maxScore) * 100, 0) /
-          c.results.length;
-        const lowestCategory = c.results
-          .flatMap((r) => r.categories)
-          .reduce(
-            (min, cat) => {
-              const score = (cat.score / cat.maxScore) * 100;
-              return score < min.score ? { name: cat.name, score } : min;
-            },
-            { name: '', score: 100 },
-          );
+          sessionsWithResults.reduce(
+            (sum, s) => sum + (s.result!.totalScore / s.result!.maxScore) * 100,
+            0,
+          ) / sessionsWithResults.length;
+
+        // Find lowest scoring test category
+        const lowestSession = sessionsWithResults.reduce((lowest, current) => {
+          const currentScore = (current.result!.totalScore / current.result!.maxScore) * 100;
+          const lowestScore = lowest.result
+            ? (lowest.result.totalScore / lowest.result.maxScore) * 100
+            : 100;
+          return currentScore < lowestScore ? current : lowest;
+        }, sessionsWithResults[0]);
 
         return {
           id: c.id,
-          name: c.name,
-          concern: lowestCategory.name || 'Общий низкий балл',
+          name: `${c.firstName} ${c.lastName}`,
+          concern: lowestSession?.test.category || 'Общий низкий балл',
           score: Math.round(avgScore),
         };
       });
@@ -425,7 +447,7 @@ export class AnalyticsService {
       select: {
         amount: true,
         createdAt: true,
-        metadata: true,
+        paymentType: true,
       },
     });
 

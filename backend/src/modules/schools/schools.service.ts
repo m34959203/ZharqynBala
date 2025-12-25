@@ -15,28 +15,63 @@ export class SchoolsService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateSchoolDto): Promise<SchoolResponseDto> {
-    const school = await this.prisma.school.create({
-      data: dto,
+    // Create a user for the school first
+    const user = await this.prisma.user.create({
+      data: {
+        email: dto.email || `school_${Date.now()}@zharqynbala.kz`,
+        passwordHash: 'temp_hash',
+        firstName: dto.name,
+        lastName: '',
+        role: 'SCHOOL',
+      },
     });
 
-    this.logger.log(`School created: ${school.name}`);
+    const school = await this.prisma.school.create({
+      data: {
+        userId: user.id,
+        schoolName: dto.name,
+        address: dto.address || '',
+        city: dto.city || '',
+        region: dto.region || '',
+        contactPerson: dto.name,
+        contactPhone: dto.phone || '',
+      },
+      include: {
+        classes: {
+          include: {
+            _count: { select: { students: true } },
+          },
+        },
+      },
+    });
+
+    this.logger.log(`School created: ${school.schoolName}`);
     return this.mapToResponse(school);
   }
 
   async findAll(): Promise<SchoolResponseDto[]> {
     const schools = await this.prisma.school.findMany({
       orderBy: { createdAt: 'desc' },
+      include: {
+        classes: {
+          include: {
+            _count: { select: { students: true } },
+          },
+        },
+      },
     });
 
-    return schools.map(this.mapToResponse);
+    return schools.map((school) => this.mapToResponse(school));
   }
 
   async findOne(id: string): Promise<SchoolResponseDto> {
     const school = await this.prisma.school.findUnique({
       where: { id },
       include: {
-        _count: {
-          select: { students: true },
+        classes: {
+          include: {
+            _count: { select: { students: true } },
+          },
         },
       },
     });
@@ -51,7 +86,20 @@ export class SchoolsService {
   async update(id: string, dto: UpdateSchoolDto): Promise<SchoolResponseDto> {
     const school = await this.prisma.school.update({
       where: { id },
-      data: dto,
+      data: {
+        schoolName: dto.name,
+        address: dto.address,
+        city: dto.city,
+        region: dto.region,
+        contactPhone: dto.phone,
+      },
+      include: {
+        classes: {
+          include: {
+            _count: { select: { students: true } },
+          },
+        },
+      },
     });
 
     return this.mapToResponse(school);
@@ -67,11 +115,12 @@ export class SchoolsService {
     const school = await this.prisma.school.findUnique({
       where: { id },
       include: {
-        students: {
+        classes: {
           include: {
-            sessions: {
+            students: true,
+            groupTests: {
               include: {
-                result: true,
+                test: true,
               },
             },
           },
@@ -83,93 +132,161 @@ export class SchoolsService {
       throw new NotFoundException('School not found');
     }
 
-    const totalStudents = school.students.length;
-    const totalSessions = school.students.reduce(
-      (acc, s) => acc + s.sessions.length,
-      0,
-    );
-    const completedSessions = school.students.reduce(
-      (acc, s) => acc + s.sessions.filter((sess) => sess.status === 'COMPLETED').length,
+    // Calculate total students across all classes
+    const totalStudents = school.classes.reduce(
+      (acc, cls) => acc + cls.students.length,
       0,
     );
 
-    // Calculate average score
-    let totalScore = 0;
-    let scoreCount = 0;
-    school.students.forEach((student) => {
-      student.sessions.forEach((session) => {
-        if (session.result) {
-          totalScore += (session.result.totalScore / session.result.maxScore) * 100;
-          scoreCount++;
-        }
-      });
-    });
+    // Calculate test stats from groupTests
+    const totalTests = school.classes.reduce(
+      (acc, cls) => acc + cls.groupTests.reduce((sum, gt) => sum + gt.totalCount, 0),
+      0,
+    );
 
-    const averageScore = scoreCount > 0 ? Math.round(totalScore / scoreCount) : 0;
+    const completedTests = school.classes.reduce(
+      (acc, cls) => acc + cls.groupTests.reduce((sum, gt) => sum + gt.completedCount, 0),
+      0,
+    );
+
+    // Class breakdown
+    const classBreakdown = school.classes.map((cls) => ({
+      grade: `${cls.grade}${cls.letter}`,
+      studentCount: cls.students.length,
+      avgScore: 0, // Would need to calculate from results
+    }));
 
     return {
       totalStudents,
-      totalTests: totalSessions,
-      completedTests: completedSessions,
-      averageScore,
-      classBreakdown: [], // TODO: Implement class breakdown
+      totalTests,
+      completedTests,
+      averageScore: 0, // Would need to calculate from results
+      classBreakdown,
     };
   }
 
   async getClasses(id: string): Promise<any[]> {
-    const students = await this.prisma.child.findMany({
-      where: { schoolId: id },
-      select: { grade: true },
+    const school = await this.prisma.school.findUnique({
+      where: { id },
+      include: {
+        classes: {
+          include: {
+            _count: { select: { students: true } },
+          },
+        },
+      },
     });
 
-    const classMap = new Map<string, number>();
-    students.forEach((s) => {
-      if (s.grade) {
-        classMap.set(s.grade, (classMap.get(s.grade) || 0) + 1);
-      }
-    });
+    if (!school) {
+      throw new NotFoundException('School not found');
+    }
 
-    return Array.from(classMap.entries()).map(([grade, count]) => ({
-      grade,
-      studentCount: count,
+    return school.classes.map((cls) => ({
+      id: cls.id,
+      grade: cls.grade,
+      letter: cls.letter,
+      academicYear: cls.academicYear,
+      studentCount: cls._count.students,
     }));
   }
 
   async addStudent(schoolId: string, dto: AddStudentDto): Promise<any> {
-    const child = await this.prisma.child.update({
+    // Find the school and get first class or create one
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+      include: { classes: true },
+    });
+
+    if (!school) {
+      throw new NotFoundException('School not found');
+    }
+
+    // Get the child
+    const child = await this.prisma.child.findUnique({
+      where: { id: dto.childId },
+    });
+
+    if (!child) {
+      throw new NotFoundException('Child not found');
+    }
+
+    // Update child's school name and grade
+    const updatedChild = await this.prisma.child.update({
       where: { id: dto.childId },
       data: {
-        schoolId,
+        schoolName: school.schoolName,
         grade: dto.grade,
       },
     });
 
-    return child;
+    return updatedChild;
   }
 
-  async importStudents(schoolId: string, students: any[]): Promise<{ imported: number; errors: string[] }> {
+  async importStudents(
+    schoolId: string,
+    students: any[],
+  ): Promise<{ imported: number; errors: string[] }> {
     const errors: string[] = [];
     let imported = 0;
 
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+      include: { classes: true },
+    });
+
+    if (!school) {
+      throw new NotFoundException('School not found');
+    }
+
     for (const student of students) {
       try {
-        // Create or update child
-        await this.prisma.child.create({
+        // Find or create class
+        let schoolClass = school.classes.find(
+          (c) => c.grade === parseInt(student.grade) && c.letter === (student.letter || 'А'),
+        );
+
+        if (!schoolClass) {
+          schoolClass = await this.prisma.schoolClass.create({
+            data: {
+              schoolId,
+              grade: parseInt(student.grade) || 1,
+              letter: student.letter || 'А',
+              academicYear: new Date().getFullYear().toString(),
+            },
+          });
+        }
+
+        // Create student in school class
+        await this.prisma.student.create({
           data: {
+            classId: schoolClass.id,
             firstName: student.firstName,
             lastName: student.lastName,
             birthDate: new Date(student.birthDate),
             gender: student.gender || 'MALE',
-            grade: student.grade,
-            schoolId,
-            parentId: student.parentId, // This should be linked to parent
           },
         });
         imported++;
       } catch (error) {
-        errors.push(`Failed to import ${student.firstName} ${student.lastName}: ${error.message}`);
+        errors.push(
+          `Failed to import ${student.firstName} ${student.lastName}: ${error.message}`,
+        );
       }
     }
+
+    // Update total students count
+    const totalStudents = await this.prisma.student.count({
+      where: {
+        class: {
+          schoolId,
+        },
+      },
+    });
+
+    await this.prisma.school.update({
+      where: { id: schoolId },
+      data: { totalStudents },
+    });
 
     return { imported, errors };
   }
@@ -178,13 +295,12 @@ export class SchoolsService {
     const school = await this.prisma.school.findUnique({
       where: { id: schoolId },
       include: {
-        students: {
+        classes: {
           include: {
-            sessions: {
-              where: { status: 'COMPLETED' },
+            students: true,
+            groupTests: {
               include: {
                 test: true,
-                result: true,
               },
             },
           },
@@ -196,74 +312,58 @@ export class SchoolsService {
       throw new NotFoundException('School not found');
     }
 
+    const totalStudents = school.classes.reduce(
+      (acc, cls) => acc + cls.students.length,
+      0,
+    );
+
+    const totalTests = school.classes.reduce(
+      (acc, cls) =>
+        acc + cls.groupTests.reduce((sum, gt) => sum + gt.completedCount, 0),
+      0,
+    );
+
     // Generate report data
     const reportData = {
-      schoolName: school.name,
+      schoolName: school.schoolName,
       generatedAt: new Date().toISOString(),
       summary: {
-        totalStudents: school.students.length,
-        totalTests: school.students.reduce((acc, s) => acc + s.sessions.length, 0),
+        totalStudents,
+        totalTests,
       },
-      byCategory: {} as Record<string, { count: number; avgScore: number }>,
-      byGrade: {} as Record<string, { count: number; avgScore: number }>,
+      byClass: school.classes.map((cls) => ({
+        className: `${cls.grade}${cls.letter}`,
+        studentCount: cls.students.length,
+        testsAssigned: cls.groupTests.length,
+        testsCompleted: cls.groupTests.reduce(
+          (sum, gt) => sum + gt.completedCount,
+          0,
+        ),
+      })),
     };
-
-    // Aggregate by category and grade
-    school.students.forEach((student) => {
-      student.sessions.forEach((session) => {
-        if (session.result) {
-          const category = session.test.category;
-          const grade = student.grade || 'Unknown';
-          const score = (session.result.totalScore / session.result.maxScore) * 100;
-
-          // By category
-          if (!reportData.byCategory[category]) {
-            reportData.byCategory[category] = { count: 0, avgScore: 0 };
-          }
-          reportData.byCategory[category].count++;
-          reportData.byCategory[category].avgScore += score;
-
-          // By grade
-          if (!reportData.byGrade[grade]) {
-            reportData.byGrade[grade] = { count: 0, avgScore: 0 };
-          }
-          reportData.byGrade[grade].count++;
-          reportData.byGrade[grade].avgScore += score;
-        }
-      });
-    });
-
-    // Calculate averages
-    Object.keys(reportData.byCategory).forEach((cat) => {
-      if (reportData.byCategory[cat].count > 0) {
-        reportData.byCategory[cat].avgScore = Math.round(
-          reportData.byCategory[cat].avgScore / reportData.byCategory[cat].count,
-        );
-      }
-    });
-
-    Object.keys(reportData.byGrade).forEach((grade) => {
-      if (reportData.byGrade[grade].count > 0) {
-        reportData.byGrade[grade].avgScore = Math.round(
-          reportData.byGrade[grade].avgScore / reportData.byGrade[grade].count,
-        );
-      }
-    });
 
     return reportData;
   }
 
   private mapToResponse(school: any): SchoolResponseDto {
+    // Calculate student count from classes
+    const studentCount = school.classes
+      ? school.classes.reduce(
+          (acc: number, cls: any) => acc + (cls._count?.students || cls.students?.length || 0),
+          0,
+        )
+      : school.totalStudents || 0;
+
     return {
       id: school.id,
-      name: school.name,
+      name: school.schoolName,
       address: school.address,
       city: school.city,
       region: school.region,
-      phone: school.phone,
-      email: school.email,
-      studentCount: school._count?.students || 0,
-      isActive: school.isActive,
+      phone: school.contactPhone,
+      email: '', // School model doesn't have email
+      studentCount,
+      isActive: true, // Schema doesn't have isActive field
       createdAt: school.createdAt,
     };
   }

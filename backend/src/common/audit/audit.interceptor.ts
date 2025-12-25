@@ -47,35 +47,33 @@ export class AuditInterceptor implements NestInterceptor {
         this.auditService.log({
           userId: request.user?.id,
           action,
-          resource,
-          resourceId: request.params?.id || response?.id,
-          details: {
+          ip: request.ip,
+          userAgent: request.headers['user-agent'],
+          metadata: {
+            resource,
+            resourceId: request.params?.id || response?.id,
             method: request.method,
             path: request.path,
             duration: Date.now() - startTime,
             responseStatus: 'success',
           },
-          ip: request.ip,
-          userAgent: request.headers['user-agent'],
-          success: true,
         });
       }),
       catchError((error) => {
         this.auditService.log({
           userId: request.user?.id,
           action,
-          resource,
-          resourceId: request.params?.id,
-          details: {
+          ip: request.ip,
+          userAgent: request.headers['user-agent'],
+          metadata: {
+            resource,
+            resourceId: request.params?.id,
             method: request.method,
             path: request.path,
             duration: Date.now() - startTime,
             responseStatus: 'error',
+            errorMessage: error.message,
           },
-          ip: request.ip,
-          userAgent: request.headers['user-agent'],
-          success: false,
-          errorMessage: error.message,
         });
         throw error;
       }),

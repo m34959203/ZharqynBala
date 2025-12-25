@@ -1,6 +1,5 @@
-import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../common/prisma/prisma.service';
 
 interface SendSmsOptions {
   phone: string;
@@ -8,9 +7,16 @@ interface SendSmsOptions {
   type?: 'VERIFICATION' | 'NOTIFICATION' | 'REMINDER';
 }
 
-interface VerificationResult {
+export interface VerificationResult {
   success: boolean;
   message: string;
+}
+
+interface StoredVerification {
+  code: string;
+  expiresAt: Date;
+  attempts: number;
+  verified: boolean;
 }
 
 @Injectable()
@@ -21,10 +27,10 @@ export class SmsService {
   private readonly sender: string;
   private readonly isEnabled: boolean;
 
-  constructor(
-    private readonly configService: ConfigService,
-    private readonly prisma: PrismaService,
-  ) {
+  // In-memory verification code storage
+  private verificationCodes: Map<string, StoredVerification> = new Map();
+
+  constructor(private readonly configService: ConfigService) {
     this.apiUrl = 'https://api.mobizon.kz/service';
     this.apiKey = this.configService.get('MOBIZON_API_KEY') || '';
     this.sender = this.configService.get('SMS_SENDER_NAME') || 'ZharqynBala';
@@ -32,28 +38,19 @@ export class SmsService {
   }
 
   async sendSms(options: SendSmsOptions): Promise<boolean> {
-    const { phone, message, type = 'NOTIFICATION' } = options;
+    const { phone, message } = options;
     const normalizedPhone = this.normalizePhone(phone);
 
     this.logger.log(`Sending SMS to ${normalizedPhone.slice(0, 7)}***`);
 
-    // Log SMS attempt
-    const smsLog = await this.prisma.smsLog.create({
-      data: {
-        phone: normalizedPhone,
-        message,
-        type,
-        status: 'PENDING',
-      },
-    });
-
     if (!this.isEnabled) {
       this.logger.warn('SMS is disabled, skipping send');
-      await this.prisma.smsLog.update({
-        where: { id: smsLog.id },
-        data: { status: 'SKIPPED', note: 'SMS disabled in config' },
-      });
-      return true; // Return true for development
+      return true;
+    }
+
+    if (!this.apiKey) {
+      this.logger.warn('Mobizon API key not configured, skipping send');
+      return true;
     }
 
     try {
@@ -73,13 +70,6 @@ export class SmsService {
       const data = await response.json();
 
       if (data.code === 0) {
-        await this.prisma.smsLog.update({
-          where: { id: smsLog.id },
-          data: {
-            status: 'SENT',
-            externalId: data.data?.messageId,
-          },
-        });
         this.logger.log(`SMS sent successfully: ${data.data?.messageId}`);
         return true;
       } else {
@@ -87,10 +77,6 @@ export class SmsService {
       }
     } catch (error) {
       this.logger.error(`SMS sending failed: ${error.message}`);
-      await this.prisma.smsLog.update({
-        where: { id: smsLog.id },
-        data: { status: 'FAILED', error: error.message },
-      });
       return false;
     }
   }
@@ -100,20 +86,12 @@ export class SmsService {
     const code = this.generateCode();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    // Store verification code
-    await this.prisma.verificationCode.upsert({
-      where: { phone: normalizedPhone },
-      update: {
-        code,
-        expiresAt,
-        attempts: 0,
-      },
-      create: {
-        phone: normalizedPhone,
-        code,
-        expiresAt,
-        attempts: 0,
-      },
+    // Store verification code in memory
+    this.verificationCodes.set(normalizedPhone, {
+      code,
+      expiresAt,
+      attempts: 0,
+      verified: false,
     });
 
     const message = `Ваш код подтверждения ZharqynBala: ${code}. Действителен 10 минут.`;
@@ -137,9 +115,7 @@ export class SmsService {
   async verifyCode(phone: string, code: string): Promise<VerificationResult> {
     const normalizedPhone = this.normalizePhone(phone);
 
-    const verification = await this.prisma.verificationCode.findUnique({
-      where: { phone: normalizedPhone },
-    });
+    const verification = this.verificationCodes.get(normalizedPhone);
 
     if (!verification) {
       return { success: false, message: 'Код не найден. Запросите новый.' };
@@ -153,24 +129,19 @@ export class SmsService {
     }
 
     if (new Date() > verification.expiresAt) {
+      this.verificationCodes.delete(normalizedPhone);
       return { success: false, message: 'Код истёк. Запросите новый.' };
     }
 
     // Increment attempts
-    await this.prisma.verificationCode.update({
-      where: { phone: normalizedPhone },
-      data: { attempts: { increment: 1 } },
-    });
+    verification.attempts++;
 
     if (verification.code !== code) {
       return { success: false, message: 'Неверный код.' };
     }
 
     // Mark as verified
-    await this.prisma.verificationCode.update({
-      where: { phone: normalizedPhone },
-      data: { verifiedAt: new Date() },
-    });
+    verification.verified = true;
 
     return { success: true, message: 'Телефон подтверждён.' };
   }

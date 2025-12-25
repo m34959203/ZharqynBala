@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../common/prisma/prisma.service';
 
 interface SendEmailOptions {
   to: string;
@@ -24,15 +23,14 @@ export class EmailService {
   private readonly fromEmail: string;
   private readonly fromName: string;
   private readonly isEnabled: boolean;
+  private readonly frontendUrl: string;
 
-  constructor(
-    private readonly configService: ConfigService,
-    private readonly prisma: PrismaService,
-  ) {
+  constructor(private readonly configService: ConfigService) {
     this.apiKey = this.configService.get('SENDGRID_API_KEY') || '';
     this.fromEmail = this.configService.get('EMAIL_FROM') || 'noreply@zharqynbala.kz';
     this.fromName = this.configService.get('EMAIL_FROM_NAME') || 'ZharqynBala';
     this.isEnabled = this.configService.get('EMAIL_ENABLED') === 'true';
+    this.frontendUrl = this.configService.get('FRONTEND_URL') || 'https://zharqynbala.kz';
   }
 
   async sendEmail(options: SendEmailOptions): Promise<boolean> {
@@ -40,22 +38,13 @@ export class EmailService {
 
     this.logger.log(`Sending email to ${to}: ${subject}`);
 
-    // Log email attempt
-    const emailLog = await this.prisma.emailLog.create({
-      data: {
-        to,
-        subject,
-        status: 'PENDING',
-        template: options.template,
-      },
-    });
-
     if (!this.isEnabled) {
       this.logger.warn('Email is disabled, skipping send');
-      await this.prisma.emailLog.update({
-        where: { id: emailLog.id },
-        data: { status: 'SKIPPED', note: 'Email disabled in config' },
-      });
+      return true;
+    }
+
+    if (!this.apiKey) {
+      this.logger.warn('SendGrid API key not configured, skipping send');
       return true;
     }
 
@@ -78,10 +67,6 @@ export class EmailService {
       });
 
       if (response.ok) {
-        await this.prisma.emailLog.update({
-          where: { id: emailLog.id },
-          data: { status: 'SENT', sentAt: new Date() },
-        });
         this.logger.log(`Email sent successfully to ${to}`);
         return true;
       } else {
@@ -90,10 +75,6 @@ export class EmailService {
       }
     } catch (error) {
       this.logger.error(`Email sending failed: ${error.message}`);
-      await this.prisma.emailLog.update({
-        where: { id: emailLog.id },
-        data: { status: 'FAILED', error: error.message },
-      });
       return false;
     }
   }
@@ -110,7 +91,7 @@ export class EmailService {
   }
 
   async sendPasswordResetEmail(email: string, resetToken: string): Promise<boolean> {
-    const resetUrl = `${this.configService.get('FRONTEND_URL')}/reset-password?token=${resetToken}`;
+    const resetUrl = `${this.frontendUrl}/reset-password?token=${resetToken}`;
     const template = this.getTemplate('password-reset', { resetUrl });
     return this.sendEmail({
       to: email,
@@ -234,7 +215,7 @@ export class EmailService {
                 <li>Записываться на консультации к психологам</li>
                 <li>Отслеживать развитие ребёнка</li>
               </ul>
-              <a href="${this.configService.get('FRONTEND_URL')}/dashboard"
+              <a href="${this.frontendUrl}/dashboard"
                  style="display: inline-block; background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 20px;">
                 Начать работу
               </a>
@@ -362,7 +343,7 @@ export class EmailService {
               <h2>Подписка скоро истекает</h2>
               <p>Ваша подписка истекает через <strong>${data.daysLeft} дней</strong>.</p>
               <p>Продлите подписку, чтобы не потерять доступ к премиум-функциям.</p>
-              <a href="${this.configService.get('FRONTEND_URL')}/subscription"
+              <a href="${this.frontendUrl}/subscription"
                  style="display: inline-block; background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 20px;">
                 Продлить подписку
               </a>

@@ -33,7 +33,7 @@ export class AdminService {
     const [newUsersToday, testsToday] = await Promise.all([
       this.prisma.user.count({ where: { createdAt: { gte: today } } }),
       this.prisma.testSession.count({
-        where: { createdAt: { gte: today }, status: 'COMPLETED' },
+        where: { startedAt: { gte: today }, status: 'COMPLETED' },
       }),
     ]);
 
@@ -57,7 +57,7 @@ export class AdminService {
       }),
       this.prisma.testSession.findMany({
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { startedAt: 'desc' },
         where: { status: 'COMPLETED' },
         include: {
           test: { select: { titleRu: true } },
@@ -193,9 +193,7 @@ export class AdminService {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        include: {
-          user: { select: { email: true, firstName: true } },
-        },
+        // Payment doesn't have direct user relation, just userId
       }),
       this.prisma.payment.count({ where }),
     ]);
@@ -229,9 +227,10 @@ export class AdminService {
   }
 
   async verifyPsychologist(id: string) {
+    // Schema uses isApproved, not isVerified
     return this.prisma.psychologist.update({
       where: { id },
-      data: { isVerified: true },
+      data: { isApproved: true },
     });
   }
 
