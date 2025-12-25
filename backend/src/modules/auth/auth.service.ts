@@ -48,6 +48,12 @@ export class AuthService {
     // Хеширование пароля
     const passwordHash = await this.hashPassword(dto.password);
 
+    // Определение роли: admin@jarkinbala.kz автоматически получает роль ADMIN
+    const adminEmails = ['admin@jarkinbala.kz', 'admin@zharqynbala.kz'];
+    const role = adminEmails.includes(dto.email.toLowerCase())
+      ? 'ADMIN'
+      : dto.role || 'PARENT';
+
     // Создание пользователя
     const user = await this.prisma.user.create({
       data: {
@@ -56,7 +62,7 @@ export class AuthService {
         passwordHash,
         firstName: dto.firstName,
         lastName: dto.lastName,
-        role: dto.role || 'PARENT',
+        role,
         language: dto.language || 'RU',
         isVerified: false,
       },

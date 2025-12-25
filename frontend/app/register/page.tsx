@@ -143,26 +143,6 @@ export default function RegisterPage() {
                     Для учебных заведений
                   </span>
                 </label>
-
-                <label
-                  className={`relative flex flex-col items-center p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                    selectedRole === 'ADMIN'
-                      ? 'border-indigo-500 bg-indigo-50'
-                      : 'border-gray-200 hover:border-indigo-200'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    value="ADMIN"
-                    {...register('role', { required: 'Выберите роль' })}
-                    className="sr-only"
-                  />
-                  <span className="text-2xl mb-1">⚙️</span>
-                  <span className="text-sm font-medium text-gray-900">Админ</span>
-                  <span className="text-xs text-gray-500 text-center mt-1">
-                    Управление платформой
-                  </span>
-                </label>
               </div>
               {errors.role && (
                 <p className="mt-2 text-sm text-red-600">{errors.role.message}</p>
