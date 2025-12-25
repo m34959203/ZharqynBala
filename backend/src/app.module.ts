@@ -10,8 +10,10 @@ import { TestsModule } from './modules/tests/tests.module';
 import { ResultsModule } from './modules/results/results.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { AiModule } from './modules/ai/ai.module';
+import { AppController } from './app.controller';
 
 @Module({
+  controllers: [AppController],
   imports: [
     // Configuration
     ConfigModule.forRoot({
