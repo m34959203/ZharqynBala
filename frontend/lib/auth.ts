@@ -2,7 +2,9 @@ import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import type { AuthOptions } from "next-auth";
-import { authApi } from "./api";
+
+// API URL для server-side вызовов (не используем api.ts т.к. он использует js-cookie)
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 export const authOptions: AuthOptions = {
   providers: [
@@ -58,25 +60,40 @@ export const authOptions: AuthOptions = {
         }
 
         try {
-          const response = await authApi.login({
-            email: credentials.email,
-            password: credentials.password,
+          // Используем native fetch для server-side вызова (не axios с js-cookie)
+          const response = await fetch(`${API_URL}/api/v1/auth/login`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              email: credentials.email,
+              password: credentials.password,
+            }),
           });
 
-          if (response && response.user) {
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || "Неверный email или пароль");
+          }
+
+          const data = await response.json();
+
+          if (data && data.user) {
             return {
-              id: response.user.id,
-              email: response.user.email,
-              name: `${response.user.firstName} ${response.user.lastName}`,
-              image: response.user.avatarUrl,
-              accessToken: response.accessToken,
-              refreshToken: response.refreshToken,
+              id: data.user.id,
+              email: data.user.email,
+              name: `${data.user.firstName} ${data.user.lastName}`,
+              image: data.user.avatarUrl,
+              accessToken: data.accessToken,
+              refreshToken: data.refreshToken,
             };
           }
 
           return null;
         } catch (error: any) {
-          throw new Error(error.response?.data?.message || "Ошибка авторизации");
+          console.error("Auth error:", error);
+          throw new Error(error.message || "Ошибка авторизации");
         }
       },
     }),
