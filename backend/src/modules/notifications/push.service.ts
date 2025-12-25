@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../common/prisma/prisma.service';
 
 interface PushNotification {
   userId: string;
@@ -20,23 +19,27 @@ interface WebPushSubscription {
   };
 }
 
+interface StoredSubscription extends WebPushSubscription {
+  userId: string;
+  userAgent?: string;
+  active: boolean;
+}
+
 @Injectable()
 export class PushService {
   private readonly logger = new Logger(PushService.name);
   private readonly vapidPublicKey: string;
   private readonly vapidPrivateKey: string;
   private readonly vapidSubject: string;
-  private readonly fcmServerKey: string;
   private readonly isEnabled: boolean;
 
-  constructor(
-    private readonly configService: ConfigService,
-    private readonly prisma: PrismaService,
-  ) {
+  // In-memory subscription storage (would be database in production)
+  private subscriptions: Map<string, StoredSubscription> = new Map();
+
+  constructor(private readonly configService: ConfigService) {
     this.vapidPublicKey = this.configService.get('VAPID_PUBLIC_KEY') || '';
     this.vapidPrivateKey = this.configService.get('VAPID_PRIVATE_KEY') || '';
     this.vapidSubject = this.configService.get('VAPID_SUBJECT') || 'mailto:support@zharqynbala.kz';
-    this.fcmServerKey = this.configService.get('FCM_SERVER_KEY') || '';
     this.isEnabled = this.configService.get('PUSH_ENABLED') === 'true';
   }
 
@@ -46,19 +49,23 @@ export class PushService {
       return true;
     }
 
-    try {
-      // Get user's push subscriptions
-      const subscriptions = await this.prisma.pushSubscription.findMany({
-        where: { userId: notification.userId, active: true },
-      });
+    if (!this.vapidPublicKey || !this.vapidPrivateKey) {
+      this.logger.warn('VAPID keys not configured, skipping push');
+      return true;
+    }
 
-      if (subscriptions.length === 0) {
+    try {
+      // Get user's push subscriptions from in-memory storage
+      const userSubscriptions = Array.from(this.subscriptions.values())
+        .filter(sub => sub.userId === notification.userId && sub.active);
+
+      if (userSubscriptions.length === 0) {
         this.logger.log(`No push subscriptions for user: ${notification.userId}`);
         return false;
       }
 
       const results = await Promise.all(
-        subscriptions.map((sub) =>
+        userSubscriptions.map((sub) =>
           this.sendToSubscription(sub, notification),
         ),
       );
@@ -94,33 +101,21 @@ export class PushService {
     subscription: WebPushSubscription,
     userAgent?: string,
   ): Promise<void> {
-    await this.prisma.pushSubscription.upsert({
-      where: {
-        endpoint: subscription.endpoint,
-      },
-      update: {
-        keys: subscription.keys,
-        userAgent,
-        updatedAt: new Date(),
-      },
-      create: {
-        userId,
-        endpoint: subscription.endpoint,
-        keys: subscription.keys,
-        userAgent,
-        active: true,
-      },
+    this.subscriptions.set(subscription.endpoint, {
+      ...subscription,
+      userId,
+      userAgent,
+      active: true,
     });
 
     this.logger.log(`Push subscription registered for user: ${userId}`);
   }
 
   async unregisterSubscription(endpoint: string): Promise<void> {
-    await this.prisma.pushSubscription.updateMany({
-      where: { endpoint },
-      data: { active: false },
-    });
-
+    const sub = this.subscriptions.get(endpoint);
+    if (sub) {
+      sub.active = false;
+    }
     this.logger.log(`Push subscription unregistered: ${endpoint.slice(0, 50)}...`);
   }
 
@@ -184,29 +179,30 @@ export class PushService {
   }
 
   private async sendToSubscription(
-    subscription: any,
+    subscription: StoredSubscription,
     notification: PushNotification,
   ): Promise<boolean> {
-    const webpush = require('web-push');
-
-    webpush.setVapidDetails(
-      this.vapidSubject,
-      this.vapidPublicKey,
-      this.vapidPrivateKey,
-    );
-
-    const payload = JSON.stringify({
-      title: notification.title,
-      body: notification.body,
-      icon: notification.icon || '/icons/icon-192x192.png',
-      badge: notification.badge || '/icons/badge-72x72.png',
-      data: {
-        ...notification.data,
-        url: notification.url,
-      },
-    });
-
     try {
+      // Try to use web-push library if installed
+      const webpush = require('web-push');
+
+      webpush.setVapidDetails(
+        this.vapidSubject,
+        this.vapidPublicKey,
+        this.vapidPrivateKey,
+      );
+
+      const payload = JSON.stringify({
+        title: notification.title,
+        body: notification.body,
+        icon: notification.icon || '/icons/icon-192x192.png',
+        badge: notification.badge || '/icons/badge-72x72.png',
+        data: {
+          ...notification.data,
+          url: notification.url,
+        },
+      });
+
       await webpush.sendNotification(
         {
           endpoint: subscription.endpoint,

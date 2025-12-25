@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PdfService } from './pdf.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
@@ -30,15 +30,21 @@ export class PdfController {
     @Req() req: any,
     @Res() res: Response,
   ) {
+    // Result is linked through session, which has child and test
     const result = await this.prisma.result.findFirst({
       where: {
         id,
-        child: { userId: req.user.id },
+        session: {
+          child: { parentId: req.user.id },
+        },
       },
       include: {
-        child: true,
-        test: true,
-        categories: true,
+        session: {
+          include: {
+            child: true,
+            test: true,
+          },
+        },
       },
     });
 
@@ -46,22 +52,27 @@ export class PdfController {
       return res.status(404).json({ message: 'Result not found' });
     }
 
-    const childAge = this.calculateAge(result.child.birthDate);
+    const child = result.session.child;
+    const test = result.session.test;
+    const childAge = this.calculateAge(child.birthDate);
 
     const pdf = await this.pdfService.generateResultPdf({
       id: result.id,
-      testName: result.test.title,
-      childName: result.child.name,
+      testName: test.titleRu,
+      childName: `${child.firstName} ${child.lastName}`,
       childAge,
       completedAt: result.createdAt,
-      score: result.score,
+      score: result.totalScore,
       maxScore: result.maxScore,
-      categories: result.categories.map((c) => ({
-        name: c.name,
-        score: c.score,
-        maxScore: c.maxScore,
-      })),
-      recommendations: result.recommendations as string[] || [],
+      categories: [
+        // Result doesn't have categories, so we use test category
+        {
+          name: test.category,
+          score: result.totalScore,
+          maxScore: result.maxScore,
+        },
+      ],
+      recommendations: result.recommendations ? [result.recommendations] : [],
       interpretation: result.interpretation || '',
     });
 
@@ -82,8 +93,9 @@ export class PdfController {
     @Req() req: any,
     @Res() res: Response,
   ) {
+    // Child uses parentId, not userId
     const child = await this.prisma.child.findFirst({
-      where: { id: childId, userId: req.user.id },
+      where: { id: childId, parentId: req.user.id },
     });
 
     if (!child) {
@@ -93,23 +105,29 @@ export class PdfController {
     const fromDate = from ? new Date(from) : new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
     const toDate = to ? new Date(to) : new Date();
 
-    const results = await this.prisma.result.findMany({
+    // Get results through test sessions
+    const sessions = await this.prisma.testSession.findMany({
       where: {
         childId,
-        createdAt: { gte: fromDate, lte: toDate },
+        status: 'COMPLETED',
+        completedAt: { gte: fromDate, lte: toDate },
       },
-      include: { test: true, categories: true },
-      orderBy: { createdAt: 'asc' },
+      include: {
+        test: true,
+        result: true,
+      },
+      orderBy: { completedAt: 'asc' },
     });
 
-    // Calculate progress
+    // Calculate progress by test category
     const categoryProgress = new Map<string, number[]>();
-    results.forEach((r) => {
-      r.categories.forEach((c) => {
-        const existing = categoryProgress.get(c.name) || [];
-        existing.push(Math.round((c.score / c.maxScore) * 100));
-        categoryProgress.set(c.name, existing);
-      });
+    sessions.forEach((s) => {
+      if (s.result) {
+        const category = s.test.category;
+        const existing = categoryProgress.get(category) || [];
+        existing.push(Math.round((s.result.totalScore / s.result.maxScore) * 100));
+        categoryProgress.set(category, existing);
+      }
     });
 
     const progress = Array.from(categoryProgress.entries()).map(([category, scores]) => {
@@ -121,29 +139,33 @@ export class PdfController {
       };
     });
 
+    const childName = `${child.firstName} ${child.lastName}`;
+
     const pdf = await this.pdfService.generateChildReportPdf({
       child: {
-        name: child.name,
+        name: childName,
         birthDate: child.birthDate,
-        school: child.school,
-        grade: child.grade,
+        school: child.schoolName || undefined,
+        grade: child.grade || undefined,
       },
       period: { from: fromDate, to: toDate },
-      tests: results.map((r) => ({
-        name: r.test.title,
-        date: r.createdAt,
-        score: r.score,
-        maxScore: r.maxScore,
-      })),
+      tests: sessions
+        .filter((s) => s.result)
+        .map((s) => ({
+          name: s.test.titleRu,
+          date: s.completedAt || s.startedAt,
+          score: s.result!.totalScore,
+          maxScore: s.result!.maxScore,
+        })),
       progress,
-      summary: this.generateSummary(results, progress),
+      summary: this.generateSummary(sessions, progress),
       recommendations: this.generateRecommendations(progress),
     });
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="report-${child.name.replace(/\s/g, '_')}.pdf"`,
+      `attachment; filename="report-${childName.replace(/\s/g, '_')}.pdf"`,
     );
     res.send(pdf);
   }
@@ -157,17 +179,24 @@ export class PdfController {
     @Req() req: any,
     @Res() res: Response,
   ) {
-    // Verify admin access
+    // Verify admin access - schema uses ADMIN and SCHOOL roles
     const user = await this.prisma.user.findUnique({
       where: { id: req.user.id },
     });
 
-    if (user.role !== 'ADMIN' && user.role !== 'SCHOOL_ADMIN') {
+    if (!user || (user.role !== 'ADMIN' && user.role !== 'SCHOOL')) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
     const school = await this.prisma.school.findUnique({
       where: { id: schoolId },
+      include: {
+        classes: {
+          include: {
+            students: true,
+          },
+        },
+      },
     });
 
     if (!school) {
@@ -177,29 +206,33 @@ export class PdfController {
     const fromDate = from ? new Date(from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const toDate = to ? new Date(to) : new Date();
 
-    // Get statistics
+    // Get children with this school name
     const children = await this.prisma.child.findMany({
-      where: { school: school.name },
+      where: { schoolName: school.schoolName },
       include: {
-        results: {
-          where: { createdAt: { gte: fromDate, lte: toDate } },
+        testSessions: {
+          where: {
+            status: 'COMPLETED',
+            completedAt: { gte: fromDate, lte: toDate },
+          },
+          include: { result: true },
         },
       },
     });
 
     const totalStudents = children.length;
-    const testedStudents = children.filter((c) => c.results.length > 0).length;
-    const allResults = children.flatMap((c) => c.results);
-    const testsCompleted = allResults.length;
+    const testedStudents = children.filter((c) => c.testSessions.length > 0).length;
+    const allSessions = children.flatMap((c) => c.testSessions).filter((s) => s.result);
+    const testsCompleted = allSessions.length;
     const averageScore =
-      allResults.length > 0
+      allSessions.length > 0
         ? Math.round(
-            allResults.reduce((sum, r) => sum + (r.score / r.maxScore) * 100, 0) /
-              allResults.length,
+            allSessions.reduce((sum, s) => sum + (s.result!.totalScore / s.result!.maxScore) * 100, 0) /
+              allSessions.length,
           )
         : 0;
 
-    // Group by class
+    // Group by grade
     const classByChildren = new Map<string, typeof children>();
     children.forEach((child) => {
       const grade = child.grade || 'Без класса';
@@ -209,40 +242,41 @@ export class PdfController {
     });
 
     const classResults = Array.from(classByChildren.entries()).map(
-      ([className, classChildren]) => ({
-        className,
-        students: classChildren.length,
-        tested: classChildren.filter((c) => c.results.length > 0).length,
-        averageScore:
-          classChildren.flatMap((c) => c.results).length > 0
-            ? Math.round(
-                classChildren
-                  .flatMap((c) => c.results)
-                  .reduce((sum, r) => sum + (r.score / r.maxScore) * 100, 0) /
-                  classChildren.flatMap((c) => c.results).length,
-              )
-            : 0,
-      }),
+      ([className, classChildren]) => {
+        const classSessions = classChildren.flatMap((c) => c.testSessions).filter((s) => s.result);
+        return {
+          className,
+          students: classChildren.length,
+          tested: classChildren.filter((c) => c.testSessions.length > 0).length,
+          averageScore:
+            classSessions.length > 0
+              ? Math.round(
+                  classSessions.reduce((sum, s) => sum + (s.result!.totalScore / s.result!.maxScore) * 100, 0) /
+                    classSessions.length,
+                )
+              : 0,
+        };
+      },
     );
 
     // Find risk students (score < 50%)
     const riskStudents = children
       .filter((c) => {
+        const sessionsWithResults = c.testSessions.filter((s) => s.result);
+        if (sessionsWithResults.length === 0) return false;
         const avgScore =
-          c.results.length > 0
-            ? c.results.reduce((sum, r) => sum + (r.score / r.maxScore) * 100, 0) /
-              c.results.length
-            : 100;
+          sessionsWithResults.reduce((sum, s) => sum + (s.result!.totalScore / s.result!.maxScore) * 100, 0) /
+          sessionsWithResults.length;
         return avgScore < 50;
       })
       .map((c) => ({
-        name: c.name,
+        name: `${c.firstName} ${c.lastName}`,
         className: c.grade || 'Без класса',
         concern: 'Низкий средний балл по тестам',
       }));
 
     const pdf = await this.pdfService.generateSchoolReportPdf({
-      school: { name: school.name, address: school.address },
+      school: { name: school.schoolName, address: school.address },
       period: { from: fromDate, to: toDate },
       statistics: { totalStudents, testedStudents, testsCompleted, averageScore },
       classResults,
@@ -273,20 +307,24 @@ export class PdfController {
   }
 
   private generateSummary(
-    results: any[],
+    sessions: any[],
     progress: { category: string; change: number; trend: string }[],
   ): string {
-    if (results.length === 0) {
+    const sessionsWithResults = sessions.filter((s) => s.result);
+    if (sessionsWithResults.length === 0) {
       return 'За указанный период тесты не проходились.';
     }
 
     const avgScore =
-      results.reduce((sum, r) => sum + (r.score / r.maxScore) * 100, 0) / results.length;
+      sessionsWithResults.reduce(
+        (sum, s) => sum + (s.result.totalScore / s.result.maxScore) * 100,
+        0,
+      ) / sessionsWithResults.length;
 
     const improving = progress.filter((p) => p.trend === 'up').length;
     const declining = progress.filter((p) => p.trend === 'down').length;
 
-    let summary = `За период было пройдено ${results.length} тестов со средним результатом ${Math.round(avgScore)}%. `;
+    let summary = `За период было пройдено ${sessionsWithResults.length} тестов со средним результатом ${Math.round(avgScore)}%. `;
 
     if (improving > declining) {
       summary += 'Наблюдается положительная динамика развития. ';
