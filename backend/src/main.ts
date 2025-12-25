@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
 import * as compression from 'compression';
 import * as cookieParser from 'cookie-parser';
+import { Request, Response, NextFunction } from 'express';
 
 import { AppModule } from './app.module';
 
@@ -14,6 +15,14 @@ async function bootstrap() {
   });
 
   const configService = app.get(ConfigService);
+
+  // Root redirect middleware (before other middleware)
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    if (req.path === '/' || req.path === '') {
+      return res.redirect('/api/docs');
+    }
+    next();
+  });
 
   // Security
   app.use(helmet());
@@ -28,9 +37,9 @@ async function bootstrap() {
   // Cookies
   app.use(cookieParser());
 
-  // Global prefix (exclude health and root endpoints)
+  // Global prefix (exclude health endpoint for Railway healthcheck)
   app.setGlobalPrefix(configService.get('API_PREFIX') || 'api', {
-    exclude: ['health', '/', ''],
+    exclude: ['health'],
   });
 
   // Versioning
