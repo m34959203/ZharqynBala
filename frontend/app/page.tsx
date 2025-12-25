@@ -1,32 +1,10 @@
 import Link from 'next/link';
+import { Navbar, Footer } from '@/components/layout';
 
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      {/* Navbar */}
-      <nav className="bg-white/80 backdrop-blur-sm shadow-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-gray-900">Жарқын Бала</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link
-                href="/login"
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition duration-200"
-              >
-                Вход
-              </Link>
-              <Link
-                href="/register"
-                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition duration-200"
-              >
-                Регистрация
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* Hero Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
@@ -313,6 +291,158 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* Pricing Section */}
+      <div id="pricing" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            Тарифные планы
+          </h2>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Выберите подходящий план для вашей семьи
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* Free Plan */}
+          <div className="bg-white rounded-2xl shadow-lg p-8 border-2 border-gray-100 hover:border-indigo-200 transition-colors">
+            <div className="text-center mb-6">
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Бесплатный</h3>
+              <div className="text-4xl font-bold text-gray-900 mb-2">0 ₸</div>
+              <p className="text-gray-500">навсегда</p>
+            </div>
+            <ul className="space-y-3 mb-8">
+              <li className="flex items-center text-gray-600">
+                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                3 бесплатных теста
+              </li>
+              <li className="flex items-center text-gray-600">
+                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                1 профиль ребёнка
+              </li>
+              <li className="flex items-center text-gray-600">
+                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Базовые результаты
+              </li>
+              <li className="flex items-center text-gray-400">
+                <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                AI-интерпретация
+              </li>
+            </ul>
+            <Link
+              href="/register"
+              className="block w-full py-3 text-center text-indigo-600 font-medium border-2 border-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors"
+            >
+              Начать бесплатно
+            </Link>
+          </div>
+
+          {/* Premium Plan */}
+          <div className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl shadow-xl p-8 transform scale-105 relative">
+            <div className="absolute top-0 right-0 bg-yellow-400 text-yellow-900 text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-xl">
+              ПОПУЛЯРНЫЙ
+            </div>
+            <div className="text-center mb-6">
+              <h3 className="text-xl font-semibold text-white mb-2">Премиум</h3>
+              <div className="text-4xl font-bold text-white mb-2">4 990 ₸</div>
+              <p className="text-indigo-200">в месяц</p>
+            </div>
+            <ul className="space-y-3 mb-8">
+              <li className="flex items-center text-white">
+                <svg className="w-5 h-5 text-yellow-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Все тесты безлимитно
+              </li>
+              <li className="flex items-center text-white">
+                <svg className="w-5 h-5 text-yellow-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                До 5 детей
+              </li>
+              <li className="flex items-center text-white">
+                <svg className="w-5 h-5 text-yellow-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                AI-интерпретация
+              </li>
+              <li className="flex items-center text-white">
+                <svg className="w-5 h-5 text-yellow-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                PDF-отчёты
+              </li>
+              <li className="flex items-center text-white">
+                <svg className="w-5 h-5 text-yellow-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                1 консультация в месяц
+              </li>
+            </ul>
+            <Link
+              href="/register?plan=premium"
+              className="block w-full py-3 text-center text-indigo-600 font-medium bg-white rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Выбрать Премиум
+            </Link>
+          </div>
+
+          {/* School Plan */}
+          <div className="bg-white rounded-2xl shadow-lg p-8 border-2 border-gray-100 hover:border-indigo-200 transition-colors">
+            <div className="text-center mb-6">
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Для школ</h3>
+              <div className="text-4xl font-bold text-gray-900 mb-2">от 49 990 ₸</div>
+              <p className="text-gray-500">в месяц</p>
+            </div>
+            <ul className="space-y-3 mb-8">
+              <li className="flex items-center text-gray-600">
+                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Все тесты безлимитно
+              </li>
+              <li className="flex items-center text-gray-600">
+                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                До 500 учеников
+              </li>
+              <li className="flex items-center text-gray-600">
+                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Массовое тестирование
+              </li>
+              <li className="flex items-center text-gray-600">
+                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Аналитика по классам
+              </li>
+              <li className="flex items-center text-gray-600">
+                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Персональный менеджер
+              </li>
+            </ul>
+            <Link
+              href="/contact?type=school"
+              className="block w-full py-3 text-center text-indigo-600 font-medium border-2 border-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors"
+            >
+              Связаться с нами
+            </Link>
+          </div>
+        </div>
+      </div>
+
       {/* CTA Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-3xl shadow-2xl overflow-hidden">
@@ -328,35 +458,13 @@ export default function HomePage() {
               href="/register"
               className="inline-block px-8 py-4 text-lg font-medium text-indigo-600 bg-white hover:bg-gray-50 rounded-lg transition duration-200 transform hover:scale-105"
             >
-              Создать аккаунт
+              Создать аккаунт бесплатно
             </Link>
           </div>
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h3 className="text-2xl font-bold mb-2">Жарқын Бала</h3>
-            <p className="text-gray-400 mb-4">
-              Платформа психологической диагностики детей
-            </p>
-            <div className="flex justify-center space-x-4 mb-4">
-              <button className="text-gray-400 hover:text-white transition duration-200">
-                Русский
-              </button>
-              <span className="text-gray-600">|</span>
-              <button className="text-gray-400 hover:text-white transition duration-200">
-                Қазақша
-              </button>
-            </div>
-            <p className="text-sm text-gray-500">
-              © 2025 Жарқын Бала. Все права защищены.
-            </p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
