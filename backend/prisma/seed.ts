@@ -6,17 +6,158 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Starting seed...');
 
-  // Create demo users
-  const passwordHash = await bcrypt.hash('Demo123!', 12);
+  // Create test users for each role
+  const passwordHash = await bcrypt.hash('Test123!', 12);
 
-  // Demo parent
+  // ============================================
+  // ТЕСТОВЫЕ АККАУНТЫ ДЛЯ КАЖДОЙ РОЛИ
+  // ============================================
+
+  // 1. Parent (Родитель)
+  const testParent = await prisma.user.upsert({
+    where: { email: 'parent@test.kz' },
+    update: {},
+    create: {
+      email: 'parent@test.kz',
+      phone: '+77011111111',
+      passwordHash,
+      role: UserRole.PARENT,
+      firstName: 'Айгуль',
+      lastName: 'Тестова',
+      isVerified: true,
+      isActive: true,
+    },
+  });
+  console.log('✅ Test parent created:', testParent.email);
+
+  // 2. Psychologist (Психолог)
+  const testPsychologist = await prisma.user.upsert({
+    where: { email: 'psychologist@test.kz' },
+    update: {},
+    create: {
+      email: 'psychologist@test.kz',
+      phone: '+77022222222',
+      passwordHash,
+      role: UserRole.PSYCHOLOGIST,
+      firstName: 'Марат',
+      lastName: 'Психологов',
+      isVerified: true,
+      isActive: true,
+    },
+  });
+  console.log('✅ Test psychologist created:', testPsychologist.email);
+
+  // Create psychologist profile
+  await prisma.psychologist.upsert({
+    where: { userId: testPsychologist.id },
+    update: {},
+    create: {
+      userId: testPsychologist.id,
+      specialization: ['Детская психология', 'Тревожность', 'Семейная терапия'],
+      experienceYears: 8,
+      education: 'КазНУ им. аль-Фараби, факультет психологии',
+      hourlyRate: 15000,
+      bio: 'Опытный детский психолог с 8-летним стажем. Специализируюсь на работе с тревожностью и школьными проблемами.',
+      isApproved: true,
+      isAvailable: true,
+      rating: 4.8,
+      totalConsultations: 156,
+    },
+  });
+  console.log('✅ Psychologist profile created');
+
+  // 3. School (Школа)
+  const testSchool = await prisma.user.upsert({
+    where: { email: 'school@test.kz' },
+    update: {},
+    create: {
+      email: 'school@test.kz',
+      phone: '+77033333333',
+      passwordHash,
+      role: UserRole.SCHOOL,
+      firstName: 'Гульнара',
+      lastName: 'Директорова',
+      isVerified: true,
+      isActive: true,
+    },
+  });
+  console.log('✅ Test school created:', testSchool.email);
+
+  // Create school profile
+  const school = await prisma.school.upsert({
+    where: { userId: testSchool.id },
+    update: {},
+    create: {
+      userId: testSchool.id,
+      schoolName: 'Школа-гимназия №25',
+      region: 'Алматы',
+      city: 'Алматы',
+      address: 'ул. Абая, 123',
+      contactPerson: 'Гульнара Директорова',
+      contactPhone: '+77033333333',
+      totalStudents: 450,
+      subscriptionUntil: new Date('2025-12-31'),
+    },
+  });
+  console.log('✅ School profile created');
+
+  // Create school classes
+  const classes = [
+    { grade: 5, letter: 'А' },
+    { grade: 5, letter: 'Б' },
+    { grade: 6, letter: 'А' },
+    { grade: 7, letter: 'А' },
+  ];
+  for (const cls of classes) {
+    await prisma.schoolClass.upsert({
+      where: {
+        schoolId_grade_letter_academicYear: {
+          schoolId: school.id,
+          grade: cls.grade,
+          letter: cls.letter,
+          academicYear: '2024-2025',
+        },
+      },
+      update: {},
+      create: {
+        schoolId: school.id,
+        grade: cls.grade,
+        letter: cls.letter,
+        academicYear: '2024-2025',
+      },
+    });
+  }
+  console.log('✅ School classes created');
+
+  // 4. Admin (Администратор)
+  const testAdmin = await prisma.user.upsert({
+    where: { email: 'admin@zharqynbala.kz' },
+    update: {},
+    create: {
+      email: 'admin@zharqynbala.kz',
+      phone: '+77044444444',
+      passwordHash,
+      role: UserRole.ADMIN,
+      firstName: 'Админ',
+      lastName: 'Системы',
+      isVerified: true,
+      isActive: true,
+    },
+  });
+  console.log('✅ Test admin created:', testAdmin.email);
+
+  // ============================================
+  // ДЕМО АККАУНТ (старый)
+  // ============================================
+
+  // Demo parent (для обратной совместимости)
   const demoParent = await prisma.user.upsert({
     where: { email: 'demo@zharqynbala.kz' },
     update: {},
     create: {
       email: 'demo@zharqynbala.kz',
       phone: '+77001234567',
-      passwordHash,
+      passwordHash: await bcrypt.hash('Demo123!', 12),
       role: UserRole.PARENT,
       firstName: 'Демо',
       lastName: 'Пользователь',
@@ -386,11 +527,51 @@ async function main() {
     console.log('✅ Self-esteem test questions created');
   }
 
+  // Child for test parent
+  await prisma.child.upsert({
+    where: { id: 'test-child-1' },
+    update: {},
+    create: {
+      id: 'test-child-1',
+      parentId: testParent.id,
+      firstName: 'Арман',
+      lastName: 'Тестов',
+      birthDate: new Date('2013-03-20'),
+      gender: Gender.MALE,
+      schoolName: 'Школа-гимназия №25',
+      grade: '6',
+    },
+  });
+  console.log('✅ Test child created');
+
+  console.log('');
   console.log('✅ Seed completed successfully!');
   console.log('');
-  console.log('📧 Demo credentials:');
+  console.log('═══════════════════════════════════════════════════════════');
+  console.log('📧 ТЕСТОВЫЕ АККАУНТЫ (пароль для всех: Test123!)');
+  console.log('═══════════════════════════════════════════════════════════');
+  console.log('');
+  console.log('👨‍👩‍👧 РОДИТЕЛЬ:');
+  console.log('   Email: parent@test.kz');
+  console.log('   Password: Test123!');
+  console.log('');
+  console.log('🧠 ПСИХОЛОГ:');
+  console.log('   Email: psychologist@test.kz');
+  console.log('   Password: Test123!');
+  console.log('');
+  console.log('🏫 ШКОЛА:');
+  console.log('   Email: school@test.kz');
+  console.log('   Password: Test123!');
+  console.log('');
+  console.log('⚙️ АДМИН:');
+  console.log('   Email: admin@zharqynbala.kz');
+  console.log('   Password: Test123!');
+  console.log('');
+  console.log('═══════════════════════════════════════════════════════════');
+  console.log('📧 ДЕМО АККАУНТ (старый):');
   console.log('   Email: demo@zharqynbala.kz');
   console.log('   Password: Demo123!');
+  console.log('═══════════════════════════════════════════════════════════');
 }
 
 main()
