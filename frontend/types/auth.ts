@@ -18,12 +18,15 @@ export interface LoginRequest {
   password: string;
 }
 
+export type UserRole = 'PARENT' | 'PSYCHOLOGIST' | 'SCHOOL' | 'ADMIN';
+
 export interface RegisterRequest {
   email: string;
   password: string;
   firstName: string;
   lastName: string;
   phone?: string;
+  role?: UserRole;
   language?: 'RU' | 'KZ';
 }
 

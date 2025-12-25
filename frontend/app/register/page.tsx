@@ -19,9 +19,12 @@ export default function RegisterPage() {
     watch,
   } = useForm<RegisterRequest & { confirmPassword: string }>({
     defaultValues: {
+      role: 'PARENT',
       language: 'RU',
     },
   });
+
+  const selectedRole = watch('role');
 
   const password = watch('password');
 
@@ -75,6 +78,97 @@ export default function RegisterPage() {
           )}
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            {/* Выбор роли */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Кто вы? *
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label
+                  className={`relative flex flex-col items-center p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                    selectedRole === 'PARENT'
+                      ? 'border-indigo-500 bg-indigo-50'
+                      : 'border-gray-200 hover:border-indigo-200'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    value="PARENT"
+                    {...register('role', { required: 'Выберите роль' })}
+                    className="sr-only"
+                  />
+                  <span className="text-2xl mb-1">👨‍👩‍👧</span>
+                  <span className="text-sm font-medium text-gray-900">Родитель</span>
+                  <span className="text-xs text-gray-500 text-center mt-1">
+                    Для диагностики своих детей
+                  </span>
+                </label>
+
+                <label
+                  className={`relative flex flex-col items-center p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                    selectedRole === 'PSYCHOLOGIST'
+                      ? 'border-indigo-500 bg-indigo-50'
+                      : 'border-gray-200 hover:border-indigo-200'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    value="PSYCHOLOGIST"
+                    {...register('role', { required: 'Выберите роль' })}
+                    className="sr-only"
+                  />
+                  <span className="text-2xl mb-1">🧠</span>
+                  <span className="text-sm font-medium text-gray-900">Психолог</span>
+                  <span className="text-xs text-gray-500 text-center mt-1">
+                    Для работы с клиентами
+                  </span>
+                </label>
+
+                <label
+                  className={`relative flex flex-col items-center p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                    selectedRole === 'SCHOOL'
+                      ? 'border-indigo-500 bg-indigo-50'
+                      : 'border-gray-200 hover:border-indigo-200'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    value="SCHOOL"
+                    {...register('role', { required: 'Выберите роль' })}
+                    className="sr-only"
+                  />
+                  <span className="text-2xl mb-1">🏫</span>
+                  <span className="text-sm font-medium text-gray-900">Школа</span>
+                  <span className="text-xs text-gray-500 text-center mt-1">
+                    Для учебных заведений
+                  </span>
+                </label>
+
+                <label
+                  className={`relative flex flex-col items-center p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                    selectedRole === 'ADMIN'
+                      ? 'border-indigo-500 bg-indigo-50'
+                      : 'border-gray-200 hover:border-indigo-200'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    value="ADMIN"
+                    {...register('role', { required: 'Выберите роль' })}
+                    className="sr-only"
+                  />
+                  <span className="text-2xl mb-1">⚙️</span>
+                  <span className="text-sm font-medium text-gray-900">Админ</span>
+                  <span className="text-xs text-gray-500 text-center mt-1">
+                    Управление платформой
+                  </span>
+                </label>
+              </div>
+              {errors.role && (
+                <p className="mt-2 text-sm text-red-600">{errors.role.message}</p>
+              )}
+            </div>
+
             {/* Имя и Фамилия в одной строке */}
             <div className="grid grid-cols-2 gap-4">
               <div>
