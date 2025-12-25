@@ -86,11 +86,32 @@ export const authOptions: AuthOptions = {
     async jwt({ token, user, account }) {
       // Первоначальный вход
       if (account && user) {
+        // Для Credentials провайдера токены приходят из user объекта
+        if (account.type === "credentials") {
+          return {
+            ...token,
+            accessToken: (user as any).accessToken,
+            refreshToken: (user as any).refreshToken,
+            user: {
+              id: user.id,
+              email: user.email,
+              name: user.name,
+              image: user.image,
+            },
+          };
+        }
+
+        // Для OAuth провайдеров (Google, Mail.ru)
         return {
           ...token,
           accessToken: account.access_token,
           refreshToken: account.refresh_token,
-          user,
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            image: user.image,
+          },
         };
       }
 
@@ -98,8 +119,12 @@ export const authOptions: AuthOptions = {
     },
 
     async session({ session, token }) {
-      session.user = token.user as any;
-      session.accessToken = token.accessToken as string;
+      if (token.user) {
+        session.user = token.user as any;
+      }
+      if (token.accessToken) {
+        session.accessToken = token.accessToken as string;
+      }
       return session;
     },
 
