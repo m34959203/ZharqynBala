@@ -26,6 +26,9 @@ RUN npx prisma generate
 # Собираем приложение
 RUN npm run build
 
+# Компилируем seed для production
+RUN npx tsc prisma/seed.ts --outDir dist/prisma --esModuleInterop --resolveJsonModule --skipLibCheck
+
 # ===================================
 # Stage 2: Production Runtime
 # ===================================
@@ -54,6 +57,9 @@ RUN npx prisma generate
 
 # Копируем собранное приложение из builder stage
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
+
+# Копируем скомпилированный seed
+COPY --from=builder --chown=nodejs:nodejs /app/dist/prisma ./dist/prisma
 
 # Меняем владельца всех файлов на nodejs (для Prisma migrations)
 RUN chown -R nodejs:nodejs /app
