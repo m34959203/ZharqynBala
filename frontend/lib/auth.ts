@@ -85,6 +85,7 @@ export const authOptions: AuthOptions = {
               email: data.user.email,
               name: `${data.user.firstName} ${data.user.lastName}`,
               image: data.user.avatarUrl,
+              role: data.user.role, // Добавляем роль пользователя
               accessToken: data.accessToken,
               refreshToken: data.refreshToken,
             };
@@ -114,11 +115,12 @@ export const authOptions: AuthOptions = {
               email: user.email,
               name: user.name,
               image: user.image,
+              role: (user as any).role, // Сохраняем роль в токене
             },
           };
         }
 
-        // Для OAuth провайдеров (Google, Mail.ru)
+        // Для OAuth провайдеров (Google, Mail.ru) - роль по умолчанию PARENT
         return {
           ...token,
           accessToken: account.access_token,
@@ -128,6 +130,7 @@ export const authOptions: AuthOptions = {
             email: user.email,
             name: user.name,
             image: user.image,
+            role: "PARENT", // OAuth пользователи по умолчанию родители
           },
         };
       }
