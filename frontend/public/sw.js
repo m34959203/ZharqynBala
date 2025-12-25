@@ -2,12 +2,16 @@ const CACHE_NAME = 'zharqynbala-v1';
 const STATIC_CACHE = 'zharqynbala-static-v1';
 const DYNAMIC_CACHE = 'zharqynbala-dynamic-v1';
 
+// Core assets that must be cached (pages only)
 const STATIC_ASSETS = [
   '/',
   '/offline',
   '/manifest.json',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png',
+];
+
+// Optional assets (icons)
+const OPTIONAL_ASSETS = [
+  '/icons/icon.svg',
 ];
 
 const API_CACHE_PATTERNS = [
@@ -15,12 +19,30 @@ const API_CACHE_PATTERNS = [
   /\/api\/tests\/\w+$/,
 ];
 
-// Install event - cache static assets
+// Install event - cache static assets with graceful error handling
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(STATIC_CACHE).then((cache) => {
+    caches.open(STATIC_CACHE).then(async (cache) => {
       console.log('Caching static assets');
-      return cache.addAll(STATIC_ASSETS);
+
+      // Cache required assets
+      try {
+        await cache.addAll(STATIC_ASSETS);
+      } catch (error) {
+        console.warn('Failed to cache some required assets:', error);
+      }
+
+      // Try to cache optional assets (don't fail if missing)
+      for (const asset of OPTIONAL_ASSETS) {
+        try {
+          const response = await fetch(asset);
+          if (response.ok) {
+            await cache.put(asset, response);
+          }
+        } catch {
+          console.warn(`Optional asset not available: ${asset}`);
+        }
+      }
     })
   );
   self.skipWaiting();
