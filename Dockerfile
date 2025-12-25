@@ -26,8 +26,8 @@ RUN npx prisma generate
 # Собираем приложение
 RUN npm run build
 
-# Компилируем seed для production
-RUN npx tsc prisma/seed.ts --outDir dist/prisma --esModuleInterop --resolveJsonModule --skipLibCheck
+# Компилируем seed для production (CommonJS модуль для Node.js)
+RUN npx tsc prisma/seed.ts --outDir dist/prisma --module commonjs --target es2020 --esModuleInterop --resolveJsonModule --skipLibCheck --moduleResolution node
 
 # ===================================
 # Stage 2: Production Runtime
