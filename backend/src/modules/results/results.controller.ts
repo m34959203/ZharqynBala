@@ -5,12 +5,16 @@ import {
   UseGuards,
   ParseUUIDPipe,
   Query,
+  Res,
+  Header,
 } from '@nestjs/common';
+import { Response } from 'express';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiProduces,
 } from '@nestjs/swagger';
 import { ResultsService } from './results.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -53,6 +57,31 @@ export class ResultsController {
     @CurrentUser('id') userId: string,
   ): Promise<ResultResponseDto> {
     return this.resultsService.findBySession(sessionId, userId);
+  }
+
+  @Get(':id/pdf')
+  @ApiOperation({ summary: 'Download result as PDF' })
+  @ApiProduces('application/pdf')
+  @ApiResponse({
+    status: 200,
+    description: 'PDF file of the result',
+    content: { 'application/pdf': {} },
+  })
+  @Header('Content-Type', 'application/pdf')
+  async downloadPdf(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const pdf = await this.resultsService.generatePdf(id, userId);
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="result-${id}.pdf"`,
+      'Content-Length': pdf.length,
+    });
+
+    res.end(pdf);
   }
 
   @Get(':id')

@@ -4,6 +4,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { PdfService } from '../pdf/pdf.service';
 import {
   ResultResponseDto,
   ResultDetailDto,
@@ -12,7 +13,10 @@ import {
 
 @Injectable()
 export class ResultsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private pdfService: PdfService,
+  ) {}
 
   async findAll(userId: string): Promise<ResultsHistoryDto> {
     // Get all children of the user
@@ -159,6 +163,78 @@ export class ResultsService {
       results: results.map((r) => this.mapToDto(r)),
       total: results.length,
     };
+  }
+
+  async generatePdf(id: string, userId: string): Promise<Buffer> {
+    const result = await this.prisma.result.findUnique({
+      where: { id },
+      include: {
+        session: {
+          include: {
+            test: true,
+            child: true,
+            answers: {
+              include: {
+                question: true,
+                answerOption: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!result) {
+      throw new NotFoundException('Result not found');
+    }
+
+    // Verify access
+    if (result.session.child.parentId !== userId) {
+      throw new ForbiddenException('You do not have access to this result');
+    }
+
+    const childAge = this.calculateAge(result.session.child.birthDate);
+
+    // Parse AI interpretation if exists
+    let aiRecommendations: string[] = [];
+    if (result.aiInterpretation) {
+      try {
+        const aiData = typeof result.aiInterpretation === 'string'
+          ? JSON.parse(result.aiInterpretation as string)
+          : result.aiInterpretation;
+        aiRecommendations = aiData.recommendations || [];
+      } catch {
+        // ignore parsing errors
+      }
+    }
+
+    // Build recommendations list
+    const recommendations = result.recommendations
+      ? result.recommendations.split('\n').filter((r: string) => r.trim())
+      : aiRecommendations;
+
+    return this.pdfService.generateResultPdf({
+      id: result.id,
+      testName: result.session.test.titleRu,
+      childName: `${result.session.child.firstName} ${result.session.child.lastName}`,
+      childAge,
+      completedAt: result.createdAt,
+      score: result.totalScore,
+      maxScore: result.maxScore,
+      categories: [],
+      recommendations,
+      interpretation: result.interpretation,
+    });
+  }
+
+  private calculateAge(birthDate: Date): number {
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
   }
 
   private mapToDto(result: any): ResultResponseDto {

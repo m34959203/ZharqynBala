@@ -6,6 +6,14 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ResultDetail, categoryLabels, categoryColors, TestCategory } from '@/lib/types';
 import api from '@/lib/api';
+import {
+  Button,
+  Spinner,
+  SkeletonCard,
+  Disclaimer,
+  CrisisWarning,
+  EmptyStateError
+} from '@/components/ui';
 
 export default function ResultDetailPage() {
   const { data: session, status } = useSession();
@@ -16,6 +24,7 @@ export default function ResultDetailPage() {
   const [result, setResult] = useState<ResultDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -40,6 +49,31 @@ export default function ResultDetailPage() {
     }
   };
 
+  const handleDownloadPDF = async () => {
+    setDownloading(true);
+    try {
+      const response = await api.get(`/results/${resultId}/pdf`, {
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `result-${resultId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to download PDF:', err);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleContactPsychologist = () => {
+    router.push('/consultations');
+  };
+
   const getScoreColor = (percentage: number) => {
     if (percentage >= 80) return 'text-green-600';
     if (percentage >= 60) return 'text-blue-600';
@@ -54,24 +88,46 @@ export default function ResultDetailPage() {
     return 'bg-red-500';
   };
 
+  const getScoreLabel = (percentage: number) => {
+    if (percentage >= 80) return 'Отличный результат';
+    if (percentage >= 60) return 'Хороший результат';
+    if (percentage >= 40) return 'Средний результат';
+    return 'Требует внимания';
+  };
+
+  // Loading state with skeleton
   if (status === 'loading' || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-white shadow">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="animate-pulse">
+              <div className="h-4 w-32 bg-gray-200 rounded mb-4"></div>
+              <div className="h-8 w-64 bg-gray-200 rounded mb-2"></div>
+              <div className="h-4 w-48 bg-gray-200 rounded"></div>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
       </div>
     );
   }
 
-  if (!result) {
+  // Error state
+  if (error || !result) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">
-            {error || 'Результат не найден'}
-          </h2>
-          <Link href="/results" className="text-indigo-600 hover:text-indigo-800">
-            Вернуться к результатам
-          </Link>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="max-w-md w-full">
+          <EmptyStateError onRetry={fetchResult} />
+          <div className="text-center mt-4">
+            <Link href="/results" className="text-indigo-600 hover:text-indigo-800">
+              Вернуться к результатам
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -119,12 +175,31 @@ export default function ResultDetailPage() {
                   year: 'numeric',
                 })}
               </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadPDF}
+                isLoading={downloading}
+                className="mt-2"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Скачать PDF
+              </Button>
             </div>
           </div>
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Crisis Warning - показывается в самом верху если нужен специалист */}
+        {result.aiInterpretation?.needSpecialist && (
+          <div className="mb-6">
+            <CrisisWarning onContactCrisis={handleContactPsychologist} />
+          </div>
+        )}
+
         {/* Score card */}
         <div className="bg-white rounded-xl shadow-md p-6 mb-6">
           <div className="flex flex-col md:flex-row items-center justify-between">
@@ -137,6 +212,9 @@ export default function ResultDetailPage() {
               </div>
               <p className="text-gray-500 mt-1">
                 {result.totalScore} из {result.maxScore} баллов
+              </p>
+              <p className={`mt-2 text-sm font-medium ${getScoreColor(result.percentage)}`}>
+                {getScoreLabel(result.percentage)}
               </p>
             </div>
             <div className="w-full md:w-1/2">
@@ -184,7 +262,7 @@ export default function ResultDetailPage() {
             </div>
 
             {/* Strengths */}
-            {result.aiInterpretation.strengths.length > 0 && (
+            {result.aiInterpretation.strengths && result.aiInterpretation.strengths.length > 0 && (
               <div className="bg-green-50 rounded-xl shadow-md p-6 mb-6 border border-green-100">
                 <h3 className="text-lg font-semibold text-green-800 mb-3 flex items-center">
                   <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -204,7 +282,7 @@ export default function ResultDetailPage() {
             )}
 
             {/* Areas for development */}
-            {result.aiInterpretation.areasForDevelopment.length > 0 && (
+            {result.aiInterpretation.areasForDevelopment && result.aiInterpretation.areasForDevelopment.length > 0 && (
               <div className="bg-yellow-50 rounded-xl shadow-md p-6 mb-6 border border-yellow-100">
                 <h3 className="text-lg font-semibold text-yellow-800 mb-3 flex items-center">
                   <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -223,37 +301,84 @@ export default function ResultDetailPage() {
               </div>
             )}
 
-            {/* Need specialist warning */}
-            {result.aiInterpretation.needSpecialist && (
+            {/* Prioritized Recommendations */}
+            {result.aiInterpretation.recommendations && result.aiInterpretation.recommendations.length > 0 && (
+              <div className="bg-indigo-50 rounded-xl shadow-md p-6 mb-6 border border-indigo-100">
+                <h3 className="text-lg font-semibold text-indigo-800 mb-3 flex items-center">
+                  <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                  </svg>
+                  Персональные рекомендации
+                </h3>
+                <ol className="space-y-3">
+                  {result.aiInterpretation.recommendations.map((rec, i) => (
+                    <li key={i} className="flex items-start">
+                      <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-indigo-200 text-indigo-800 rounded-full text-sm font-medium mr-3">
+                        {i + 1}
+                      </span>
+                      <span className="text-indigo-800">{rec}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+
+            {/* Need specialist warning (additional detail) */}
+            {result.aiInterpretation.needSpecialist && result.aiInterpretation.specialistReason && (
               <div className="bg-red-50 rounded-xl shadow-md p-6 mb-6 border border-red-100">
                 <h3 className="text-lg font-semibold text-red-800 mb-3 flex items-center">
                   <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
-                  Рекомендация консультации
+                  Почему рекомендуется консультация
                 </h3>
                 <p className="text-red-800">
                   {result.aiInterpretation.specialistReason}
                 </p>
+                <Button
+                  variant="danger"
+                  onClick={handleContactPsychologist}
+                  className="mt-4"
+                >
+                  Записаться к психологу
+                </Button>
               </div>
             )}
           </>
         )}
 
+        {/* Disclaimer */}
+        <div className="mb-6">
+          <Disclaimer />
+        </div>
+
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-4">
+          <Button
+            onClick={handleDownloadPDF}
+            isLoading={downloading}
+            className="flex-1"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Скачать отчёт PDF
+          </Button>
           <Link
             href="/tests"
-            className="flex-1 py-3 px-4 bg-indigo-600 text-white text-center font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+            className="flex-1 py-3 px-4 bg-white text-gray-700 text-center font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors inline-flex items-center justify-center"
           >
             Пройти другой тест
           </Link>
-          <Link
-            href="/results"
-            className="flex-1 py-3 px-4 bg-white text-gray-700 text-center font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
-          >
-            Все результаты
-          </Link>
+          {result.aiInterpretation?.needSpecialist && (
+            <Button
+              variant="outline"
+              onClick={handleContactPsychologist}
+              className="flex-1"
+            >
+              Консультация психолога
+            </Button>
+          )}
         </div>
       </div>
     </div>
