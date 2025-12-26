@@ -1,4 +1,16 @@
-import { PrismaClient, TestCategory, QuestionType, UserRole, Gender } from '@prisma/client';
+import {
+  PrismaClient,
+  TestCategory,
+  QuestionType,
+  UserRole,
+  Gender,
+  SessionStatus,
+  ConsultationStatus,
+  SubscriptionPlan,
+  PaymentStatus,
+  PaymentType,
+  PaymentProvider
+} from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -1033,8 +1045,12 @@ async function main() {
     console.log('✅ Learning Style test questions created');
   }
 
-  // Child for test parent
-  await prisma.child.upsert({
+  // ============================================
+  // ДЕМО ДАННЫЕ - ДЕТИ
+  // ============================================
+
+  // Children for test parent
+  const child1 = await prisma.child.upsert({
     where: { id: 'test-child-1' },
     update: {},
     create: {
@@ -1048,7 +1064,481 @@ async function main() {
       grade: '6',
     },
   });
-  console.log('✅ Test child created');
+
+  const child2 = await prisma.child.upsert({
+    where: { id: 'test-child-2' },
+    update: {},
+    create: {
+      id: 'test-child-2',
+      parentId: testParent.id,
+      firstName: 'Айлин',
+      lastName: 'Тестова',
+      birthDate: new Date('2015-07-10'),
+      gender: Gender.FEMALE,
+      schoolName: 'Школа-гимназия №25',
+      grade: '4',
+    },
+  });
+  console.log('✅ Test children created');
+
+  // ============================================
+  // ДЕМО ДАННЫЕ - РЕЗУЛЬТАТЫ ТЕСТОВ
+  // ============================================
+
+  // Test sessions and results for child1
+  const session1 = await prisma.testSession.upsert({
+    where: { id: 'demo-session-1' },
+    update: {},
+    create: {
+      id: 'demo-session-1',
+      testId: 'test-anxiety-1',
+      childId: child1.id,
+      status: SessionStatus.COMPLETED,
+      currentQuestion: 5,
+      startedAt: new Date('2025-12-20T10:00:00'),
+      completedAt: new Date('2025-12-20T10:15:00'),
+    },
+  });
+
+  await prisma.result.upsert({
+    where: { id: 'demo-result-1' },
+    update: {},
+    create: {
+      id: 'demo-result-1',
+      sessionId: session1.id,
+      totalScore: 8,
+      maxScore: 20,
+      interpretation: 'Уровень тревожности: Низкий. Ребёнок демонстрирует здоровый уровень эмоциональной устойчивости. Справляется с повседневными стрессами адекватно.',
+      recommendations: '• Продолжать поддерживающее общение\n• Поощрять открытое выражение эмоций\n• Сохранять стабильный режим дня',
+    },
+  });
+
+  const session2 = await prisma.testSession.upsert({
+    where: { id: 'demo-session-2' },
+    update: {},
+    create: {
+      id: 'demo-session-2',
+      testId: 'test-motivation-1',
+      childId: child1.id,
+      status: SessionStatus.COMPLETED,
+      currentQuestion: 4,
+      startedAt: new Date('2025-12-21T14:00:00'),
+      completedAt: new Date('2025-12-21T14:12:00'),
+    },
+  });
+
+  await prisma.result.upsert({
+    where: { id: 'demo-result-2' },
+    update: {},
+    create: {
+      id: 'demo-result-2',
+      sessionId: session2.id,
+      totalScore: 14,
+      maxScore: 16,
+      interpretation: 'Уровень учебной мотивации: Высокий. Ребёнок проявляет искренний интерес к учёбе и стремится к знаниям.',
+      recommendations: '• Поддерживать познавательный интерес\n• Предлагать дополнительные развивающие материалы\n• Поощрять самостоятельное обучение',
+    },
+  });
+
+  const session3 = await prisma.testSession.upsert({
+    where: { id: 'demo-session-3' },
+    update: {},
+    create: {
+      id: 'demo-session-3',
+      testId: 'test-emotions-1',
+      childId: child1.id,
+      status: SessionStatus.COMPLETED,
+      currentQuestion: 5,
+      startedAt: new Date('2025-12-22T11:00:00'),
+      completedAt: new Date('2025-12-22T11:18:00'),
+    },
+  });
+
+  await prisma.result.upsert({
+    where: { id: 'demo-result-3' },
+    update: {},
+    create: {
+      id: 'demo-result-3',
+      sessionId: session3.id,
+      totalScore: 16,
+      maxScore: 20,
+      interpretation: 'Эмоциональный интеллект: Выше среднего. Ребёнок хорошо понимает свои и чужие эмоции, умеет сопереживать.',
+      recommendations: '• Развивать навыки активного слушания\n• Обсуждать эмоции в разных ситуациях\n• Читать книги с глубоким психологическим содержанием',
+    },
+  });
+
+  // Test for child2
+  const session4 = await prisma.testSession.upsert({
+    where: { id: 'demo-session-4' },
+    update: {},
+    create: {
+      id: 'demo-session-4',
+      testId: 'test-social-1',
+      childId: child2.id,
+      status: SessionStatus.COMPLETED,
+      currentQuestion: 5,
+      startedAt: new Date('2025-12-23T09:00:00'),
+      completedAt: new Date('2025-12-23T09:12:00'),
+    },
+  });
+
+  await prisma.result.upsert({
+    where: { id: 'demo-result-4' },
+    update: {},
+    create: {
+      id: 'demo-result-4',
+      sessionId: session4.id,
+      totalScore: 15,
+      maxScore: 20,
+      interpretation: 'Социальные навыки: Хорошие. Ребёнок легко находит общий язык со сверстниками и умеет работать в команде.',
+      recommendations: '• Поощрять участие в групповых активностях\n• Развивать лидерские качества\n• Учить разрешать конфликты конструктивно',
+    },
+  });
+
+  console.log('✅ Demo test sessions and results created');
+
+  // ============================================
+  // ДЕМО ДАННЫЕ - КОНСУЛЬТАЦИИ
+  // ============================================
+
+  // Get psychologist profile
+  const psychProfile = await prisma.psychologist.findUnique({
+    where: { userId: testPsychologist.id }
+  });
+
+  if (psychProfile) {
+    // Past completed consultation
+    await prisma.consultation.upsert({
+      where: { id: 'demo-consultation-1' },
+      update: {},
+      create: {
+        id: 'demo-consultation-1',
+        psychologistId: psychProfile.id,
+        parentId: testParent.id,
+        childId: child1.id,
+        scheduledAt: new Date('2025-12-18T10:00:00'),
+        durationMinutes: 60,
+        status: ConsultationStatus.COMPLETED,
+        meetingUrl: 'https://meet.google.com/abc-defg-hij',
+        price: 15000,
+        notes: 'Первичная консультация. Обсудили результаты тестов на тревожность. Рекомендовано продолжить наблюдение.',
+        rating: 5,
+        review: 'Отличный специалист! Очень помог разобраться в ситуации с ребёнком.',
+        completedAt: new Date('2025-12-18T11:00:00'),
+      },
+    });
+
+    // Another completed consultation
+    await prisma.consultation.upsert({
+      where: { id: 'demo-consultation-2' },
+      update: {},
+      create: {
+        id: 'demo-consultation-2',
+        psychologistId: psychProfile.id,
+        parentId: testParent.id,
+        childId: child1.id,
+        scheduledAt: new Date('2025-12-22T15:00:00'),
+        durationMinutes: 45,
+        status: ConsultationStatus.COMPLETED,
+        meetingUrl: 'https://meet.google.com/xyz-abcd-efg',
+        price: 12000,
+        notes: 'Повторная консультация. Положительная динамика.',
+        rating: 5,
+        review: 'Видим улучшения! Спасибо за рекомендации.',
+        completedAt: new Date('2025-12-22T15:45:00'),
+      },
+    });
+
+    // Upcoming scheduled consultation
+    await prisma.consultation.upsert({
+      where: { id: 'demo-consultation-3' },
+      update: {},
+      create: {
+        id: 'demo-consultation-3',
+        psychologistId: psychProfile.id,
+        parentId: testParent.id,
+        childId: child2.id,
+        scheduledAt: new Date('2025-12-28T14:00:00'),
+        durationMinutes: 60,
+        status: ConsultationStatus.SCHEDULED,
+        meetingUrl: 'https://meet.google.com/new-meet-url',
+        price: 15000,
+        notes: null,
+      },
+    });
+
+    // Psychologist availability slots
+    const nextMonday = new Date();
+    nextMonday.setDate(nextMonday.getDate() + (8 - nextMonday.getDay()) % 7);
+
+    for (let day = 0; day < 5; day++) {
+      const slotDate = new Date(nextMonday);
+      slotDate.setDate(slotDate.getDate() + day);
+
+      for (let hour = 9; hour <= 16; hour += 2) {
+        const startTime = new Date(slotDate);
+        startTime.setHours(hour, 0, 0, 0);
+        const endTime = new Date(slotDate);
+        endTime.setHours(hour + 1, 0, 0, 0);
+
+        await prisma.psychologistAvailability.upsert({
+          where: {
+            psychologistId_startTime: {
+              psychologistId: psychProfile.id,
+              startTime: startTime,
+            },
+          },
+          update: {},
+          create: {
+            psychologistId: psychProfile.id,
+            startTime: startTime,
+            endTime: endTime,
+            isBooked: Math.random() > 0.7, // 30% slots booked
+          },
+        });
+      }
+    }
+
+    console.log('✅ Demo consultations and availability created');
+  }
+
+  // ============================================
+  // ДЕМО ДАННЫЕ - УЧЕНИКИ В КЛАССАХ
+  // ============================================
+
+  const schoolClasses = await prisma.schoolClass.findMany({
+    where: { schoolId: school.id }
+  });
+
+  const studentNames = [
+    { firstName: 'Алихан', lastName: 'Сериков', gender: Gender.MALE },
+    { firstName: 'Дана', lastName: 'Нурланова', gender: Gender.FEMALE },
+    { firstName: 'Темирлан', lastName: 'Касымов', gender: Gender.MALE },
+    { firstName: 'Айгерим', lastName: 'Бектурова', gender: Gender.FEMALE },
+    { firstName: 'Нурсултан', lastName: 'Омаров', gender: Gender.MALE },
+    { firstName: 'Камила', lastName: 'Жумабекова', gender: Gender.FEMALE },
+    { firstName: 'Ерболат', lastName: 'Сатпаев', gender: Gender.MALE },
+    { firstName: 'Асель', lastName: 'Мухамедова', gender: Gender.FEMALE },
+    { firstName: 'Бауыржан', lastName: 'Токаев', gender: Gender.MALE },
+    { firstName: 'Жанель', lastName: 'Алиева', gender: Gender.FEMALE },
+    { firstName: 'Санжар', lastName: 'Кенжебаев', gender: Gender.MALE },
+    { firstName: 'Мадина', lastName: 'Ахметова', gender: Gender.FEMALE },
+  ];
+
+  let studentIndex = 0;
+  for (const cls of schoolClasses) {
+    // Add 6-8 students per class
+    const studentsCount = 6 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < studentsCount && studentIndex < studentNames.length * 2; i++) {
+      const nameData = studentNames[studentIndex % studentNames.length];
+      const studentId = `student-${cls.id}-${i + 1}`;
+
+      const birthYear = 2025 - cls.grade - 6;
+      const birthDate = new Date(birthYear, Math.floor(Math.random() * 12), 1 + Math.floor(Math.random() * 28));
+
+      await prisma.student.upsert({
+        where: { id: studentId },
+        update: {},
+        create: {
+          id: studentId,
+          classId: cls.id,
+          firstName: nameData.firstName,
+          lastName: nameData.lastName + (studentIndex >= studentNames.length ? 'а' : ''),
+          birthDate: birthDate,
+          gender: nameData.gender,
+          parentPhone: `+7701${String(1000000 + studentIndex).slice(1)}`,
+        },
+      });
+      studentIndex++;
+    }
+  }
+  console.log('✅ Demo students created');
+
+  // ============================================
+  // ДЕМО ДАННЫЕ - ПОДПИСКИ
+  // ============================================
+
+  await prisma.subscription.upsert({
+    where: { id: 'demo-subscription-1' },
+    update: {},
+    create: {
+      id: 'demo-subscription-1',
+      userId: testParent.id,
+      plan: SubscriptionPlan.STANDARD,
+      startedAt: new Date('2025-12-01'),
+      expiresAt: new Date('2026-01-01'),
+      isActive: true,
+      autoRenew: true,
+      diagnosticsLeft: 8,
+    },
+  });
+
+  await prisma.subscription.upsert({
+    where: { id: 'demo-subscription-2' },
+    update: {},
+    create: {
+      id: 'demo-subscription-2',
+      userId: demoParent.id,
+      plan: SubscriptionPlan.BASIC,
+      startedAt: new Date('2025-11-15'),
+      expiresAt: new Date('2025-12-15'),
+      isActive: false,
+      autoRenew: false,
+      diagnosticsLeft: 0,
+    },
+  });
+  console.log('✅ Demo subscriptions created');
+
+  // ============================================
+  // ДЕМО ДАННЫЕ - ПЛАТЕЖИ
+  // ============================================
+
+  // Subscription payments
+  await prisma.payment.upsert({
+    where: { id: 'demo-payment-1' },
+    update: {},
+    create: {
+      id: 'demo-payment-1',
+      userId: testParent.id,
+      amount: 5000,
+      currency: 'KZT',
+      paymentType: PaymentType.SUBSCRIPTION,
+      relatedId: 'demo-subscription-1',
+      provider: PaymentProvider.KASPI,
+      externalId: 'KASPI-12345678',
+      status: PaymentStatus.COMPLETED,
+      createdAt: new Date('2025-12-01T10:00:00'),
+      completedAt: new Date('2025-12-01T10:01:00'),
+    },
+  });
+
+  // Consultation payments
+  await prisma.payment.upsert({
+    where: { id: 'demo-payment-2' },
+    update: {},
+    create: {
+      id: 'demo-payment-2',
+      userId: testParent.id,
+      amount: 15000,
+      currency: 'KZT',
+      paymentType: PaymentType.CONSULTATION,
+      relatedId: 'demo-consultation-1',
+      provider: PaymentProvider.KASPI,
+      externalId: 'KASPI-23456789',
+      status: PaymentStatus.COMPLETED,
+      createdAt: new Date('2025-12-17T18:00:00'),
+      completedAt: new Date('2025-12-17T18:02:00'),
+    },
+  });
+
+  await prisma.payment.upsert({
+    where: { id: 'demo-payment-3' },
+    update: {},
+    create: {
+      id: 'demo-payment-3',
+      userId: testParent.id,
+      amount: 12000,
+      currency: 'KZT',
+      paymentType: PaymentType.CONSULTATION,
+      relatedId: 'demo-consultation-2',
+      provider: PaymentProvider.KASPI,
+      externalId: 'KASPI-34567890',
+      status: PaymentStatus.COMPLETED,
+      createdAt: new Date('2025-12-21T20:00:00'),
+      completedAt: new Date('2025-12-21T20:01:00'),
+    },
+  });
+
+  // Pending payment for upcoming consultation
+  await prisma.payment.upsert({
+    where: { id: 'demo-payment-4' },
+    update: {},
+    create: {
+      id: 'demo-payment-4',
+      userId: testParent.id,
+      amount: 15000,
+      currency: 'KZT',
+      paymentType: PaymentType.CONSULTATION,
+      relatedId: 'demo-consultation-3',
+      provider: PaymentProvider.KASPI,
+      externalId: 'KASPI-45678901',
+      status: PaymentStatus.COMPLETED,
+      createdAt: new Date('2025-12-26T09:00:00'),
+      completedAt: new Date('2025-12-26T09:01:00'),
+    },
+  });
+
+  // Diagnostic payment
+  await prisma.payment.upsert({
+    where: { id: 'demo-payment-5' },
+    update: {},
+    create: {
+      id: 'demo-payment-5',
+      userId: testParent.id,
+      amount: 3500,
+      currency: 'KZT',
+      paymentType: PaymentType.DIAGNOSTIC,
+      relatedId: 'test-selfesteem-1',
+      provider: PaymentProvider.KASPI,
+      externalId: 'KASPI-56789012',
+      status: PaymentStatus.COMPLETED,
+      createdAt: new Date('2025-12-15T14:00:00'),
+      completedAt: new Date('2025-12-15T14:00:30'),
+    },
+  });
+
+  console.log('✅ Demo payments created');
+
+  // ============================================
+  // ДЕМО ДАННЫЕ - ГРУППОВЫЕ ТЕСТЫ (ШКОЛА)
+  // ============================================
+
+  if (schoolClasses.length > 0) {
+    // Completed group test
+    await prisma.groupTest.upsert({
+      where: { id: 'demo-group-test-1' },
+      update: {},
+      create: {
+        id: 'demo-group-test-1',
+        schoolId: school.id,
+        classId: schoolClasses[0].id,
+        testId: 'test-anxiety-1',
+        assignedAt: new Date('2025-12-15'),
+        dueDate: new Date('2025-12-20'),
+        completedAt: new Date('2025-12-19'),
+      },
+    });
+
+    // In-progress group test
+    await prisma.groupTest.upsert({
+      where: { id: 'demo-group-test-2' },
+      update: {},
+      create: {
+        id: 'demo-group-test-2',
+        schoolId: school.id,
+        classId: schoolClasses[1].id,
+        testId: 'test-motivation-1',
+        assignedAt: new Date('2025-12-22'),
+        dueDate: new Date('2025-12-30'),
+      },
+    });
+
+    // Scheduled group test
+    await prisma.groupTest.upsert({
+      where: { id: 'demo-group-test-3' },
+      update: {},
+      create: {
+        id: 'demo-group-test-3',
+        schoolId: school.id,
+        classId: schoolClasses[2].id,
+        testId: 'test-social-1',
+        assignedAt: new Date('2025-12-26'),
+        dueDate: new Date('2026-01-10'),
+      },
+    });
+
+    console.log('✅ Demo group tests created');
+  }
 
   console.log('');
   console.log('✅ Seed completed successfully!');
