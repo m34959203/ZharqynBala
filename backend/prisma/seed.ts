@@ -196,6 +196,182 @@ async function main() {
   });
   console.log('✅ Demo child created:', demoChild.firstName);
 
+  // ============================================
+  // ДОПОЛНИТЕЛЬНЫЕ КЛИЕНТЫ ДЛЯ ПСИХОЛОГА
+  // ============================================
+
+  // Client 1: Асем Нурпеисова
+  const client1 = await prisma.user.upsert({
+    where: { email: 'asem@mail.kz' },
+    update: {},
+    create: {
+      email: 'asem@mail.kz',
+      phone: '+77011234567',
+      passwordHash,
+      role: UserRole.PARENT,
+      firstName: 'Асем',
+      lastName: 'Нурпеисова',
+      isVerified: true,
+      isActive: true,
+    },
+  });
+
+  const client1Child1 = await prisma.child.upsert({
+    where: { id: 'client1-child-1' },
+    update: {},
+    create: {
+      id: 'client1-child-1',
+      parentId: client1.id,
+      firstName: 'Айгерим',
+      lastName: 'Нурпеисова',
+      birthDate: new Date('2012-03-15'),
+      gender: Gender.FEMALE,
+      schoolName: 'Гимназия №56',
+      grade: '7',
+    },
+  });
+
+  const client1Child2 = await prisma.child.upsert({
+    where: { id: 'client1-child-2' },
+    update: {},
+    create: {
+      id: 'client1-child-2',
+      parentId: client1.id,
+      firstName: 'Алихан',
+      lastName: 'Нурпеисов',
+      birthDate: new Date('2017-08-20'),
+      gender: Gender.MALE,
+      schoolName: 'Школа №45',
+      grade: '2',
+    },
+  });
+
+  // Client 2: Марат Сагынбаев
+  const client2 = await prisma.user.upsert({
+    where: { email: 'marat@mail.kz' },
+    update: {},
+    create: {
+      email: 'marat@mail.kz',
+      phone: '+77022345678',
+      passwordHash,
+      role: UserRole.PARENT,
+      firstName: 'Марат',
+      lastName: 'Сагынбаев',
+      isVerified: true,
+      isActive: true,
+    },
+  });
+
+  const client2Child1 = await prisma.child.upsert({
+    where: { id: 'client2-child-1' },
+    update: {},
+    create: {
+      id: 'client2-child-1',
+      parentId: client2.id,
+      firstName: 'Алишер',
+      lastName: 'Сагынбаев',
+      birthDate: new Date('2015-01-10'),
+      gender: Gender.MALE,
+      schoolName: 'Школа №25',
+      grade: '4',
+    },
+  });
+
+  // Client 3: Динара Жумабаева
+  const client3 = await prisma.user.upsert({
+    where: { email: 'dinara@mail.kz' },
+    update: {},
+    create: {
+      email: 'dinara@mail.kz',
+      phone: '+77073456789',
+      passwordHash,
+      role: UserRole.PARENT,
+      firstName: 'Динара',
+      lastName: 'Жумабаева',
+      isVerified: true,
+      isActive: true,
+    },
+  });
+
+  const client3Child1 = await prisma.child.upsert({
+    where: { id: 'client3-child-1' },
+    update: {},
+    create: {
+      id: 'client3-child-1',
+      parentId: client3.id,
+      firstName: 'Камила',
+      lastName: 'Жумабаева',
+      birthDate: new Date('2011-06-25'),
+      gender: Gender.FEMALE,
+      schoolName: 'Лицей №71',
+      grade: '8',
+    },
+  });
+
+  // Client 4: Бауыржан Касымов (неактивный)
+  const client4 = await prisma.user.upsert({
+    where: { email: 'baurzhan@mail.kz' },
+    update: {},
+    create: {
+      email: 'baurzhan@mail.kz',
+      phone: '+77054567890',
+      passwordHash,
+      role: UserRole.PARENT,
+      firstName: 'Бауыржан',
+      lastName: 'Касымов',
+      isVerified: true,
+      isActive: false,
+    },
+  });
+
+  const client4Child1 = await prisma.child.upsert({
+    where: { id: 'client4-child-1' },
+    update: {},
+    create: {
+      id: 'client4-child-1',
+      parentId: client4.id,
+      firstName: 'Ернар',
+      lastName: 'Касымов',
+      birthDate: new Date('2016-11-05'),
+      gender: Gender.MALE,
+      schoolName: 'Школа №33',
+      grade: '3',
+    },
+  });
+
+  // Client 5: Гульнара Ахметова
+  const client5 = await prisma.user.upsert({
+    where: { email: 'gulnara@mail.kz' },
+    update: {},
+    create: {
+      email: 'gulnara@mail.kz',
+      phone: '+77015678901',
+      passwordHash,
+      role: UserRole.PARENT,
+      firstName: 'Гульнара',
+      lastName: 'Ахметова',
+      isVerified: true,
+      isActive: true,
+    },
+  });
+
+  const client5Child1 = await prisma.child.upsert({
+    where: { id: 'client5-child-1' },
+    update: {},
+    create: {
+      id: 'client5-child-1',
+      parentId: client5.id,
+      firstName: 'Дана',
+      lastName: 'Ахметова',
+      birthDate: new Date('2013-04-12'),
+      gender: Gender.FEMALE,
+      schoolName: 'Гимназия №56',
+      grade: '6',
+    },
+  });
+
+  console.log('✅ Additional client parents created');
+
   // Create tests
   const tests = [
     {
@@ -1195,7 +1371,143 @@ async function main() {
     },
   });
 
-  console.log('✅ Demo test sessions and results created');
+  console.log('✅ Demo test sessions and results created for testParent children');
+
+  // ============================================
+  // РЕЗУЛЬТАТЫ ТЕСТОВ ДЛЯ ВСЕХ КЛИЕНТОВ
+  // ============================================
+
+  // Helper function to create test session and result
+  const createTestResult = async (
+    sessionId: string,
+    testId: string,
+    childId: string,
+    date: string,
+    totalScore: number,
+    maxScore: number,
+    interpretation: string,
+    recommendations: string
+  ) => {
+    const session = await prisma.testSession.upsert({
+      where: { id: sessionId },
+      update: {},
+      create: {
+        id: sessionId,
+        testId: testId,
+        childId: childId,
+        status: SessionStatus.COMPLETED,
+        currentQuestion: 5,
+        startedAt: new Date(date),
+        completedAt: new Date(new Date(date).getTime() + 15 * 60 * 1000),
+      },
+    });
+
+    await prisma.result.upsert({
+      where: { id: `result-${sessionId}` },
+      update: {},
+      create: {
+        id: `result-${sessionId}`,
+        sessionId: session.id,
+        totalScore,
+        maxScore,
+        interpretation,
+        recommendations,
+      },
+    });
+  };
+
+  // Client 1 Children Tests (Айгерим и Алихан Нурпеисовы)
+  await createTestResult('session-c1c1-1', 'test-anxiety-1', client1Child1.id, '2025-10-10T10:00:00', 12, 20,
+    'Уровень тревожности: Умеренный. Рекомендуется обратить внимание на ситуации, вызывающие беспокойство.',
+    '• Регулярные беседы о школьных событиях\n• Техники дыхания при волнении\n• Поддержка при новых ситуациях'
+  );
+  await createTestResult('session-c1c1-2', 'test-motivation-1', client1Child1.id, '2025-10-25T14:00:00', 12, 16,
+    'Уровень мотивации: Хороший. Ребёнок заинтересован в учёбе.',
+    '• Поощрять успехи\n• Ставить достижимые цели\n• Развивать самостоятельность'
+  );
+  await createTestResult('session-c1c1-3', 'test-selfesteem-1', client1Child1.id, '2025-11-15T11:00:00', 10, 12,
+    'Самооценка: Адекватная. Ребёнок реалистично оценивает свои способности.',
+    '• Продолжать поддержку\n• Хвалить за конкретные достижения'
+  );
+  await createTestResult('session-c1c1-4', 'test-emotions-1', client1Child1.id, '2025-12-05T09:00:00', 17, 20,
+    'Эмоциональный интеллект: Высокий. Отлично понимает свои и чужие эмоции.',
+    '• Развивать эмпатию\n• Обсуждать сложные эмоциональные ситуации'
+  );
+
+  await createTestResult('session-c1c2-1', 'test-anxiety-1', client1Child2.id, '2025-12-10T10:00:00', 6, 20,
+    'Уровень тревожности: Низкий. Ребёнок эмоционально устойчив.',
+    '• Поддерживать позитивную атмосферу'
+  );
+  await createTestResult('session-c1c2-2', 'test-social-1', client1Child2.id, '2025-12-15T14:00:00', 18, 20,
+    'Социальные навыки: Отличные. Легко находит друзей.',
+    '• Поддерживать общение со сверстниками'
+  );
+
+  // Client 2 Children Tests (Алишер Сагынбаев)
+  await createTestResult('session-c2c1-1', 'test-attention-1', client2Child1.id, '2025-11-01T10:00:00', 14, 20,
+    'Внимание: Требует развития. Есть сложности с концентрацией.',
+    '• Короткие задания\n• Частые перерывы\n• Игры на внимание'
+  );
+  await createTestResult('session-c2c1-2', 'test-motivation-1', client2Child1.id, '2025-11-20T14:00:00', 10, 16,
+    'Мотивация: Средняя. Интерес к учёбе неустойчивый.',
+    '• Найти интересные темы\n• Геймификация обучения'
+  );
+  await createTestResult('session-c2c1-3', 'test-learning-style-1', client2Child1.id, '2025-12-10T11:00:00', 14, 16,
+    'Стиль обучения: Кинестетический. Лучше усваивает через практику.',
+    '• Больше практических заданий\n• Движение во время учёбы'
+  );
+
+  // Client 3 Children Tests (Камила Жумабаева)
+  await createTestResult('session-c3c1-1', 'test-selfesteem-1', client3Child1.id, '2025-11-15T10:00:00', 7, 12,
+    'Самооценка: Заниженная. Требуется работа над уверенностью.',
+    '• Регулярная похвала\n• Фокус на сильных сторонах\n• Постепенное повышение сложности задач'
+  );
+  await createTestResult('session-c3c1-2', 'test-anxiety-1', client3Child1.id, '2025-12-01T14:00:00', 14, 20,
+    'Тревожность: Повышенная. Рекомендуется работа с психологом.',
+    '• Техники релаксации\n• Работа со страхами\n• Поддержка родителей'
+  );
+  await createTestResult('session-c3c1-3', 'test-emotions-1', client3Child1.id, '2025-12-12T11:00:00', 12, 20,
+    'Эмоциональный интеллект: Средний. Есть потенциал для развития.',
+    '• Обсуждение эмоций\n• Чтение книг с эмоциональным содержанием'
+  );
+
+  // Client 4 Children Tests (Ернар Касымов)
+  await createTestResult('session-c4c1-1', 'test-anxiety-1', client4Child1.id, '2025-06-05T10:00:00', 16, 20,
+    'Тревожность: Высокая. Было рекомендовано пройти курс консультаций.',
+    '• Работа с психологом\n• Поддержка семьи'
+  );
+  await createTestResult('session-c4c1-2', 'test-anxiety-1', client4Child1.id, '2025-09-10T14:00:00', 10, 20,
+    'Тревожность: Снизилась до умеренной. Положительная динамика.',
+    '• Продолжить техники релаксации'
+  );
+  await createTestResult('session-c4c1-3', 'test-anxiety-1', client4Child1.id, '2025-11-20T11:00:00', 6, 20,
+    'Тревожность: Низкая. Отличный результат работы!',
+    '• Поддерживать достигнутые результаты'
+  );
+  await createTestResult('session-c4c1-4', 'test-motivation-1', client4Child1.id, '2025-08-15T10:00:00', 13, 16,
+    'Мотивация: Хорошая.',
+    '• Поддерживать интерес к учёбе'
+  );
+  await createTestResult('session-c4c1-5', 'test-social-1', client4Child1.id, '2025-10-01T14:00:00', 15, 20,
+    'Социальные навыки: Хорошие.',
+    '• Поощрять общение'
+  );
+
+  // Client 5 Children Tests (Дана Ахметова)
+  await createTestResult('session-c5c1-1', 'test-anxiety-1', client5Child1.id, '2025-11-28T10:00:00', 15, 20,
+    'Тревожность: Повышенная. Связана со школой.',
+    '• Работа над школьными страхами\n• Техники успокоения'
+  );
+  await createTestResult('session-c5c1-2', 'test-motivation-1', client5Child1.id, '2025-12-08T14:00:00', 14, 16,
+    'Мотивация: Высокая несмотря на тревожность.',
+    '• Поддержать интерес\n• Снизить давление'
+  );
+  await createTestResult('session-c5c1-3', 'test-stress-1', client5Child1.id, '2025-12-18T11:00:00', 8, 16,
+    'Стрессоустойчивость: Требует развития.',
+    '• Техники управления стрессом\n• Достаточный отдых'
+  );
+
+  console.log('✅ Demo test results created for all clients (20+ results)');
 
   // ============================================
   // ДЕМО ДАННЫЕ - КОНСУЛЬТАЦИИ
@@ -1207,7 +1519,168 @@ async function main() {
   });
 
   if (psychProfile) {
-    // Past completed consultation
+    // ========== Консультации для Асем Нурпеисовой (client1) - 8 консультаций ==========
+    const client1Consultations = [
+      { id: 'cons-client1-1', date: '2025-10-15T10:00:00', status: ConsultationStatus.COMPLETED, rating: 5, review: 'Очень профессиональный подход!', notes: 'Первичная консультация. Обсудили проблемы с адаптацией в школе.' },
+      { id: 'cons-client1-2', date: '2025-10-29T11:00:00', status: ConsultationStatus.COMPLETED, rating: 5, review: 'Рекомендации очень помогли', notes: 'Повторная консультация. Улучшение в поведении.' },
+      { id: 'cons-client1-3', date: '2025-11-12T14:00:00', status: ConsultationStatus.COMPLETED, rating: 4, review: 'Хороший специалист', notes: 'Работа над эмоциональной регуляцией.' },
+      { id: 'cons-client1-4', date: '2025-11-26T09:00:00', status: ConsultationStatus.COMPLETED, rating: 5, review: 'Замечательно!', notes: 'Позитивная динамика.' },
+      { id: 'cons-client1-5', date: '2025-12-05T10:00:00', status: ConsultationStatus.COMPLETED, rating: 5, review: 'Ребёнок стал увереннее', notes: 'Закрепление результатов.' },
+      { id: 'cons-client1-6', date: '2025-12-12T15:00:00', status: ConsultationStatus.COMPLETED, rating: 5, review: 'Отличная работа!', notes: 'Консультация по второму ребёнку.' },
+      { id: 'cons-client1-7', date: '2025-12-20T11:00:00', status: ConsultationStatus.COMPLETED, rating: 5, review: 'Спасибо за помощь!', notes: 'Подготовка к зимним каникулам.' },
+      { id: 'cons-client1-8', date: '2025-12-30T10:00:00', status: ConsultationStatus.SCHEDULED, notes: 'Запланированная консультация.' },
+    ];
+
+    for (const cons of client1Consultations) {
+      await prisma.consultation.upsert({
+        where: { id: cons.id },
+        update: {},
+        create: {
+          id: cons.id,
+          psychologistId: psychProfile.id,
+          parentId: client1.id,
+          childId: client1Child1.id,
+          scheduledAt: new Date(cons.date),
+          durationMinutes: 60,
+          status: cons.status,
+          meetingUrl: `https://meet.google.com/${cons.id}`,
+          price: 15000,
+          notes: cons.notes,
+          rating: cons.rating,
+          review: cons.review,
+          completedAt: cons.status === ConsultationStatus.COMPLETED ? new Date(new Date(cons.date).getTime() + 60 * 60 * 1000) : undefined,
+        },
+      });
+    }
+
+    // ========== Консультации для Марата Сагынбаева (client2) - 5 консультаций ==========
+    const client2Consultations = [
+      { id: 'cons-client2-1', date: '2025-11-05T10:00:00', status: ConsultationStatus.COMPLETED, rating: 5, review: 'Прекрасный психолог!', notes: 'Первичная консультация. Проблемы с концентрацией.' },
+      { id: 'cons-client2-2', date: '2025-11-19T14:00:00', status: ConsultationStatus.COMPLETED, rating: 5, review: 'Очень помог!', notes: 'Работа над вниманием.' },
+      { id: 'cons-client2-3', date: '2025-12-03T11:00:00', status: ConsultationStatus.COMPLETED, rating: 4, review: 'Хорошие результаты', notes: 'Игровая терапия.' },
+      { id: 'cons-client2-4', date: '2025-12-18T09:00:00', status: ConsultationStatus.COMPLETED, rating: 5, review: 'Рекомендую!', notes: 'Подведение итогов.' },
+      { id: 'cons-client2-5', date: '2025-12-29T15:00:00', status: ConsultationStatus.SCHEDULED, notes: 'Планируемый контроль.' },
+    ];
+
+    for (const cons of client2Consultations) {
+      await prisma.consultation.upsert({
+        where: { id: cons.id },
+        update: {},
+        create: {
+          id: cons.id,
+          psychologistId: psychProfile.id,
+          parentId: client2.id,
+          childId: client2Child1.id,
+          scheduledAt: new Date(cons.date),
+          durationMinutes: 60,
+          status: cons.status,
+          meetingUrl: `https://meet.google.com/${cons.id}`,
+          price: 15000,
+          notes: cons.notes,
+          rating: cons.rating,
+          review: cons.review,
+          completedAt: cons.status === ConsultationStatus.COMPLETED ? new Date(new Date(cons.date).getTime() + 60 * 60 * 1000) : undefined,
+        },
+      });
+    }
+
+    // ========== Консультации для Динары Жумабаевой (client3) - 3 консультации ==========
+    const client3Consultations = [
+      { id: 'cons-client3-1', date: '2025-11-20T10:00:00', status: ConsultationStatus.COMPLETED, rating: 5, review: 'Отличный опыт!', notes: 'Первичная консультация. Подростковые проблемы.' },
+      { id: 'cons-client3-2', date: '2025-12-04T14:00:00', status: ConsultationStatus.COMPLETED, rating: 5, review: 'Очень благодарна!', notes: 'Работа над самооценкой.' },
+      { id: 'cons-client3-3', date: '2025-12-15T11:00:00', status: ConsultationStatus.COMPLETED, rating: 5, review: 'Дочь стала открытее', notes: 'Положительные изменения.' },
+    ];
+
+    for (const cons of client3Consultations) {
+      await prisma.consultation.upsert({
+        where: { id: cons.id },
+        update: {},
+        create: {
+          id: cons.id,
+          psychologistId: psychProfile.id,
+          parentId: client3.id,
+          childId: client3Child1.id,
+          scheduledAt: new Date(cons.date),
+          durationMinutes: 60,
+          status: cons.status,
+          meetingUrl: `https://meet.google.com/${cons.id}`,
+          price: 15000,
+          notes: cons.notes,
+          rating: cons.rating,
+          review: cons.review,
+          completedAt: cons.status === ConsultationStatus.COMPLETED ? new Date(new Date(cons.date).getTime() + 60 * 60 * 1000) : undefined,
+        },
+      });
+    }
+
+    // ========== Консультации для Бауыржана Касымова (client4, неактивный) - 12 консультаций ==========
+    const client4Consultations = [
+      { id: 'cons-client4-1', date: '2025-06-10T10:00:00', status: ConsultationStatus.COMPLETED, rating: 5, notes: 'Первичная консультация.' },
+      { id: 'cons-client4-2', date: '2025-06-24T11:00:00', status: ConsultationStatus.COMPLETED, rating: 5, notes: 'Продолжение работы.' },
+      { id: 'cons-client4-3', date: '2025-07-08T14:00:00', status: ConsultationStatus.COMPLETED, rating: 4, notes: 'Регулярная сессия.' },
+      { id: 'cons-client4-4', date: '2025-07-22T09:00:00', status: ConsultationStatus.COMPLETED, rating: 5, notes: 'Хорошая динамика.' },
+      { id: 'cons-client4-5', date: '2025-08-05T10:00:00', status: ConsultationStatus.COMPLETED, rating: 5, notes: 'Работа над страхами.' },
+      { id: 'cons-client4-6', date: '2025-08-19T15:00:00', status: ConsultationStatus.COMPLETED, rating: 5, notes: 'Прогресс заметен.' },
+      { id: 'cons-client4-7', date: '2025-09-02T11:00:00', status: ConsultationStatus.COMPLETED, rating: 4, notes: 'Подготовка к школе.' },
+      { id: 'cons-client4-8', date: '2025-09-16T10:00:00', status: ConsultationStatus.COMPLETED, rating: 5, notes: 'Адаптация к школе.' },
+      { id: 'cons-client4-9', date: '2025-09-30T14:00:00', status: ConsultationStatus.COMPLETED, rating: 5, notes: 'Контрольная сессия.' },
+      { id: 'cons-client4-10', date: '2025-10-14T11:00:00', status: ConsultationStatus.COMPLETED, rating: 5, notes: 'Закрепление.' },
+      { id: 'cons-client4-11', date: '2025-10-28T09:00:00', status: ConsultationStatus.COMPLETED, rating: 5, notes: 'Завершающая сессия.' },
+      { id: 'cons-client4-12', date: '2025-11-28T10:00:00', status: ConsultationStatus.COMPLETED, rating: 5, notes: 'Последняя консультация.' },
+    ];
+
+    for (const cons of client4Consultations) {
+      await prisma.consultation.upsert({
+        where: { id: cons.id },
+        update: {},
+        create: {
+          id: cons.id,
+          psychologistId: psychProfile.id,
+          parentId: client4.id,
+          childId: client4Child1.id,
+          scheduledAt: new Date(cons.date),
+          durationMinutes: 60,
+          status: cons.status,
+          meetingUrl: `https://meet.google.com/${cons.id}`,
+          price: 15000,
+          notes: cons.notes,
+          rating: cons.rating,
+          completedAt: cons.status === ConsultationStatus.COMPLETED ? new Date(new Date(cons.date).getTime() + 60 * 60 * 1000) : undefined,
+        },
+      });
+    }
+
+    // ========== Консультации для Гульнары Ахметовой (client5) - 4 консультации ==========
+    const client5Consultations = [
+      { id: 'cons-client5-1', date: '2025-12-02T10:00:00', status: ConsultationStatus.COMPLETED, rating: 5, review: 'Отличный специалист!', notes: 'Первичная консультация. Школьная тревожность.' },
+      { id: 'cons-client5-2', date: '2025-12-10T14:00:00', status: ConsultationStatus.COMPLETED, rating: 5, review: 'Очень довольны!', notes: 'Работа над тревожностью.' },
+      { id: 'cons-client5-3', date: '2025-12-19T11:00:00', status: ConsultationStatus.COMPLETED, rating: 5, review: 'Результаты видны!', notes: 'Техники релаксации.' },
+      { id: 'cons-client5-4', date: '2025-12-27T10:00:00', status: ConsultationStatus.SCHEDULED, notes: 'Плановая консультация.' },
+    ];
+
+    for (const cons of client5Consultations) {
+      await prisma.consultation.upsert({
+        where: { id: cons.id },
+        update: {},
+        create: {
+          id: cons.id,
+          psychologistId: psychProfile.id,
+          parentId: client5.id,
+          childId: client5Child1.id,
+          scheduledAt: new Date(cons.date),
+          durationMinutes: 60,
+          status: cons.status,
+          meetingUrl: `https://meet.google.com/${cons.id}`,
+          price: 15000,
+          notes: cons.notes,
+          rating: cons.rating,
+          review: cons.review,
+          completedAt: cons.status === ConsultationStatus.COMPLETED ? new Date(new Date(cons.date).getTime() + 60 * 60 * 1000) : undefined,
+        },
+      });
+    }
+
+    // ========== Консультации для testParent ==========
     await prisma.consultation.upsert({
       where: { id: 'demo-consultation-1' },
       update: {},
@@ -1221,14 +1694,13 @@ async function main() {
         status: ConsultationStatus.COMPLETED,
         meetingUrl: 'https://meet.google.com/abc-defg-hij',
         price: 15000,
-        notes: 'Первичная консультация. Обсудили результаты тестов на тревожность. Рекомендовано продолжить наблюдение.',
+        notes: 'Первичная консультация. Обсудили результаты тестов на тревожность.',
         rating: 5,
-        review: 'Отличный специалист! Очень помог разобраться в ситуации с ребёнком.',
+        review: 'Отличный специалист!',
         completedAt: new Date('2025-12-18T11:00:00'),
       },
     });
 
-    // Another completed consultation
     await prisma.consultation.upsert({
       where: { id: 'demo-consultation-2' },
       update: {},
@@ -1244,12 +1716,11 @@ async function main() {
         price: 12000,
         notes: 'Повторная консультация. Положительная динамика.',
         rating: 5,
-        review: 'Видим улучшения! Спасибо за рекомендации.',
+        review: 'Видим улучшения!',
         completedAt: new Date('2025-12-22T15:45:00'),
       },
     });
 
-    // Upcoming scheduled consultation
     await prisma.consultation.upsert({
       where: { id: 'demo-consultation-3' },
       update: {},
@@ -1275,7 +1746,7 @@ async function main() {
       const slotDate = new Date(nextMonday);
       slotDate.setDate(slotDate.getDate() + day);
 
-      for (let hour = 9; hour <= 16; hour += 2) {
+      for (let hour = 9; hour <= 17; hour++) {
         const startTime = new Date(slotDate);
         startTime.setHours(hour, 0, 0, 0);
         const endTime = new Date(slotDate);
@@ -1293,13 +1764,13 @@ async function main() {
             psychologistId: psychProfile.id,
             startTime: startTime,
             endTime: endTime,
-            isBooked: Math.random() > 0.7, // 30% slots booked
+            isBooked: Math.random() > 0.6, // 40% slots booked
           },
         });
       }
     }
 
-    console.log('✅ Demo consultations and availability created');
+    console.log('✅ Demo consultations and availability created (35+ consultations)');
   }
 
   // ============================================
