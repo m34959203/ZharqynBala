@@ -223,6 +223,8 @@ enum TestCategory {
   EMOTIONS
   CAREER
   SELF_ESTEEM
+  SOCIAL
+  COGNITIVE
 }
 
 enum QuestionType {
