@@ -256,6 +256,48 @@ async function main() {
       isPremium: false,
       order: 5,
     },
+    {
+      id: 'test-social-1',
+      titleRu: 'Социальные навыки',
+      titleKz: 'Әлеуметтік дағдылар',
+      descriptionRu: 'Оценка навыков общения и взаимодействия со сверстниками.',
+      descriptionKz: 'Құрдастарымен қарым-қатынас дағдыларын бағалау.',
+      category: TestCategory.SOCIAL,
+      ageMin: 8,
+      ageMax: 16,
+      durationMinutes: 12,
+      price: 0,
+      isPremium: false,
+      order: 6,
+    },
+    {
+      id: 'test-stress-1',
+      titleRu: 'Стрессоустойчивость',
+      titleKz: 'Стресске төзімділік',
+      descriptionRu: 'Диагностика способности справляться со стрессовыми ситуациями.',
+      descriptionKz: 'Стресстік жағдайларды жеңу қабілетін анықтау.',
+      category: TestCategory.ANXIETY,
+      ageMin: 12,
+      ageMax: 17,
+      durationMinutes: 15,
+      price: 3500,
+      isPremium: true,
+      order: 7,
+    },
+    {
+      id: 'test-learning-style-1',
+      titleRu: 'Стиль обучения',
+      titleKz: 'Оқу стилі',
+      descriptionRu: 'Определение предпочтительного способа восприятия информации.',
+      descriptionKz: 'Ақпаратты қабылдаудың ұнамды тәсілін анықтау.',
+      category: TestCategory.COGNITIVE,
+      ageMin: 10,
+      ageMax: 17,
+      durationMinutes: 10,
+      price: 0,
+      isPremium: false,
+      order: 8,
+    },
   ];
 
   for (const testData of tests) {
@@ -525,6 +567,470 @@ async function main() {
       }
     }
     console.log('✅ Self-esteem test questions created');
+  }
+
+  // Questions for Attention Test
+  const attentionQuestions = [
+    {
+      questionTextRu: 'Как часто тебе сложно сосредоточиться на задании?',
+      questionTextKz: 'Саған тапсырмаға шоғырлану қаншалықты қиын?',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Никогда', textKz: 'Ешқашан', score: 0 },
+        { textRu: 'Редко', textKz: 'Сирек', score: 1 },
+        { textRu: 'Иногда', textKz: 'Кейде', score: 2 },
+        { textRu: 'Часто', textKz: 'Жиі', score: 3 },
+        { textRu: 'Очень часто', textKz: 'Өте жиі', score: 4 },
+      ],
+    },
+    {
+      questionTextRu: 'Ты легко отвлекаешься на посторонние звуки?',
+      questionTextKz: 'Сен бөгде дыбыстарға тез алаңдайсың ба?',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Никогда', textKz: 'Ешқашан', score: 0 },
+        { textRu: 'Редко', textKz: 'Сирек', score: 1 },
+        { textRu: 'Иногда', textKz: 'Кейде', score: 2 },
+        { textRu: 'Часто', textKz: 'Жиі', score: 3 },
+        { textRu: 'Очень часто', textKz: 'Өте жиі', score: 4 },
+      ],
+    },
+    {
+      questionTextRu: 'Можешь ли ты долго заниматься одним делом?',
+      questionTextKz: 'Сен бір іспен ұзақ айналыса аласың ба?',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Нет, быстро переключаюсь', textKz: 'Жоқ, тез ауысамын', score: 4 },
+        { textRu: 'Несколько минут', textKz: 'Бірнеше минут', score: 3 },
+        { textRu: '15-20 минут', textKz: '15-20 минут', score: 2 },
+        { textRu: '30-40 минут', textKz: '30-40 минут', score: 1 },
+        { textRu: 'Больше часа', textKz: 'Бір сағаттан артық', score: 0 },
+      ],
+    },
+    {
+      questionTextRu: 'Забываешь ли ты о чём говорил учитель?',
+      questionTextKz: 'Мұғалім не айтқанын ұмытып қаласың ба?',
+      questionType: QuestionType.YES_NO,
+      options: [
+        { textRu: 'Да, часто', textKz: 'Иә, жиі', score: 3 },
+        { textRu: 'Нет, помню хорошо', textKz: 'Жоқ, жақсы есімде', score: 0 },
+      ],
+    },
+    {
+      questionTextRu: 'Как ты себя чувствуешь после длинного урока?',
+      questionTextKz: 'Ұзақ сабақтан кейін өзіңді қалай сезінесің?',
+      questionType: QuestionType.MULTIPLE_CHOICE,
+      options: [
+        { textRu: 'Бодрым и внимательным', textKz: 'Сергек және зейінді', score: 0 },
+        { textRu: 'Немного устал', textKz: 'Біраз шаршадым', score: 1 },
+        { textRu: 'Устал и хочу отдохнуть', textKz: 'Шаршап, демалғым келеді', score: 2 },
+        { textRu: 'Очень устал, голова болит', textKz: 'Өте шаршадым, басым ауырады', score: 3 },
+      ],
+    },
+  ];
+
+  const attentionTest = await prisma.test.findUnique({ where: { id: 'test-attention-1' } });
+  if (attentionTest) {
+    for (let i = 0; i < attentionQuestions.length; i++) {
+      const q = attentionQuestions[i];
+      const question = await prisma.question.upsert({
+        where: { id: `attention-q-${i + 1}` },
+        update: {},
+        create: {
+          id: `attention-q-${i + 1}`,
+          testId: attentionTest.id,
+          questionTextRu: q.questionTextRu,
+          questionTextKz: q.questionTextKz,
+          questionType: q.questionType,
+          order: i + 1,
+          isRequired: true,
+        },
+      });
+
+      for (let j = 0; j < q.options.length; j++) {
+        const opt = q.options[j];
+        await prisma.answerOption.upsert({
+          where: { id: `attention-q${i + 1}-opt${j + 1}` },
+          update: {},
+          create: {
+            id: `attention-q${i + 1}-opt${j + 1}`,
+            questionId: question.id,
+            optionTextRu: opt.textRu,
+            optionTextKz: opt.textKz,
+            score: opt.score,
+            order: j + 1,
+          },
+        });
+      }
+    }
+    console.log('✅ Attention test questions created');
+  }
+
+  // Questions for Emotional Intelligence Test
+  const emotionsQuestions = [
+    {
+      questionTextRu: 'Я понимаю, когда мой друг грустит, даже если он ничего не говорит',
+      questionTextKz: 'Досым еш нәрсе айтпаса да, оның қайғылы екенін түсінемін',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Никогда', textKz: 'Ешқашан', score: 0 },
+        { textRu: 'Редко', textKz: 'Сирек', score: 1 },
+        { textRu: 'Иногда', textKz: 'Кейде', score: 2 },
+        { textRu: 'Часто', textKz: 'Жиі', score: 3 },
+        { textRu: 'Всегда', textKz: 'Әрқашан', score: 4 },
+      ],
+    },
+    {
+      questionTextRu: 'Я умею контролировать свой гнев',
+      questionTextKz: 'Мен ашуымды бақылай аламын',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Никогда', textKz: 'Ешқашан', score: 0 },
+        { textRu: 'Редко', textKz: 'Сирек', score: 1 },
+        { textRu: 'Иногда', textKz: 'Кейде', score: 2 },
+        { textRu: 'Часто', textKz: 'Жиі', score: 3 },
+        { textRu: 'Всегда', textKz: 'Әрқашан', score: 4 },
+      ],
+    },
+    {
+      questionTextRu: 'Я могу объяснить, почему я чувствую себя определённым образом',
+      questionTextKz: 'Мен өзімді неге солай сезінетінімді түсіндіре аламын',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Никогда', textKz: 'Ешқашан', score: 0 },
+        { textRu: 'Редко', textKz: 'Сирек', score: 1 },
+        { textRu: 'Иногда', textKz: 'Кейде', score: 2 },
+        { textRu: 'Часто', textKz: 'Жиі', score: 3 },
+        { textRu: 'Всегда', textKz: 'Әрқашан', score: 4 },
+      ],
+    },
+    {
+      questionTextRu: 'Когда мне грустно, я знаю, как себя утешить',
+      questionTextKz: 'Қайғырғанда өзімді жұбататыны білемін',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Никогда', textKz: 'Ешқашан', score: 0 },
+        { textRu: 'Редко', textKz: 'Сирек', score: 1 },
+        { textRu: 'Иногда', textKz: 'Кейде', score: 2 },
+        { textRu: 'Часто', textKz: 'Жиі', score: 3 },
+        { textRu: 'Всегда', textKz: 'Әрқашан', score: 4 },
+      ],
+    },
+    {
+      questionTextRu: 'Я могу поставить себя на место другого человека',
+      questionTextKz: 'Мен өзімді басқа адамның орнына қоя аламын',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Никогда', textKz: 'Ешқашан', score: 0 },
+        { textRu: 'Редко', textKz: 'Сирек', score: 1 },
+        { textRu: 'Иногда', textKz: 'Кейде', score: 2 },
+        { textRu: 'Часто', textKz: 'Жиі', score: 3 },
+        { textRu: 'Всегда', textKz: 'Әрқашан', score: 4 },
+      ],
+    },
+  ];
+
+  const emotionsTest = await prisma.test.findUnique({ where: { id: 'test-emotions-1' } });
+  if (emotionsTest) {
+    for (let i = 0; i < emotionsQuestions.length; i++) {
+      const q = emotionsQuestions[i];
+      const question = await prisma.question.upsert({
+        where: { id: `emotions-q-${i + 1}` },
+        update: {},
+        create: {
+          id: `emotions-q-${i + 1}`,
+          testId: emotionsTest.id,
+          questionTextRu: q.questionTextRu,
+          questionTextKz: q.questionTextKz,
+          questionType: q.questionType,
+          order: i + 1,
+          isRequired: true,
+        },
+      });
+
+      for (let j = 0; j < q.options.length; j++) {
+        const opt = q.options[j];
+        await prisma.answerOption.upsert({
+          where: { id: `emotions-q${i + 1}-opt${j + 1}` },
+          update: {},
+          create: {
+            id: `emotions-q${i + 1}-opt${j + 1}`,
+            questionId: question.id,
+            optionTextRu: opt.textRu,
+            optionTextKz: opt.textKz,
+            score: opt.score,
+            order: j + 1,
+          },
+        });
+      }
+    }
+    console.log('✅ Emotional Intelligence test questions created');
+  }
+
+  // Questions for Social Skills Test
+  const socialQuestions = [
+    {
+      questionTextRu: 'Легко ли тебе заводить новых друзей?',
+      questionTextKz: 'Саған жаңа достар табу оңай ма?',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Очень трудно', textKz: 'Өте қиын', score: 0 },
+        { textRu: 'Трудно', textKz: 'Қиын', score: 1 },
+        { textRu: 'Нормально', textKz: 'Қалыпты', score: 2 },
+        { textRu: 'Легко', textKz: 'Оңай', score: 3 },
+        { textRu: 'Очень легко', textKz: 'Өте оңай', score: 4 },
+      ],
+    },
+    {
+      questionTextRu: 'Ты помогаешь одноклассникам, если они не понимают задание?',
+      questionTextKz: 'Сыныптастарың тапсырманы түсінбесе, көмектесесің бе?',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Никогда', textKz: 'Ешқашан', score: 0 },
+        { textRu: 'Редко', textKz: 'Сирек', score: 1 },
+        { textRu: 'Иногда', textKz: 'Кейде', score: 2 },
+        { textRu: 'Часто', textKz: 'Жиі', score: 3 },
+        { textRu: 'Всегда', textKz: 'Әрқашан', score: 4 },
+      ],
+    },
+    {
+      questionTextRu: 'Как ты реагируешь, когда с тобой не соглашаются?',
+      questionTextKz: 'Сенімен келіспегенде қалай әрекет етесің?',
+      questionType: QuestionType.MULTIPLE_CHOICE,
+      options: [
+        { textRu: 'Злюсь и ухожу', textKz: 'Ашуланып кетемін', score: 0 },
+        { textRu: 'Молчу, но обижаюсь', textKz: 'Үндемеймін, бірақ ренжимін', score: 1 },
+        { textRu: 'Пытаюсь понять их точку зрения', textKz: 'Олардың көзқарасын түсінуге тырысамын', score: 3 },
+        { textRu: 'Спокойно обсуждаю', textKz: 'Тыныш талқылаймын', score: 4 },
+      ],
+    },
+    {
+      questionTextRu: 'Нравится ли тебе работать в команде?',
+      questionTextKz: 'Саған командада жұмыс істеу ұнай ма?',
+      questionType: QuestionType.YES_NO,
+      options: [
+        { textRu: 'Да', textKz: 'Иә', score: 4 },
+        { textRu: 'Нет', textKz: 'Жоқ', score: 0 },
+      ],
+    },
+    {
+      questionTextRu: 'Ты умеешь слушать других людей?',
+      questionTextKz: 'Сен басқа адамдарды тыңдай аласың ба?',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Нет, часто перебиваю', textKz: 'Жоқ, жиі бөлемін', score: 0 },
+        { textRu: 'Иногда слушаю', textKz: 'Кейде тыңдаймын', score: 2 },
+        { textRu: 'Да, слушаю внимательно', textKz: 'Иә, зейін қойып тыңдаймын', score: 4 },
+      ],
+    },
+  ];
+
+  const socialTest = await prisma.test.findUnique({ where: { id: 'test-social-1' } });
+  if (socialTest) {
+    for (let i = 0; i < socialQuestions.length; i++) {
+      const q = socialQuestions[i];
+      const question = await prisma.question.upsert({
+        where: { id: `social-q-${i + 1}` },
+        update: {},
+        create: {
+          id: `social-q-${i + 1}`,
+          testId: socialTest.id,
+          questionTextRu: q.questionTextRu,
+          questionTextKz: q.questionTextKz,
+          questionType: q.questionType,
+          order: i + 1,
+          isRequired: true,
+        },
+      });
+
+      for (let j = 0; j < q.options.length; j++) {
+        const opt = q.options[j];
+        await prisma.answerOption.upsert({
+          where: { id: `social-q${i + 1}-opt${j + 1}` },
+          update: {},
+          create: {
+            id: `social-q${i + 1}-opt${j + 1}`,
+            questionId: question.id,
+            optionTextRu: opt.textRu,
+            optionTextKz: opt.textKz,
+            score: opt.score,
+            order: j + 1,
+          },
+        });
+      }
+    }
+    console.log('✅ Social Skills test questions created');
+  }
+
+  // Questions for Stress Resilience Test
+  const stressQuestions = [
+    {
+      questionTextRu: 'Как ты себя чувствуешь перед важным событием (экзамен, выступление)?',
+      questionTextKz: 'Маңызды оқиғаның алдында (емтихан, сахнаға шығу) өзіңді қалай сезінесің?',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Очень нервничаю', textKz: 'Өте дүрлігемін', score: 0 },
+        { textRu: 'Немного волнуюсь', textKz: 'Біраз толқимын', score: 1 },
+        { textRu: 'Нормально', textKz: 'Қалыпты', score: 2 },
+        { textRu: 'Спокойно', textKz: 'Тыныш', score: 3 },
+        { textRu: 'Совсем не волнуюсь', textKz: 'Мүлдем толқымаймын', score: 4 },
+      ],
+    },
+    {
+      questionTextRu: 'Что ты делаешь, когда что-то не получается?',
+      questionTextKz: 'Бір нәрсе шықпаған кезде не істейсің?',
+      questionType: QuestionType.MULTIPLE_CHOICE,
+      options: [
+        { textRu: 'Бросаю и ухожу', textKz: 'Тастап кетемін', score: 0 },
+        { textRu: 'Расстраиваюсь и плачу', textKz: 'Ренжіп жылаймын', score: 1 },
+        { textRu: 'Прошу помощи', textKz: 'Көмек сұраймын', score: 3 },
+        { textRu: 'Пробую снова', textKz: 'Қайта тырысамын', score: 4 },
+      ],
+    },
+    {
+      questionTextRu: 'Ты умеешь успокаиваться, когда злишься?',
+      questionTextKz: 'Ашуланғанда тыныштала аласың ба?',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Нет, долго злюсь', textKz: 'Жоқ, ұзақ ашуланамын', score: 0 },
+        { textRu: 'Через какое-то время', textKz: 'Біраз уақыттан кейін', score: 2 },
+        { textRu: 'Да, быстро успокаиваюсь', textKz: 'Иә, тез тыныштанамын', score: 4 },
+      ],
+    },
+    {
+      questionTextRu: 'Как часто ты чувствуешь себя уставшим?',
+      questionTextKz: 'Өзіңді шаршағандай қаншалықты жиі сезінесің?',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Каждый день', textKz: 'Күн сайын', score: 0 },
+        { textRu: 'Часто', textKz: 'Жиі', score: 1 },
+        { textRu: 'Иногда', textKz: 'Кейде', score: 2 },
+        { textRu: 'Редко', textKz: 'Сирек', score: 3 },
+        { textRu: 'Почти никогда', textKz: 'Әрең', score: 4 },
+      ],
+    },
+  ];
+
+  const stressTest = await prisma.test.findUnique({ where: { id: 'test-stress-1' } });
+  if (stressTest) {
+    for (let i = 0; i < stressQuestions.length; i++) {
+      const q = stressQuestions[i];
+      const question = await prisma.question.upsert({
+        where: { id: `stress-q-${i + 1}` },
+        update: {},
+        create: {
+          id: `stress-q-${i + 1}`,
+          testId: stressTest.id,
+          questionTextRu: q.questionTextRu,
+          questionTextKz: q.questionTextKz,
+          questionType: q.questionType,
+          order: i + 1,
+          isRequired: true,
+        },
+      });
+
+      for (let j = 0; j < q.options.length; j++) {
+        const opt = q.options[j];
+        await prisma.answerOption.upsert({
+          where: { id: `stress-q${i + 1}-opt${j + 1}` },
+          update: {},
+          create: {
+            id: `stress-q${i + 1}-opt${j + 1}`,
+            questionId: question.id,
+            optionTextRu: opt.textRu,
+            optionTextKz: opt.textKz,
+            score: opt.score,
+            order: j + 1,
+          },
+        });
+      }
+    }
+    console.log('✅ Stress Resilience test questions created');
+  }
+
+  // Questions for Learning Style Test
+  const learningQuestions = [
+    {
+      questionTextRu: 'Как тебе легче запомнить новую информацию?',
+      questionTextKz: 'Жаңа ақпаратты қалай жеңіл есте сақтайсың?',
+      questionType: QuestionType.MULTIPLE_CHOICE,
+      options: [
+        { textRu: 'Послушать объяснение', textKz: 'Түсіндірмені тыңдау', score: 1 },
+        { textRu: 'Прочитать текст', textKz: 'Мәтінді оқу', score: 2 },
+        { textRu: 'Посмотреть видео или картинки', textKz: 'Видео немесе суреттерді көру', score: 3 },
+        { textRu: 'Сделать что-то руками', textKz: 'Қолмен бірдеме жасау', score: 4 },
+      ],
+    },
+    {
+      questionTextRu: 'Когда учитель объясняет новую тему, ты:',
+      questionTextKz: 'Мұғалім жаңа тақырыпты түсіндіргенде сен:',
+      questionType: QuestionType.MULTIPLE_CHOICE,
+      options: [
+        { textRu: 'Внимательно слушаю', textKz: 'Зейін қойып тыңдаймын', score: 1 },
+        { textRu: 'Записываю главное', textKz: 'Бастысын жазамын', score: 2 },
+        { textRu: 'Смотрю на доску', textKz: 'Тақтаға қараймын', score: 3 },
+        { textRu: 'Хочу сразу попробовать', textKz: 'Бірден көріп көргім келеді', score: 4 },
+      ],
+    },
+    {
+      questionTextRu: 'Какие уроки тебе больше нравятся?',
+      questionTextKz: 'Қандай сабақтар саған көбірек ұнайды?',
+      questionType: QuestionType.MULTIPLE_CHOICE,
+      options: [
+        { textRu: 'Где много обсуждений', textKz: 'Көп талқылау болатын', score: 1 },
+        { textRu: 'Где нужно много читать', textKz: 'Көп оқу керек', score: 2 },
+        { textRu: 'С презентациями и видео', textKz: 'Презентациялар мен видео бар', score: 3 },
+        { textRu: 'С практическими заданиями', textKz: 'Тәжірибелік тапсырмалар бар', score: 4 },
+      ],
+    },
+    {
+      questionTextRu: 'Ты лучше запоминаешь:',
+      questionTextKz: 'Сен жақсырақ есте сақтайсың:',
+      questionType: QuestionType.MULTIPLE_CHOICE,
+      options: [
+        { textRu: 'Что слышал', textKz: 'Естігенді', score: 1 },
+        { textRu: 'Что читал', textKz: 'Оқығанды', score: 2 },
+        { textRu: 'Что видел', textKz: 'Көргенді', score: 3 },
+        { textRu: 'Что делал сам', textKz: 'Өзің жасағанды', score: 4 },
+      ],
+    },
+  ];
+
+  const learningTest = await prisma.test.findUnique({ where: { id: 'test-learning-style-1' } });
+  if (learningTest) {
+    for (let i = 0; i < learningQuestions.length; i++) {
+      const q = learningQuestions[i];
+      const question = await prisma.question.upsert({
+        where: { id: `learning-q-${i + 1}` },
+        update: {},
+        create: {
+          id: `learning-q-${i + 1}`,
+          testId: learningTest.id,
+          questionTextRu: q.questionTextRu,
+          questionTextKz: q.questionTextKz,
+          questionType: q.questionType,
+          order: i + 1,
+          isRequired: true,
+        },
+      });
+
+      for (let j = 0; j < q.options.length; j++) {
+        const opt = q.options[j];
+        await prisma.answerOption.upsert({
+          where: { id: `learning-q${i + 1}-opt${j + 1}` },
+          update: {},
+          create: {
+            id: `learning-q${i + 1}-opt${j + 1}`,
+            questionId: question.id,
+            optionTextRu: opt.textRu,
+            optionTextKz: opt.textKz,
+            score: opt.score,
+            order: j + 1,
+          },
+        });
+      }
+    }
+    console.log('✅ Learning Style test questions created');
   }
 
   // Child for test parent
