@@ -20,13 +20,15 @@ interface OnboardingWizardProps {
 
 const concernOptions = [
   { id: 'anxiety', label: 'Тревожность', emoji: '😰' },
+  { id: 'mood', label: 'Настроение и грусть', emoji: '😢' },
   { id: 'motivation', label: 'Учёба и мотивация', emoji: '📚' },
   { id: 'social', label: 'Общение со сверстниками', emoji: '👥' },
+  { id: 'bullying', label: 'Буллинг и конфликты', emoji: '😟' },
+  { id: 'family', label: 'Отношения в семье', emoji: '👨‍👩‍👧' },
   { id: 'behavior', label: 'Поведение', emoji: '😤' },
   { id: 'sleep', label: 'Сон и режим', emoji: '💤' },
-  { id: 'gadgets', label: 'Гаджеты и экраны', emoji: '📱' },
   { id: 'self_esteem', label: 'Самооценка', emoji: '💪' },
-  { id: 'emotions', label: 'Эмоции', emoji: '🎭' },
+  { id: 'fears', label: 'Страхи и фобии', emoji: '😨' },
 ];
 
 const gradeOptions = [
@@ -291,9 +293,13 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
               <h3 className="font-medium text-indigo-900 mb-2">Рекомендуем начать с:</h3>
               <ul className="text-sm text-indigo-700 space-y-1">
                 {selectedConcerns.includes('anxiety') && <li>• Тест на тревожность</li>}
+                {selectedConcerns.includes('mood') && <li>• Шкала детской депрессии</li>}
                 {selectedConcerns.includes('motivation') && <li>• Диагностика учебной мотивации</li>}
                 {selectedConcerns.includes('self_esteem') && <li>• Тест на самооценку</li>}
-                {selectedConcerns.includes('emotions') && <li>• Тест эмоционального интеллекта</li>}
+                {selectedConcerns.includes('bullying') && <li>• Диагностика межличностных отношений</li>}
+                {selectedConcerns.includes('family') && <li>• Тест семейных отношений</li>}
+                {selectedConcerns.includes('fears') && <li>• Шкала детских страхов</li>}
+                {selectedConcerns.includes('social') && <li>• Тест социальных навыков</li>}
                 {selectedConcerns.length === 0 && (
                   <li>• Комплексная экспресс-диагностика</li>
                 )}

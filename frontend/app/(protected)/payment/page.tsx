@@ -14,6 +14,36 @@ import {
   useToast,
 } from '@/components/ui';
 
+// Allowed payment provider domains for security
+const ALLOWED_PAYMENT_DOMAINS = [
+  'kaspi.kz',
+  'paybox.kz',
+  'epay.kkb.kz',
+  'pay.kaspi.kz',
+  'test.paybox.kz',
+];
+
+/**
+ * Validates payment URL to prevent XSS attacks
+ * Only allows redirects to known payment provider domains
+ */
+function isValidPaymentUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    // Only allow HTTPS for payment URLs
+    if (parsed.protocol !== 'https:') {
+      return false;
+    }
+    // Check if hostname ends with any allowed domain
+    return ALLOWED_PAYMENT_DOMAINS.some(
+      (domain) =>
+        parsed.hostname === domain || parsed.hostname.endsWith(`.${domain}`)
+    );
+  } catch {
+    return false;
+  }
+}
+
 interface PaymentDetails {
   id: string;
   amount: number;
@@ -141,8 +171,13 @@ export default function PaymentPage() {
       setPayment(response.data);
 
       if (response.data.paymentUrl) {
-        // Redirect to payment provider
-        window.location.href = response.data.paymentUrl;
+        // Validate payment URL before redirect (XSS protection)
+        if (isValidPaymentUrl(response.data.paymentUrl)) {
+          window.location.href = response.data.paymentUrl;
+        } else {
+          console.error('Invalid payment URL detected:', response.data.paymentUrl);
+          toast.error('Ошибка безопасности', 'Недействительный URL платёжной системы');
+        }
       } else if (response.data.status === 'COMPLETED') {
         toast.success('Оплата успешна!', 'Вы можете продолжить использование сервиса');
         router.push('/dashboard');
@@ -254,9 +289,9 @@ export default function PaymentPage() {
                 Если вы уже оплатили, подождите несколько секунд. Страница обновится автоматически.
               </p>
 
-              {payment.paymentUrl && (
+              {payment.paymentUrl && isValidPaymentUrl(payment.paymentUrl) && (
                 <Button
-                  onClick={() => window.open(payment.paymentUrl, '_blank')}
+                  onClick={() => window.open(payment.paymentUrl, '_blank', 'noopener,noreferrer')}
                   className="mb-4"
                 >
                   Открыть страницу оплаты

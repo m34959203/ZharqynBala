@@ -41,6 +41,9 @@ export function Skeleton({
     <div
       className={cn(baseStyles, variants[variant], animations[animation], className)}
       style={style}
+      role="status"
+      aria-busy="true"
+      aria-label="Загрузка контента"
     />
   );
 }

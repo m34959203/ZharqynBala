@@ -9,12 +9,14 @@ import {
   Header,
 } from '@nestjs/common';
 import { Response } from 'express';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
   ApiProduces,
+  ApiTooManyRequestsResponse,
 } from '@nestjs/swagger';
 import { ResultsService } from './results.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -60,6 +62,8 @@ export class ResultsController {
   }
 
   @Get(':id/pdf')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 requests per minute to prevent abuse
   @ApiOperation({ summary: 'Download result as PDF' })
   @ApiProduces('application/pdf')
   @ApiResponse({
@@ -67,6 +71,7 @@ export class ResultsController {
     description: 'PDF file of the result',
     content: { 'application/pdf': {} },
   })
+  @ApiTooManyRequestsResponse({ description: 'Too many PDF download requests' })
   @Header('Content-Type', 'application/pdf')
   async downloadPdf(
     @Param('id', ParseUUIDPipe) id: string,

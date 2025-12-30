@@ -76,9 +76,13 @@ export function Alert({
   };
 
   return (
-    <div className={cn('rounded-lg border p-4', styles[type], className)}>
+    <div
+      className={cn('rounded-lg border p-4', styles[type], className)}
+      role={type === 'error' ? 'alert' : 'status'}
+      aria-live={type === 'error' ? 'assertive' : 'polite'}
+    >
       <div className="flex">
-        <div className={cn('flex-shrink-0', iconStyles[type])}>
+        <div className={cn('flex-shrink-0', iconStyles[type])} aria-hidden="true">
           {icon || icons[type]}
         </div>
         <div className="ml-3 flex-1">
@@ -104,8 +108,9 @@ export function Alert({
           <button
             onClick={handleDismiss}
             className="ml-4 flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+            aria-label="Закрыть уведомление"
           >
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
               <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
             </svg>
           </button>
@@ -136,33 +141,57 @@ export function Disclaimer({ className }: DisclaimerProps) {
   );
 }
 
-// Crisis warning component
+// Crisis warning component with supportive tone
 interface CrisisWarningProps {
   onContactCrisis?: () => void;
   className?: string;
+  severity?: 'low' | 'medium' | 'high';
 }
 
-export function CrisisWarning({ onContactCrisis, className }: CrisisWarningProps) {
+export function CrisisWarning({ onContactCrisis, className, severity = 'medium' }: CrisisWarningProps) {
+  // Supportive messaging based on severity level
+  const messages = {
+    low: {
+      title: 'Рекомендация для родителей',
+      description: 'Результаты теста показали области, где профессиональная поддержка может быть полезна для вашего ребёнка. Это не означает наличие серьёзных проблем — консультация поможет лучше понять ситуацию и получить рекомендации.',
+      urgency: 'Рекомендуется консультация в удобное для вас время.',
+    },
+    medium: {
+      title: 'Рекомендация для родителей',
+      description: 'По результатам теста мы рекомендуем обратиться к специалисту. Это не повод для беспокойства — многие дети проходят через подобные этапы развития. Профессиональная поддержка поможет вашему ребёнку справиться с текущими трудностями.',
+      urgency: 'Рекомендуется консультация в течение 1-2 недель.',
+    },
+    high: {
+      title: 'Важная рекомендация',
+      description: 'Результаты теста указывают на то, что вашему ребёнку может понадобиться профессиональная поддержка. Пожалуйста, не откладывайте обращение к специалисту — раннее внимание к эмоциональному состоянию ребёнка помогает быстрее справиться с трудностями.',
+      urgency: 'Рекомендуется консультация в ближайшие дни.',
+    },
+  };
+
+  const message = messages[severity];
+
   return (
     <Alert
-      type="error"
-      title="Требуется помощь специалиста"
-      action={onContactCrisis ? { label: 'Связаться с психологом', onClick: onContactCrisis } : undefined}
+      type="warning"
+      title={message.title}
+      action={onContactCrisis ? { label: 'Записаться на консультацию', onClick: onContactCrisis } : undefined}
       className={className}
     >
-      <p className="mb-2">
-        По результатам тестирования рекомендуется консультация специалиста.
-        Это не означает наличие серьёзных проблем, но профессиональная оценка поможет
-        лучше понять ситуацию.
-      </p>
-      <div className="mt-3 p-3 bg-red-100 rounded-md">
-        <p className="font-medium text-red-900 mb-1">Кризисная линия помощи:</p>
-        <p className="text-red-800">
-          <a href="tel:150" className="font-bold hover:underline">150</a> — бесплатная линия доверия для детей и подростков
-        </p>
-        <p className="text-red-800">
-          <a href="tel:111" className="font-bold hover:underline">111</a> — телефон доверия
-        </p>
+      <p className="mb-2">{message.description}</p>
+      <p className="text-sm font-medium mb-3">{message.urgency}</p>
+      <div className="mt-3 p-3 bg-yellow-100 rounded-md">
+        <p className="font-medium text-yellow-900 mb-2">Линии поддержки (бесплатно, 24/7):</p>
+        <div className="space-y-1">
+          <p className="text-yellow-800">
+            <a href="tel:150" className="font-bold hover:underline">150</a> — линия доверия для детей и подростков
+          </p>
+          <p className="text-yellow-800">
+            <a href="tel:111" className="font-bold hover:underline">111</a> — телефон психологической помощи
+          </p>
+          <p className="text-yellow-800">
+            <a href="tel:1414" className="font-bold hover:underline">1414</a> — единый номер экстренной помощи
+          </p>
+        </div>
       </div>
     </Alert>
   );
