@@ -1738,33 +1738,23 @@ async function main() {
       },
     });
 
-    // Psychologist availability slots
-    const nextMonday = new Date();
-    nextMonday.setDate(nextMonday.getDate() + (8 - nextMonday.getDay()) % 7);
-
-    for (let day = 0; day < 5; day++) {
-      const slotDate = new Date(nextMonday);
-      slotDate.setDate(slotDate.getDate() + day);
-
+    // Psychologist availability slots (dayOfWeek: 0=Monday to 6=Sunday)
+    // Create availability for weekdays (Monday-Friday)
+    for (let dayOfWeek = 0; dayOfWeek < 5; dayOfWeek++) {
       for (let hour = 9; hour <= 17; hour++) {
-        const startTime = new Date(slotDate);
-        startTime.setHours(hour, 0, 0, 0);
-        const endTime = new Date(slotDate);
-        endTime.setHours(hour + 1, 0, 0, 0);
+        const startTime = `${hour.toString().padStart(2, '0')}:00`;
+        const endTime = `${(hour + 1).toString().padStart(2, '0')}:00`;
+        const slotId = `avail-${psychProfile.id}-${dayOfWeek}-${hour}`;
 
         await prisma.psychologistAvailability.upsert({
-          where: {
-            psychologistId_startTime: {
-              psychologistId: psychProfile.id,
-              startTime: startTime,
-            },
-          },
+          where: { id: slotId },
           update: {},
           create: {
+            id: slotId,
             psychologistId: psychProfile.id,
+            dayOfWeek: dayOfWeek,
             startTime: startTime,
             endTime: endTime,
-            isBooked: Math.random() > 0.6, // 40% slots booked
           },
         });
       }
@@ -1817,7 +1807,6 @@ async function main() {
           lastName: nameData.lastName + (studentIndex >= studentNames.length ? 'а' : ''),
           birthDate: birthDate,
           gender: nameData.gender,
-          parentPhone: `+7701${String(1000000 + studentIndex).slice(1)}`,
         },
       });
       studentIndex++;
@@ -1975,8 +1964,9 @@ async function main() {
         classId: schoolClasses[0].id,
         testId: 'test-anxiety-1',
         assignedAt: new Date('2025-12-15'),
-        dueDate: new Date('2025-12-20'),
-        completedAt: new Date('2025-12-19'),
+        deadline: new Date('2025-12-20'),
+        completedCount: 6,
+        totalCount: 6,
       },
     });
 
@@ -1990,7 +1980,9 @@ async function main() {
         classId: schoolClasses[1].id,
         testId: 'test-motivation-1',
         assignedAt: new Date('2025-12-22'),
-        dueDate: new Date('2025-12-30'),
+        deadline: new Date('2025-12-30'),
+        completedCount: 3,
+        totalCount: 7,
       },
     });
 
@@ -2004,7 +1996,9 @@ async function main() {
         classId: schoolClasses[2].id,
         testId: 'test-social-1',
         assignedAt: new Date('2025-12-26'),
-        dueDate: new Date('2026-01-10'),
+        deadline: new Date('2026-01-10'),
+        completedCount: 0,
+        totalCount: 8,
       },
     });
 
