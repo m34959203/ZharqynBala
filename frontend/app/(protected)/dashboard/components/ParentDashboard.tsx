@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import api from '@/lib/api';
 
 interface Child {
   id: string;
@@ -26,26 +28,63 @@ interface ParentDashboardProps {
 }
 
 export default function ParentDashboard({ userName }: ParentDashboardProps) {
+  const router = useRouter();
   const [children, setChildren] = useState<Child[]>([]);
   const [recentResults, setRecentResults] = useState<RecentResult[]>([]);
   const [loading, setLoading] = useState(true);
+  const [checkingOnboarding, setCheckingOnboarding] = useState(true);
+
+  // Check if user needs onboarding
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      // Skip if already completed (stored in localStorage)
+      const onboardingComplete = localStorage.getItem('onboardingComplete');
+      if (onboardingComplete === 'true') {
+        setCheckingOnboarding(false);
+        return;
+      }
+
+      try {
+        // Check if user has any children
+        const response = await api.get('/users/me/children');
+        const userChildren = response.data || [];
+
+        if (userChildren.length === 0) {
+          // No children - redirect to onboarding
+          router.push('/onboarding');
+          return;
+        }
+
+        // Has children - mark as complete
+        localStorage.setItem('onboardingComplete', 'true');
+        setChildren(userChildren);
+      } catch (error) {
+        // If API fails, check localStorage or redirect
+        console.error('Failed to check onboarding:', error);
+      } finally {
+        setCheckingOnboarding(false);
+      }
+    };
+
+    checkOnboarding();
+  }, [router]);
 
   useEffect(() => {
+    if (checkingOnboarding) return;
+
     const fetchData = async () => {
       try {
         const [childrenRes, resultsRes] = await Promise.all([
-          fetch('/api/children').catch(() => null),
-          fetch('/api/results?limit=5').catch(() => null),
+          api.get('/users/me/children').catch(() => null),
+          api.get('/results?limit=5').catch(() => null),
         ]);
 
-        if (childrenRes?.ok) {
-          const data = await childrenRes.json();
-          setChildren(data.children || []);
+        if (childrenRes?.data) {
+          setChildren(childrenRes.data || []);
         }
 
-        if (resultsRes?.ok) {
-          const data = await resultsRes.json();
-          setRecentResults(data.results || []);
+        if (resultsRes?.data) {
+          setRecentResults(resultsRes.data.results || []);
         }
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -55,7 +94,7 @@ export default function ParentDashboard({ userName }: ParentDashboardProps) {
     };
 
     fetchData();
-  }, []);
+  }, [checkingOnboarding]);
 
   const getAge = (birthDate: string) => {
     const today = new Date();
@@ -79,6 +118,18 @@ export default function ParentDashboard({ userName }: ParentDashboardProps) {
     if (score >= 60) return 'bg-yellow-500';
     return 'bg-red-500';
   };
+
+  // Show loading while checking onboarding
+  if (checkingOnboarding) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-500">Загрузка...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
