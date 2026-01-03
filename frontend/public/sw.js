@@ -132,10 +132,12 @@ async function networkFirst(request) {
 async function staleWhileRevalidate(request) {
   const cached = await caches.match(request);
 
-  const fetchPromise = fetch(request).then((response) => {
+  const fetchPromise = fetch(request).then(async (response) => {
     if (response.ok) {
-      const cache = caches.open(DYNAMIC_CACHE);
-      cache.then((c) => c.put(request, response.clone()));
+      // Clone response BEFORE returning to avoid "body already used" error
+      const responseClone = response.clone();
+      const cache = await caches.open(DYNAMIC_CACHE);
+      await cache.put(request, responseClone);
     }
     return response;
   }).catch(() => null);
