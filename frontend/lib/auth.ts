@@ -74,9 +74,11 @@ if (MAILRU_CONFIGURED) {
 }
 
 // Email/Password (Credentials) - always available
+console.log("[NextAuth] Adding CredentialsProvider...");
 providers.push(
   CredentialsProvider({
-    name: "credentials",
+    id: "credentials",
+    name: "Credentials",
     credentials: {
       email: { label: "Email", type: "email" },
       password: { label: "Password", type: "password" },
@@ -165,6 +167,10 @@ providers.push(
     },
   })
 );
+
+// Log all registered providers
+console.log("[NextAuth] Total providers registered:", providers.length);
+console.log("[NextAuth] Provider IDs:", providers.map(p => (p as any).id || (p as any).options?.id || 'unknown'));
 
 export const authOptions: AuthOptions = {
   providers,
