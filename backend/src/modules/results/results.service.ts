@@ -2,9 +2,11 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { PdfService } from '../pdf/pdf.service';
+import { ScoringService, ScoringResult } from './scoring.service';
 import {
   ResultResponseDto,
   ResultDetailDto,
@@ -13,9 +15,12 @@ import {
 
 @Injectable()
 export class ResultsService {
+  private readonly logger = new Logger(ResultsService.name);
+
   constructor(
     private prisma: PrismaService,
     private pdfService: PdfService,
+    private scoringService: ScoringService,
   ) {}
 
   async findAll(userId: string): Promise<ResultsHistoryDto> {
@@ -195,23 +200,10 @@ export class ResultsService {
 
     const childAge = this.calculateAge(result.session.child.birthDate);
 
-    // Parse AI interpretation if exists
-    let aiRecommendations: string[] = [];
-    if (result.aiInterpretation) {
-      try {
-        const aiData = typeof result.aiInterpretation === 'string'
-          ? JSON.parse(result.aiInterpretation as string)
-          : result.aiInterpretation;
-        aiRecommendations = aiData.recommendations || [];
-      } catch {
-        // ignore parsing errors
-      }
-    }
-
-    // Build recommendations list
+    // Build recommendations list from stored recommendations
     const recommendations = result.recommendations
       ? result.recommendations.split('\n').filter((r: string) => r.trim())
-      : aiRecommendations;
+      : [];
 
     return this.pdfService.generateResultPdf({
       id: result.id,
@@ -225,6 +217,117 @@ export class ResultsService {
       recommendations,
       interpretation: result.interpretation,
     });
+  }
+
+  /**
+   * Рассчитать и сохранить результат теста
+   * Использует ScoringService для валидированного расчёта
+   */
+  async calculateAndSaveResult(sessionId: string, userId: string): Promise<ResultDetailDto> {
+    // Получить сессию
+    const session = await this.prisma.testSession.findUnique({
+      where: { id: sessionId },
+      include: {
+        test: true,
+        child: true,
+      },
+    });
+
+    if (!session) {
+      throw new NotFoundException('Session not found');
+    }
+
+    // Проверить доступ
+    if (session.child.parentId !== userId) {
+      throw new ForbiddenException('You do not have access to this session');
+    }
+
+    // Проверить что сессия завершена
+    if (session.status !== 'COMPLETED') {
+      throw new ForbiddenException('Test session is not completed');
+    }
+
+    // Проверить что результат ещё не существует
+    const existingResult = await this.prisma.result.findUnique({
+      where: { sessionId },
+    });
+
+    if (existingResult) {
+      this.logger.log(`Result already exists for session ${sessionId}`);
+      return this.findOne(existingResult.id, userId);
+    }
+
+    // Рассчитать результат через ScoringService
+    this.logger.log(`Calculating result for session ${sessionId}, test ${session.testId}`);
+    const scoringResult: ScoringResult = await this.scoringService.calculateResult(
+      sessionId,
+      session.testId,
+    );
+
+    // Формируем расширенную интерпретацию с метаданными
+    const extendedInterpretation = `${scoringResult.interpretation}\n\n---\nУровень: ${scoringResult.level}\nРезультат: ${scoringResult.percentage}%`;
+
+    // Сохранить результат
+    const result = await this.prisma.result.create({
+      data: {
+        sessionId,
+        totalScore: scoringResult.totalScore,
+        maxScore: scoringResult.maxScore,
+        interpretation: extendedInterpretation,
+        recommendations: scoringResult.recommendations.join('\n'),
+      },
+    });
+
+    this.logger.log(`Result saved: ${result.id}, score: ${scoringResult.totalScore}/${scoringResult.maxScore}`);
+
+    return this.findOne(result.id, userId);
+  }
+
+  /**
+   * Пересчитать результат теста
+   */
+  async recalculateResult(resultId: string, userId: string): Promise<ResultDetailDto> {
+    const result = await this.prisma.result.findUnique({
+      where: { id: resultId },
+      include: {
+        session: {
+          include: {
+            test: true,
+            child: true,
+          },
+        },
+      },
+    });
+
+    if (!result) {
+      throw new NotFoundException('Result not found');
+    }
+
+    if (result.session.child.parentId !== userId) {
+      throw new ForbiddenException('You do not have access to this result');
+    }
+
+    // Пересчитать
+    const scoringResult = await this.scoringService.calculateResult(
+      result.sessionId,
+      result.session.testId,
+    );
+
+    // Формируем расширенную интерпретацию с метаданными
+    const extendedInterpretation = `${scoringResult.interpretation}\n\n---\nУровень: ${scoringResult.level}\nРезультат: ${scoringResult.percentage}%`;
+
+    // Обновить результат
+    await this.prisma.result.update({
+      where: { id: resultId },
+      data: {
+        totalScore: scoringResult.totalScore,
+        maxScore: scoringResult.maxScore,
+        interpretation: extendedInterpretation,
+        recommendations: scoringResult.recommendations.join('\n'),
+      },
+    });
+
+    return this.findOne(resultId, userId);
   }
 
   private calculateAge(birthDate: Date): number {

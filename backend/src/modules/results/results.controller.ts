@@ -1,6 +1,8 @@
 import {
   Controller,
   Get,
+  Post,
+  Patch,
   Param,
   UseGuards,
   ParseUUIDPipe,
@@ -87,6 +89,30 @@ export class ResultsController {
     });
 
     res.end(pdf);
+  }
+
+  @Post('calculate/:sessionId')
+  @ApiOperation({ summary: 'Calculate and save result for a completed test session' })
+  @ApiResponse({ status: 201, type: ResultDetailDto })
+  @ApiResponse({ status: 404, description: 'Session not found' })
+  @ApiResponse({ status: 403, description: 'Access denied or session not completed' })
+  async calculateAndSave(
+    @Param('sessionId', ParseUUIDPipe) sessionId: string,
+    @CurrentUser('id') userId: string,
+  ): Promise<ResultDetailDto> {
+    return this.resultsService.calculateAndSaveResult(sessionId, userId);
+  }
+
+  @Patch(':id/recalculate')
+  @ApiOperation({ summary: 'Recalculate result with updated scoring logic' })
+  @ApiResponse({ status: 200, type: ResultDetailDto })
+  @ApiResponse({ status: 404, description: 'Result not found' })
+  @ApiResponse({ status: 403, description: 'Access denied' })
+  async recalculate(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+  ): Promise<ResultDetailDto> {
+    return this.resultsService.recalculateResult(id, userId);
   }
 
   @Get(':id')

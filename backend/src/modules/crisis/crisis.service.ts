@@ -272,17 +272,17 @@ export class CrisisService {
       await this.prisma.securityLog.create({
         data: {
           userId: data.userId,
-          action: 'CRISIS_DETECTED',
-          resource: 'test_session',
-          resourceId: data.sessionId || '',
-          details: JSON.stringify({
+          eventType: 'DATA_ACCESS', // Using DATA_ACCESS as closest event type for crisis detection
+          ipAddress: 'system',
+          userAgent: 'crisis-service',
+          metadata: JSON.parse(JSON.stringify({
+            type: 'CRISIS_DETECTED',
+            sessionId: data.sessionId || '',
             childId: data.childId,
             severity: data.severity,
             indicators: data.indicators,
             actionTaken: data.actionTaken,
-          }),
-          ipAddress: 'system',
-          userAgent: 'crisis-service',
+          })),
         },
       });
     } catch (error) {
