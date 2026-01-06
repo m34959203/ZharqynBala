@@ -1,7 +1,7 @@
-import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
-import type { AuthOptions, Provider } from "next-auth/providers/index";
+import type { AuthOptions } from "next-auth";
+import type { Provider } from "next-auth/providers";
 
 // API URL для server-side вызовов (не используем api.ts т.к. он использует js-cookie)
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -346,5 +346,5 @@ export const authOptions: AuthOptions = {
   },
 };
 
-const handler = NextAuth(authOptions);
-export { handler as GET, handler as POST };
+// NOTE: Handler is created in /app/api/auth/[...nextauth]/route.ts
+// This file only exports authOptions configuration
