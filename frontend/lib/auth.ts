@@ -271,17 +271,45 @@ export const authOptions: AuthOptions = {
       console.log("[NextAuth:redirect] URL:", url);
       console.log("[NextAuth:redirect] Base URL:", baseUrl);
 
+      // Helper to check if a URL points to auth pages (login, error, etc.)
+      const isAuthPage = (urlString: string): boolean => {
+        try {
+          const parsedUrl = new URL(urlString, baseUrl);
+          const pathname = parsedUrl.pathname;
+          // Check if the path is an auth page that would cause a loop
+          return pathname === "/login" || pathname === "/error" || pathname.startsWith("/login");
+        } catch {
+          // For relative URLs
+          return urlString === "/login" || urlString === "/error" || urlString.startsWith("/login");
+        }
+      };
+
+      // Default safe redirect destination
+      const defaultRedirect = `${baseUrl}/dashboard`;
+
       // Allows relative callback URLs
       if (url.startsWith("/")) {
+        // Prevent redirect loop to login page
+        if (isAuthPage(url)) {
+          console.log("[NextAuth:redirect] Auth page detected, redirecting to dashboard instead of:", url);
+          return defaultRedirect;
+        }
         const redirectUrl = `${baseUrl}${url}`;
         console.log("[NextAuth:redirect] Redirecting to:", redirectUrl);
         return redirectUrl;
       }
+
       // Allows callback URLs on the same origin
       if (new URL(url).origin === baseUrl) {
+        // Prevent redirect loop to login page
+        if (isAuthPage(url)) {
+          console.log("[NextAuth:redirect] Auth page detected in full URL, redirecting to dashboard instead of:", url);
+          return defaultRedirect;
+        }
         console.log("[NextAuth:redirect] Same origin, redirecting to:", url);
         return url;
       }
+
       console.log("[NextAuth:redirect] Defaulting to baseUrl:", baseUrl);
       return baseUrl;
     },
