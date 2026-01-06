@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
-import { signIn } from 'next-auth/react';
+import { signIn, getCsrfToken } from 'next-auth/react';
 import type { LoginRequest } from '@/types/auth';
 
 interface AvailableProviders {
@@ -76,6 +76,17 @@ function LoginContent() {
     try {
       setIsLoading(true);
       setError('');
+
+      // Debug: Check CSRF token before signIn
+      console.log('[LoginPage:onSubmit] Checking CSRF token...');
+      const csrfToken = await getCsrfToken();
+      console.log('[LoginPage:onSubmit] CSRF token:', csrfToken ? 'present' : 'MISSING');
+
+      if (!csrfToken) {
+        console.error('[LoginPage:onSubmit] No CSRF token available!');
+        setError('Ошибка безопасности. Обновите страницу и попробуйте снова.');
+        return;
+      }
 
       console.log('[LoginPage:onSubmit] Calling signIn...');
       const result = await signIn('credentials', {
