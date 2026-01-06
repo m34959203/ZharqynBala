@@ -29,9 +29,23 @@ async function bootstrap() {
 
   // CORS configuration - supports multiple origins
   const corsOrigin = configService.get('CORS_ORIGIN');
+
+  // Sanitize CORS origins - remove any invalid characters that could break HTTP headers
+  const sanitizeOrigin = (origin: string): string => {
+    return origin
+      .trim()
+      .replace(/[\r\n\t]/g, '') // Remove newlines, carriage returns, tabs
+      .replace(/[^\x20-\x7E]/g, ''); // Keep only printable ASCII characters
+  };
+
   const corsOrigins = corsOrigin
-    ? corsOrigin.split(',').map((o: string) => o.trim())
+    ? corsOrigin
+        .split(',')
+        .map((o: string) => sanitizeOrigin(o))
+        .filter((o: string) => o.length > 0 && o.startsWith('http'))
     : ['http://localhost:3000'];
+
+  console.log('CORS origins configured:', corsOrigins);
 
   app.enableCors({
     origin: corsOrigins.length === 1 ? corsOrigins[0] : corsOrigins,
