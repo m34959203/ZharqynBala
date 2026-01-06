@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
@@ -72,7 +72,7 @@ const classes = [
   { id: '5', name: '7-А', students: 29 },
 ];
 
-export default function NewTestingPage() {
+function NewTestingContent() {
   const searchParams = useSearchParams();
   const preselectedClassId = searchParams.get('classId');
 
@@ -275,5 +275,29 @@ export default function NewTestingPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function TestingFallback() {
+  return (
+    <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="animate-pulse">
+        <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+        <div className="h-4 bg-gray-200 rounded w-1/2 mb-8"></div>
+        <div className="grid grid-cols-2 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-32 bg-gray-200 rounded-xl"></div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function NewTestingPage() {
+  return (
+    <Suspense fallback={<TestingFallback />}>
+      <NewTestingContent />
+    </Suspense>
   );
 }

@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { TestSession as TestSessionComponent } from '@/components/tests/TestSession';
 import { TestSession, Question } from '@/lib/types';
 import api from '@/lib/api';
 
-export default function TestSessionPage() {
+function TestSessionContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const params = useParams();
@@ -135,5 +135,24 @@ export default function TestSessionPage() {
         isSubmitting={submitting}
       />
     </div>
+  );
+}
+
+function SessionFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">Загрузка теста...</p>
+      </div>
+    </div>
+  );
+}
+
+export default function TestSessionPage() {
+  return (
+    <Suspense fallback={<SessionFallback />}>
+      <TestSessionContent />
+    </Suspense>
   );
 }
