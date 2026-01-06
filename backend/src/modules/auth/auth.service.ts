@@ -84,35 +84,62 @@ export class AuthService {
    * Вход пользователя
    */
   async login(dto: LoginDto): Promise<AuthResponseDto> {
+    console.log('[AuthService:login] ========== Login attempt ==========');
+    console.log('[AuthService:login] Email:', dto.email);
+
     // Поиск пользователя
+    console.log('[AuthService:login] Looking up user in database...');
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
 
     if (!user) {
+      console.error('[AuthService:login] User NOT FOUND for email:', dto.email);
       throw new UnauthorizedException('Неверный email или пароль');
     }
 
+    console.log('[AuthService:login] User found:', {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      hasPasswordHash: !!user.passwordHash,
+    });
+
     // Проверка пароля
+    console.log('[AuthService:login] Comparing passwords...');
     const isPasswordValid = await this.comparePasswords(
       dto.password,
       user.passwordHash,
     );
 
+    console.log('[AuthService:login] Password valid:', isPasswordValid);
+
     if (!isPasswordValid) {
+      console.error('[AuthService:login] Password INVALID for user:', dto.email);
       throw new UnauthorizedException('Неверный email или пароль');
     }
 
     // Генерация токенов
+    console.log('[AuthService:login] Generating tokens...');
     const tokens = await this.generateTokens(user.id, user.email, user.role);
+    console.log('[AuthService:login] Tokens generated successfully');
 
     // Сохранение refresh token в БД
+    console.log('[AuthService:login] Saving refresh token...');
     await this.saveRefreshToken(user.id, tokens.refreshToken);
+    console.log('[AuthService:login] Refresh token saved');
 
-    return {
+    const response = {
       user: this.mapUserToResponse(user),
       ...tokens,
     };
+
+    console.log('[AuthService:login] ========== Login SUCCESS ==========');
+    console.log('[AuthService:login] Response user:', response.user);
+    console.log('[AuthService:login] Has accessToken:', !!response.accessToken);
+    console.log('[AuthService:login] Has refreshToken:', !!response.refreshToken);
+
+    return response;
   }
 
   /**
