@@ -10,6 +10,12 @@ import { Request, Response, NextFunction } from 'express';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
+  // Startup diagnostics
+  console.log('🔧 Starting Zharqyn Bala Backend...');
+  console.log('📊 Environment:', process.env.NODE_ENV || 'development');
+  console.log('🔌 PORT:', process.env.PORT || '8080 (default)');
+  console.log('🗄️ DATABASE_URL:', process.env.DATABASE_URL ? 'configured' : 'NOT SET');
+
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'log', 'debug', 'verbose'],
   });
@@ -102,9 +108,10 @@ async function bootstrap() {
   SwaggerModule.setup('api/docs', app, document);
 
   const port = configService.get('PORT') || 8080;
-  await app.listen(port);
+  // Bind to 0.0.0.0 for Docker/Railway - important for healthcheck!
+  await app.listen(port, '0.0.0.0');
 
-  console.log(`🚀 Application is running on: http://localhost:${port}`);
+  console.log(`🚀 Application is running on port ${port}`);
   console.log(`📚 API Documentation: http://localhost:${port}/api/docs`);
 }
 
