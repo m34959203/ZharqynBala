@@ -37,10 +37,26 @@ function LoginContent() {
 
   // Fetch available providers
   useEffect(() => {
+    console.log('[LoginPage] Fetching providers...');
     fetch('/api/auth/providers')
-      .then(res => res.json())
-      .then(data => setProviders(data))
-      .catch(() => {
+      .then(res => {
+        console.log('[LoginPage] Providers response status:', res.status);
+        return res.json();
+      })
+      .then(data => {
+        console.log('[LoginPage] Providers data:', JSON.stringify(data, null, 2));
+        // NextAuth returns providers in format { providerId: { id, name, type, ... } }
+        // We need to check if each provider exists
+        const availableProviders = {
+          google: !!data.google,
+          mailru: !!data.mailru,
+          credentials: !!data.credentials,
+        };
+        console.log('[LoginPage] Parsed providers:', availableProviders);
+        setProviders(availableProviders);
+      })
+      .catch((err) => {
+        console.error('[LoginPage] Failed to fetch providers:', err);
         // Default to credentials only if fetch fails
         setProviders({ google: false, mailru: false, credentials: true });
       });
@@ -53,25 +69,46 @@ function LoginContent() {
   } = useForm<LoginRequest>();
 
   const onSubmit = async (data: LoginRequest) => {
+    console.log('[LoginPage:onSubmit] ========== Login Started ==========');
+    console.log('[LoginPage:onSubmit] Email:', data.email);
+    console.log('[LoginPage:onSubmit] Has password:', !!data.password);
+
     try {
       setIsLoading(true);
       setError('');
 
+      console.log('[LoginPage:onSubmit] Calling signIn...');
       const result = await signIn('credentials', {
         redirect: false,
         email: data.email,
         password: data.password,
       });
 
+      console.log('[LoginPage:onSubmit] signIn result:', JSON.stringify(result, null, 2));
+      console.log('[LoginPage:onSubmit] Result status:', result?.status);
+      console.log('[LoginPage:onSubmit] Result ok:', result?.ok);
+      console.log('[LoginPage:onSubmit] Result error:', result?.error);
+      console.log('[LoginPage:onSubmit] Result url:', result?.url);
+
       if (result?.error) {
+        console.error('[LoginPage:onSubmit] Login error:', result.error);
         setError(result.error);
-      } else {
+      } else if (result?.ok) {
+        console.log('[LoginPage:onSubmit] Login successful, redirecting to dashboard...');
         router.push('/dashboard');
+      } else {
+        console.error('[LoginPage:onSubmit] Unexpected result - no error but not ok');
+        setError('Неизвестная ошибка авторизации');
       }
     } catch (err: any) {
+      console.error('[LoginPage:onSubmit] ========== EXCEPTION ==========');
+      console.error('[LoginPage:onSubmit] Error name:', err.name);
+      console.error('[LoginPage:onSubmit] Error message:', err.message);
+      console.error('[LoginPage:onSubmit] Error stack:', err.stack);
       setError('Ошибка входа. Проверьте данные.');
     } finally {
       setIsLoading(false);
+      console.log('[LoginPage:onSubmit] ========== Login Finished ==========');
     }
   };
 
