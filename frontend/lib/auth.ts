@@ -78,9 +78,12 @@ providers.push(
         throw new Error("Требуется email и пароль");
       }
 
+      const apiUrl = `${API_URL}/api/v1/auth/login`;
+      console.log("[NextAuth] Attempting login to:", apiUrl);
+
       try {
         // Используем native fetch для server-side вызова (не axios с js-cookie)
-        const response = await fetch(`${API_URL}/api/v1/auth/login`, {
+        const response = await fetch(apiUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -91,12 +94,23 @@ providers.push(
           }),
         });
 
+        console.log("[NextAuth] Response status:", response.status);
+
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || "Неверный email или пароль");
+          const errorText = await response.text();
+          console.error("[NextAuth] Error response:", errorText);
+          let errorMessage = "Неверный email или пароль";
+          try {
+            const errorData = JSON.parse(errorText);
+            errorMessage = errorData.message || errorMessage;
+          } catch {
+            // Keep default error message
+          }
+          throw new Error(errorMessage);
         }
 
         const data = await response.json();
+        console.log("[NextAuth] Login successful for:", data.user?.email);
 
         if (data && data.user) {
           return {
@@ -112,7 +126,7 @@ providers.push(
 
         return null;
       } catch (error: any) {
-        console.error("Auth error:", error);
+        console.error("[NextAuth] Auth error:", error.message);
         throw new Error(error.message || "Ошибка авторизации");
       }
     },

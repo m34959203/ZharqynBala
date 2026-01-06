@@ -26,9 +26,18 @@ async function bootstrap() {
 
   // Security
   app.use(helmet());
+
+  // CORS configuration - supports multiple origins
+  const corsOrigin = configService.get('CORS_ORIGIN');
+  const corsOrigins = corsOrigin
+    ? corsOrigin.split(',').map((o: string) => o.trim())
+    : ['http://localhost:3000'];
+
   app.enableCors({
-    origin: configService.get('CORS_ORIGIN'),
+    origin: corsOrigins.length === 1 ? corsOrigins[0] : corsOrigins,
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   });
 
   // Compression
