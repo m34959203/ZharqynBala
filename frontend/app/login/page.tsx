@@ -88,11 +88,13 @@ function LoginContent() {
         return;
       }
 
-      console.log('[LoginPage:onSubmit] Calling signIn...');
+      console.log('[LoginPage:onSubmit] Calling signIn with CSRF token...');
       const result = await signIn('credentials', {
         redirect: false,
         email: data.email,
         password: data.password,
+        csrfToken: csrfToken,  // CRITICAL: Pass CSRF token to signIn
+        callbackUrl: '/dashboard',
       });
 
       console.log('[LoginPage:onSubmit] signIn result:', JSON.stringify(result, null, 2));
@@ -101,28 +103,25 @@ function LoginContent() {
       console.log('[LoginPage:onSubmit] Result error:', result?.error);
       console.log('[LoginPage:onSubmit] Result url:', result?.url);
 
-      if (result?.error) {
+      // Handle null result first (indicates CSRF or request failure)
+      if (!result) {
+        console.error('[LoginPage:onSubmit] signIn returned null - CSRF or request failed');
+        setError('Ошибка безопасности. Обновите страницу и попробуйте снова.');
+      } else if (result.error) {
         console.error('[LoginPage:onSubmit] Login error:', result.error);
         setError(result.error);
-      } else if (result?.ok) {
+      } else if (result.ok) {
         console.log('[LoginPage:onSubmit] Login successful, redirecting to dashboard...');
         router.push('/dashboard');
+      } else if (result.status === 401) {
+        setError('Неверный email или пароль');
+      } else if (result.status === 403) {
+        setError('Доступ запрещен');
+      } else if (result.status && result.status >= 500) {
+        setError('Ошибка сервера. Попробуйте позже.');
       } else {
-        // Log full result for debugging
-        console.error('[LoginPage:onSubmit] Unexpected result - no error but not ok');
-        console.error('[LoginPage:onSubmit] Full result:', result);
-        console.error('[LoginPage:onSubmit] Result keys:', result ? Object.keys(result) : 'null');
-
-        // Check if result.status indicates an error
-        if (result?.status === 401) {
-          setError('Неверный email или пароль');
-        } else if (result?.status === 403) {
-          setError('Доступ запрещен');
-        } else if (result?.status && result.status >= 500) {
-          setError('Ошибка сервера. Попробуйте позже.');
-        } else {
-          setError(`Ошибка авторизации (статус: ${result?.status || 'unknown'})`);
-        }
+        console.error('[LoginPage:onSubmit] Unexpected result:', result);
+        setError(`Ошибка авторизации (статус: ${result.status || 'unknown'})`);
       }
     } catch (err: any) {
       console.error('[LoginPage:onSubmit] ========== EXCEPTION ==========');
