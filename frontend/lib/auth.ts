@@ -353,8 +353,10 @@ export const authOptions: AuthOptions = {
       },
     },
     csrfToken: {
+      // Use __Secure- instead of __Host- prefix for Railway proxy compatibility
+      // __Host- is too strict and fails with reverse proxies
       name: process.env.NODE_ENV === "production"
-        ? "__Host-next-auth.csrf-token"
+        ? "__Secure-next-auth.csrf-token"
         : "next-auth.csrf-token",
       options: {
         httpOnly: true,
