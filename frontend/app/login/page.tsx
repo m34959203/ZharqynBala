@@ -97,8 +97,21 @@ function LoginContent() {
         console.log('[LoginPage:onSubmit] Login successful, redirecting to dashboard...');
         router.push('/dashboard');
       } else {
+        // Log full result for debugging
         console.error('[LoginPage:onSubmit] Unexpected result - no error but not ok');
-        setError('Неизвестная ошибка авторизации');
+        console.error('[LoginPage:onSubmit] Full result:', result);
+        console.error('[LoginPage:onSubmit] Result keys:', result ? Object.keys(result) : 'null');
+
+        // Check if result.status indicates an error
+        if (result?.status === 401) {
+          setError('Неверный email или пароль');
+        } else if (result?.status === 403) {
+          setError('Доступ запрещен');
+        } else if (result?.status && result.status >= 500) {
+          setError('Ошибка сервера. Попробуйте позже.');
+        } else {
+          setError(`Ошибка авторизации (статус: ${result?.status || 'unknown'})`);
+        }
       }
     } catch (err: any) {
       console.error('[LoginPage:onSubmit] ========== EXCEPTION ==========');
