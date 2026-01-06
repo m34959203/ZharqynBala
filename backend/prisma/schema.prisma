@@ -293,6 +293,7 @@ model AnswerOption {
   optionTextRu  String   @map("option_text_ru")
   optionTextKz  String   @map("option_text_kz")
   score         Int
+  metadata      Json?    // Optional metadata for category, scoring rules, etc.
 
   order         Int
 
