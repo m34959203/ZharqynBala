@@ -12,6 +12,7 @@ import {
   PaymentProvider
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { seedValidatedTests } from './test-data/psychological-tests';
 
 const prisma = new PrismaClient();
 
@@ -1220,6 +1221,11 @@ async function main() {
     }
     console.log('✅ Learning Style test questions created');
   }
+
+  // ============================================
+  // ВАЛИДИРОВАННЫЕ ПСИХОЛОГИЧЕСКИЕ ТЕСТЫ
+  // ============================================
+  await seedValidatedTests(prisma);
 
   // ============================================
   // ДЕМО ДАННЫЕ - ДЕТИ

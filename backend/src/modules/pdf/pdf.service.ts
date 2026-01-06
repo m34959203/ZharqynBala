@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, InternalServerErrorException, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 interface PdfContent {
@@ -231,35 +231,46 @@ export class PdfService {
     // Generate HTML content
     const html = this.generateHtml(content);
 
-    // In production, use puppeteer or similar for PDF generation
-    // For now, we'll return a simple HTML-to-PDF conversion
+    // In production, use puppeteer for PDF generation
     try {
       // @ts-ignore - puppeteer is optional dependency
       const puppeteer = await import('puppeteer').catch(() => null);
       if (!puppeteer) {
-        this.logger.warn('Puppeteer not installed, returning HTML');
-        return Buffer.from(html, 'utf-8');
+        this.logger.error('Puppeteer not installed - PDF generation unavailable');
+        throw new ServiceUnavailableException(
+          'PDF generation service is temporarily unavailable. Please try again later.'
+        );
       }
+
       const browser = await puppeteer.launch({
         headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
       });
 
-      const page = await browser.newPage();
-      await page.setContent(html, { waitUntil: 'networkidle0' });
+      try {
+        const page = await browser.newPage();
+        await page.setContent(html, { waitUntil: 'networkidle0' });
 
-      const pdf = await page.pdf({
-        format: 'A4',
-        printBackground: true,
-        margin: { top: '20mm', right: '20mm', bottom: '20mm', left: '20mm' },
-      });
+        const pdf = await page.pdf({
+          format: 'A4',
+          printBackground: true,
+          margin: { top: '20mm', right: '20mm', bottom: '20mm', left: '20mm' },
+        });
 
-      await browser.close();
-      return Buffer.from(pdf);
+        return Buffer.from(pdf);
+      } finally {
+        await browser.close();
+      }
     } catch (error) {
+      // Re-throw NestJS exceptions as-is
+      if (error instanceof ServiceUnavailableException || error instanceof InternalServerErrorException) {
+        throw error;
+      }
+
       this.logger.error(`PDF generation failed: ${error.message}`);
-      // Fallback: return HTML as buffer
-      return Buffer.from(html, 'utf-8');
+      throw new InternalServerErrorException(
+        'Failed to generate PDF. Please try again later.'
+      );
     }
   }
 
