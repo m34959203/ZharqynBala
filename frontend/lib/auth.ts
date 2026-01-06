@@ -175,6 +175,11 @@ console.log("[NextAuth] Provider IDs:", providers.map(p => (p as any).id || (p a
 export const authOptions: AuthOptions = {
   providers,
 
+  // CRITICAL: Trust the host header from Railway proxy
+  // Without this, CSRF validation fails silently
+  // @ts-ignore - trustHost is valid in NextAuth v4.24+
+  trustHost: true,
+
   callbacks: {
     async jwt({ token, user, account }) {
       console.log("[NextAuth:jwt] ========== JWT Callback ==========");
@@ -292,6 +297,45 @@ export const authOptions: AuthOptions = {
   },
 
   secret: process.env.NEXTAUTH_SECRET || "zharqynbala-default-secret-change-in-production",
+
+  // Use secure cookies in production (Railway uses HTTPS)
+  useSecureCookies: process.env.NODE_ENV === "production",
+
+  // Cookie configuration for Railway proxy
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === "production"
+        ? "__Secure-next-auth.session-token"
+        : "next-auth.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+    callbackUrl: {
+      name: process.env.NODE_ENV === "production"
+        ? "__Secure-next-auth.callback-url"
+        : "next-auth.callback-url",
+      options: {
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+    csrfToken: {
+      name: process.env.NODE_ENV === "production"
+        ? "__Host-next-auth.csrf-token"
+        : "next-auth.csrf-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+  },
 
   // Enable debug mode always for troubleshooting
   debug: true,
