@@ -1,14 +1,12 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useSession } from 'next-auth/react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { TestSession as TestSessionComponent } from '@/components/tests/TestSession';
 import { TestSession, Question } from '@/lib/types';
 import api from '@/lib/api';
 
 function TestSessionContent() {
-  const { data: session, status } = useSession();
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
@@ -20,12 +18,6 @@ function TestSessionContent() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login');
-    }
-  }, [status, router]);
 
   useEffect(() => {
     if (sessionId) {

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import api from '@/lib/api';
@@ -117,7 +116,6 @@ const subscriptionPlans = [
 ];
 
 function PaymentContent() {
-  const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
   const toast = useToast();
@@ -131,12 +129,6 @@ function PaymentContent() {
   const consultationId = searchParams.get('consultationId');
   const subscriptionPlan = searchParams.get('plan');
   const paymentId = searchParams.get('paymentId');
-
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login');
-    }
-  }, [status, router]);
 
   useEffect(() => {
     if (subscriptionPlan) {

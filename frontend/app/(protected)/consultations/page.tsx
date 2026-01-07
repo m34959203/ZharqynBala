@@ -1,8 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import Link from 'next/link';
 import { Button, Card, CardBody } from '@/components/ui';
 import { formatDate, formatTime, formatCurrency } from '@/lib/utils';
@@ -65,17 +63,9 @@ const mockPsychologists: Psychologist[] = [
 ];
 
 export default function ConsultationsPage() {
-  const { status } = useSession();
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'find' | 'my'>('find');
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login');
-    }
-  }, [status, router]);
 
   const getStatusBadge = (status: Consultation['status']) => {
     const styles = {
