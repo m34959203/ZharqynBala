@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
-import { signIn, getCsrfToken } from 'next-auth/react';
+import { signIn, getCsrfToken, getSession } from 'next-auth/react';
 import type { LoginRequest } from '@/types/auth';
 
 interface AvailableProviders {
@@ -103,9 +103,22 @@ function LoginContent() {
       console.log('[LoginPage:onSubmit] Result error:', result?.error);
       console.log('[LoginPage:onSubmit] Result url:', result?.url);
 
-      // Handle null result first (indicates CSRF or request failure)
+      // Handle null result - in NextAuth v4 + Next.js 16, signIn may return null
+      // even on success due to internal redirect handling. Check session as fallback.
       if (!result) {
-        console.error('[LoginPage:onSubmit] signIn returned null - CSRF or request failed');
+        console.log('[LoginPage:onSubmit] signIn returned null - checking session as fallback...');
+        // Wait a moment for session to be established
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const session = await getSession();
+        console.log('[LoginPage:onSubmit] Session check result:', session ? 'HAS SESSION' : 'NO SESSION');
+
+        if (session) {
+          console.log('[LoginPage:onSubmit] Session exists! Redirecting to dashboard...');
+          router.push('/dashboard');
+          return;
+        }
+
+        console.error('[LoginPage:onSubmit] No session found after signIn returned null');
         setError('Ошибка безопасности. Обновите страницу и попробуйте снова.');
       } else if (result.error) {
         console.error('[LoginPage:onSubmit] Login error:', result.error);
