@@ -159,6 +159,8 @@ export default function OnboardingPage() {
   };
 
   const goToDashboard = () => {
+    // Mark onboarding as complete to prevent redirect loop
+    localStorage.setItem('onboardingComplete', 'true');
     router.push('/dashboard');
   };
 
