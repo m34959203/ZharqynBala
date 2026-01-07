@@ -298,7 +298,7 @@ ${methodologyText}
 ТВОЯ ЗАДАЧА:
 1. Определи название теста на русском языке
 2. Напиши краткое описание теста (2-3 предложения)
-3. Определи категорию теста: MOTIVATION (мотивация), SELF_ESTEEM (самооценка), ANXIETY (тревожность), BEHAVIOR (поведение), COGNITIVE (когнитивные способности), EMOTIONAL (эмоциональное развитие), SOCIAL (социальные навыки), CAREER (профориентация), OTHER (другое)
+3. Определи категорию теста: MOTIVATION (мотивация), SELF_ESTEEM (самооценка), ANXIETY (тревожность), ATTENTION (внимание), COGNITIVE (когнитивные способности), EMOTIONS (эмоции), SOCIAL (социальные навыки), CAREER (профориентация)
 4. Определи возрастной диапазон (ageMin, ageMax)
 5. Оцени время прохождения в минутах
 6. Определи тип подсчёта баллов: "absolute" (абсолютные баллы с диапазонами) или "percentage" (процентное соотношение)
@@ -316,7 +316,7 @@ ${methodologyText}
 {
   "titleRu": "Название теста",
   "descriptionRu": "Описание теста",
-  "category": "MOTIVATION|SELF_ESTEEM|ANXIETY|BEHAVIOR|COGNITIVE|EMOTIONAL|SOCIAL|CAREER|OTHER",
+  "category": "MOTIVATION|SELF_ESTEEM|ANXIETY|ATTENTION|COGNITIVE|EMOTIONS|SOCIAL|CAREER",
   "ageMin": 7,
   "ageMax": 17,
   "durationMinutes": 15,
@@ -380,17 +380,19 @@ ${methodologyText}
       throw new Error('Questions are required');
     }
 
-    // Map category string to enum
+    // Map category string to enum (matching schema: ANXIETY, MOTIVATION, ATTENTION, EMOTIONS, CAREER, SELF_ESTEEM, SOCIAL, COGNITIVE)
     const categoryMap: Record<string, TestCategory> = {
       'MOTIVATION': TestCategory.MOTIVATION,
       'SELF_ESTEEM': TestCategory.SELF_ESTEEM,
       'ANXIETY': TestCategory.ANXIETY,
-      'BEHAVIOR': TestCategory.BEHAVIOR,
+      'ATTENTION': TestCategory.ATTENTION,
       'COGNITIVE': TestCategory.COGNITIVE,
-      'EMOTIONAL': TestCategory.EMOTIONAL,
+      'EMOTIONS': TestCategory.EMOTIONS,
+      'EMOTIONAL': TestCategory.EMOTIONS, // alias
       'SOCIAL': TestCategory.SOCIAL,
       'CAREER': TestCategory.CAREER,
-      'OTHER': TestCategory.OTHER,
+      'BEHAVIOR': TestCategory.EMOTIONS, // fallback
+      'OTHER': TestCategory.COGNITIVE, // fallback
     };
 
     // Map question type string to enum
@@ -406,7 +408,7 @@ ${methodologyText}
       titleKz: parsed.titleKz,
       descriptionRu: parsed.descriptionRu || 'Психологический тест',
       descriptionKz: parsed.descriptionKz,
-      category: categoryMap[parsed.category] || TestCategory.OTHER,
+      category: categoryMap[parsed.category] || TestCategory.COGNITIVE,
       ageMin: parsed.ageMin || 7,
       ageMax: parsed.ageMax || 17,
       durationMinutes: parsed.durationMinutes || 15,
@@ -441,7 +443,7 @@ ${methodologyText}
     // Build interpretation config
     const interpretationConfig = methodology.interpretationRanges.length > 0
       ? { ranges: methodology.interpretationRanges }
-      : null;
+      : undefined;
 
     // Create test
     const test = await this.prisma.test.create({
