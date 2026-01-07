@@ -363,7 +363,7 @@ ${methodologyText}
       // Prefer Gemini if available
       if (this.gemini) {
         this.logger.log('Using Gemini API for methodology parsing');
-        const model = this.gemini.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = this.gemini.getGenerativeModel({ model: 'gemini-2.0-flash' });
         const result = await model.generateContent(prompt);
         responseText = result.response.text();
       } else if (this.anthropic) {
