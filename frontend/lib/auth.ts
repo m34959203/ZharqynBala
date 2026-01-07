@@ -1,7 +1,6 @@
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import type { AuthOptions } from "next-auth";
-import type { Provider } from "next-auth/providers";
 
 // API URL для server-side вызовов (не используем api.ts т.к. он использует js-cookie)
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -26,7 +25,7 @@ export const availableProviders = {
 };
 
 // Build providers array dynamically
-const providers: Provider[] = [];
+const providers: AuthOptions["providers"] = [];
 
 // Google OAuth - only if configured
 if (GOOGLE_CONFIGURED) {
@@ -62,11 +61,11 @@ if (MAILRU_CONFIGURED) {
     userinfo: "https://oauth.mail.ru/userinfo",
     clientId: process.env.MAILRU_CLIENT_ID!,
     clientSecret: process.env.MAILRU_CLIENT_SECRET!,
-    profile(profile) {
+    profile(profile: Record<string, string | undefined>) {
       return {
-        id: profile.id || profile.email,
+        id: profile.id || profile.email || "",
         name: `${profile.first_name || ""} ${profile.last_name || ""}`.trim(),
-        email: profile.email,
+        email: profile.email || "",
         image: profile.image || profile.avatar || null,
       };
     },
