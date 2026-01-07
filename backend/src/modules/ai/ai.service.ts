@@ -58,20 +58,24 @@ export class AiService {
     private configService: ConfigService,
     private prisma: PrismaService,
   ) {
-    const anthropicKey = this.configService.get<string>('ANTHROPIC_API_KEY');
-    if (anthropicKey) {
-      this.anthropic = new Anthropic({ apiKey: anthropicKey });
-      this.logger.log('Anthropic API initialized');
-    }
+    try {
+      const anthropicKey = this.configService.get<string>('ANTHROPIC_API_KEY');
+      if (anthropicKey) {
+        this.anthropic = new Anthropic({ apiKey: anthropicKey });
+        this.logger.log('Anthropic API initialized');
+      }
 
-    const geminiKey = this.configService.get<string>('GEMINI_API_KEY');
-    if (geminiKey) {
-      this.gemini = new GoogleGenerativeAI(geminiKey);
-      this.logger.log('Gemini API initialized');
-    }
+      const geminiKey = this.configService.get<string>('GEMINI_API_KEY');
+      if (geminiKey) {
+        this.gemini = new GoogleGenerativeAI(geminiKey);
+        this.logger.log('Gemini API initialized');
+      }
 
-    if (!anthropicKey && !geminiKey) {
-      this.logger.warn('No AI API keys configured, AI features will be disabled');
+      if (!anthropicKey && !geminiKey) {
+        this.logger.warn('No AI API keys configured, AI features will be disabled');
+      }
+    } catch (error) {
+      this.logger.error('Failed to initialize AI services:', error);
     }
   }
 
