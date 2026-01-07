@@ -438,22 +438,58 @@ export class TestsService {
 
     const percentage = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
 
-    // Generate interpretation based on score
+    // Generate interpretation based on test configuration or default percentage
     let interpretation = '';
     let recommendations = '';
+    let levelTitle = '';
 
-    if (percentage >= 80) {
-      interpretation = 'Отличный результат! Показатели находятся в оптимальной зоне.';
-      recommendations = 'Продолжайте поддерживать текущий уровень развития ребёнка.';
-    } else if (percentage >= 60) {
-      interpretation = 'Хороший результат. Есть области для развития.';
-      recommendations = 'Рекомендуем обратить внимание на отдельные аспекты развития.';
-    } else if (percentage >= 40) {
-      interpretation = 'Средний результат. Требуется внимание к некоторым областям.';
-      recommendations = 'Рекомендуем консультацию со специалистом для детального анализа.';
+    const test = session.test as any;
+    const scoringType = test.scoringType || 'percentage';
+    const interpretationConfig = test.interpretationConfig as any;
+
+    if (scoringType === 'absolute' && interpretationConfig?.ranges) {
+      // Use absolute score ranges from test configuration
+      const ranges = interpretationConfig.ranges as Array<{
+        min: number;
+        max: number;
+        level: string;
+        title: string;
+        description: string;
+        recommendations: string;
+      }>;
+
+      const matchedRange = ranges.find(
+        (r) => totalScore >= r.min && totalScore <= r.max,
+      );
+
+      if (matchedRange) {
+        levelTitle = matchedRange.title;
+        interpretation = matchedRange.description;
+        recommendations = matchedRange.recommendations;
+      } else {
+        // Fallback if no range matches
+        interpretation = `Общий балл: ${totalScore} из ${maxScore}`;
+        recommendations = 'Рекомендуем консультацию со специалистом для интерпретации результатов.';
+      }
     } else {
-      interpretation = 'Результат требует внимания. Рекомендуем обратиться к специалисту.';
-      recommendations = 'Настоятельно рекомендуем консультацию с детским психологом.';
+      // Default percentage-based interpretation
+      if (percentage >= 80) {
+        levelTitle = 'Отличный уровень';
+        interpretation = 'Отличный результат! Показатели находятся в оптимальной зоне.';
+        recommendations = 'Продолжайте поддерживать текущий уровень развития ребёнка.';
+      } else if (percentage >= 60) {
+        levelTitle = 'Хороший уровень';
+        interpretation = 'Хороший результат. Есть области для развития.';
+        recommendations = 'Рекомендуем обратить внимание на отдельные аспекты развития.';
+      } else if (percentage >= 40) {
+        levelTitle = 'Средний уровень';
+        interpretation = 'Средний результат. Требуется внимание к некоторым областям.';
+        recommendations = 'Рекомендуем консультацию со специалистом для детального анализа.';
+      } else {
+        levelTitle = 'Требует внимания';
+        interpretation = 'Результат требует внимания. Рекомендуем обратиться к специалисту.';
+        recommendations = 'Настоятельно рекомендуем консультацию с детским психологом.';
+      }
     }
 
     // Create result
@@ -462,7 +498,7 @@ export class TestsService {
         sessionId,
         totalScore,
         maxScore,
-        interpretation,
+        interpretation: levelTitle ? `${levelTitle}\n\n${interpretation}` : interpretation,
         recommendations,
       },
     });

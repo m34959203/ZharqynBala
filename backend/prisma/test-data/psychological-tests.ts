@@ -937,9 +937,25 @@ export async function seedValidatedTests(prisma: PrismaClient): Promise<void> {
   // ============================================
   // ТЕСТ 1: Школьная мотивация (Лусканова)
   // ============================================
+
+  // Формируем конфигурацию интерпретации для теста Лускановой
+  const luskanovaInterpretationConfig = {
+    ranges: schoolMotivationInterpretation.levels.map(level => ({
+      min: level.minScore,
+      max: level.maxScore,
+      level: level.level,
+      title: level.titleRu,
+      description: level.descriptionRu,
+      recommendations: level.recommendations.join('\n• '),
+    })),
+  };
+
   const motivationTest = await prisma.test.upsert({
     where: { id: schoolMotivationTest.id },
-    update: {},
+    update: {
+      scoringType: 'absolute',
+      interpretationConfig: luskanovaInterpretationConfig,
+    },
     create: {
       id: schoolMotivationTest.id,
       titleRu: schoolMotivationTest.titleRu,
@@ -953,6 +969,8 @@ export async function seedValidatedTests(prisma: PrismaClient): Promise<void> {
       price: schoolMotivationTest.price,
       isPremium: schoolMotivationTest.isPremium,
       order: schoolMotivationTest.order,
+      scoringType: 'absolute',
+      interpretationConfig: luskanovaInterpretationConfig,
     },
   });
 

@@ -254,6 +254,12 @@ model Test {
 
   order           Int          @default(0)
 
+  // Scoring configuration
+  // scoringType: "percentage" (default) or "absolute"
+  // interpretationRanges: [{ min, max, level, title, description, recommendations }]
+  scoringType          String   @default("percentage") @map("scoring_type")
+  interpretationConfig Json?    @map("interpretation_config")
+
   createdAt       DateTime     @default(now()) @map("created_at")
   updatedAt       DateTime     @updatedAt @map("updated_at")
 
