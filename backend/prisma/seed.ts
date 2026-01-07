@@ -35,6 +35,43 @@ async function main() {
   console.log('✅ Admin created:', admin.email);
 
   // ============================================
+  // ДЕМО РОДИТЕЛЬ ДЛЯ ТЕСТИРОВАНИЯ
+  // ============================================
+
+  const parentPasswordHash = await bcrypt.hash('Parent123!', 12);
+
+  const demoParent = await prisma.user.upsert({
+    where: { email: 'parent@test.kz' },
+    update: {},
+    create: {
+      email: 'parent@test.kz',
+      phone: '+77001234567',
+      passwordHash: parentPasswordHash,
+      role: UserRole.PARENT,
+      firstName: 'Айгуль',
+      lastName: 'Тестова',
+      isVerified: true,
+      isActive: true,
+    },
+  });
+  console.log('✅ Demo parent created:', demoParent.email);
+
+  // Создаём демо-ребёнка для родителя
+  const demoChild = await prisma.child.upsert({
+    where: { id: 'demo-child-1' },
+    update: {},
+    create: {
+      id: 'demo-child-1',
+      firstName: 'Айлин',
+      lastName: 'Тестова',
+      birthDate: new Date('2014-05-15'),
+      gender: 'FEMALE',
+      parentId: demoParent.id,
+    },
+  });
+  console.log('✅ Demo child created:', demoChild.firstName, demoChild.lastName);
+
+  // ============================================
   // ПСИХОЛОГИЧЕСКИЕ ТЕСТЫ
   // ============================================
 
@@ -447,12 +484,17 @@ async function main() {
   console.log('✅ Seed completed successfully!');
   console.log('');
   console.log('═══════════════════════════════════════════════════════════');
-  console.log('📧 АККАУНТ АДМИНИСТРАТОРА');
+  console.log('📧 ТЕСТОВЫЕ АККАУНТЫ');
   console.log('═══════════════════════════════════════════════════════════');
   console.log('');
   console.log('⚙️ АДМИН:');
   console.log('   Email: admin@zharqynbala.kz');
   console.log('   Password: Admin123!');
+  console.log('');
+  console.log('👩 РОДИТЕЛЬ (для тестирования):');
+  console.log('   Email: parent@test.kz');
+  console.log('   Password: Parent123!');
+  console.log('   Ребёнок: Айлин Тестова (10 лет)');
   console.log('');
   console.log('═══════════════════════════════════════════════════════════');
 }
