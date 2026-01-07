@@ -13,7 +13,7 @@ export class PrismaService
     await this.connectWithRetry();
   }
 
-  private async connectWithRetry(maxRetries = 10, delayMs = 3000) {
+  private async connectWithRetry(maxRetries = 5, delayMs = 2000) {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         this.logger.log(`Database connection attempt ${attempt}/${maxRetries}...`);
