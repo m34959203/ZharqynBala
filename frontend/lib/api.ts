@@ -65,6 +65,91 @@ api.interceptors.response.use(
   }
 );
 
+// Test types
+export interface TestData {
+  id: string;
+  titleRu: string;
+  titleKz: string;
+  descriptionRu: string;
+  descriptionKz: string;
+  category: string;
+  ageMin: number;
+  ageMax: number;
+  durationMinutes: number;
+  price: number;
+  isPremium: boolean;
+  isActive: boolean;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+  _count: {
+    questions: number;
+    sessions: number;
+  };
+}
+
+export interface CreateTestData {
+  titleRu: string;
+  titleKz: string;
+  descriptionRu: string;
+  descriptionKz: string;
+  category: string;
+  ageMin: number;
+  ageMax: number;
+  durationMinutes: number;
+  price?: number;
+  isPremium?: boolean;
+  isActive?: boolean;
+  order?: number;
+}
+
+export interface UpdateTestData extends Partial<CreateTestData> {}
+
+// Admin API
+export const adminApi = {
+  // Tests
+  getTests: async (): Promise<TestData[]> => {
+    const response = await api.get<TestData[]>('/admin/tests');
+    return response.data;
+  },
+
+  getTestById: async (id: string): Promise<TestData> => {
+    const response = await api.get<TestData>(`/admin/tests/${id}`);
+    return response.data;
+  },
+
+  createTest: async (data: CreateTestData): Promise<TestData> => {
+    const response = await api.post<TestData>('/admin/tests', data);
+    return response.data;
+  },
+
+  updateTest: async (id: string, data: UpdateTestData): Promise<TestData> => {
+    const response = await api.patch<TestData>(`/admin/tests/${id}`, data);
+    return response.data;
+  },
+
+  deleteTest: async (id: string): Promise<void> => {
+    await api.delete(`/admin/tests/${id}`);
+  },
+
+  toggleTest: async (id: string): Promise<TestData> => {
+    const response = await api.post<TestData>(`/admin/tests/${id}/toggle`);
+    return response.data;
+  },
+
+  // Dashboard
+  getDashboardStats: async () => {
+    const response = await api.get('/admin/dashboard');
+    return response.data;
+  },
+
+  // Users
+  getUsers: async (params?: { role?: string; search?: string; page?: number; limit?: number }) => {
+    const response = await api.get('/admin/users', { params });
+    return response.data;
+  },
+};
+
 // Auth API
 export const authApi = {
   login: async (data: LoginRequest): Promise<AuthResponse> => {

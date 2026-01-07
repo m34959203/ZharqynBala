@@ -25,6 +25,8 @@ import {
   UserListDto,
   TestManagementDto,
   SystemSettingsDto,
+  CreateTestDto,
+  UpdateTestDto,
 } from './dto/admin.dto';
 
 @ApiTags('Admin')
@@ -95,13 +97,32 @@ export class AdminController {
     return this.adminService.getTests();
   }
 
+  @Get('tests/:id')
+  @ApiOperation({ summary: 'Get test by ID with questions and options' })
+  async getTestById(@Param('id', ParseUUIDPipe) id: string) {
+    return this.adminService.getTestById(id);
+  }
+
+  @Post('tests')
+  @ApiOperation({ summary: 'Create a new test' })
+  @ApiResponse({ status: 201, description: 'Test created successfully' })
+  async createTest(@Body() dto: CreateTestDto) {
+    return this.adminService.createTest(dto);
+  }
+
   @Patch('tests/:id')
   @ApiOperation({ summary: 'Update test' })
   async updateTest(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() data: any,
+    @Body() data: UpdateTestDto,
   ) {
     return this.adminService.updateTest(id, data);
+  }
+
+  @Delete('tests/:id')
+  @ApiOperation({ summary: 'Delete test' })
+  async deleteTest(@Param('id', ParseUUIDPipe) id: string) {
+    return this.adminService.deleteTest(id);
   }
 
   @Post('tests/:id/toggle')
