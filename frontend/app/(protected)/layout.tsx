@@ -3,6 +3,7 @@
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import Cookies from 'js-cookie';
 import { navigationByRole, roleLabels, roleColors } from '@/config/navigation';
 import { UserRole } from '@/types/auth';
 
@@ -80,8 +81,8 @@ export default function ProtectedLayout({
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for token in localStorage
-    const token = localStorage.getItem('accessToken');
+    // Check for token in both cookies and localStorage
+    const token = Cookies.get('accessToken') || localStorage.getItem('accessToken');
     const userData = localStorage.getItem('user');
 
     if (!token || !userData) {
@@ -115,6 +116,9 @@ export default function ProtectedLayout({
   }
 
   const handleLogout = () => {
+    // Clear both cookies and localStorage
+    Cookies.remove('accessToken');
+    Cookies.remove('refreshToken');
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
