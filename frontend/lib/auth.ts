@@ -327,8 +327,43 @@ export const authOptions: AuthOptions = {
   // NEXTAUTH_SECRET is required in production - no fallback allowed
   secret: process.env.NEXTAUTH_SECRET,
 
-  // Let NextAuth handle cookies automatically
-  // Removed custom cookie config as it may conflict with Railway proxy
+  // Cookie configuration for Railway HTTPS proxy
+  // Using __Secure- prefix for production HTTPS
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === "production"
+        ? "__Secure-next-auth.session-token"
+        : "next-auth.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+    callbackUrl: {
+      name: process.env.NODE_ENV === "production"
+        ? "__Secure-next-auth.callback-url"
+        : "next-auth.callback-url",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+    csrfToken: {
+      name: process.env.NODE_ENV === "production"
+        ? "__Secure-next-auth.csrf-token"
+        : "next-auth.csrf-token",
+      options: {
+        httpOnly: false,  // Must be false for client-side getCsrfToken() to work
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+  },
 
   // Enable debug mode always for troubleshooting
   debug: true,
