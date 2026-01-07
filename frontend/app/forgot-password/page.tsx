@@ -103,7 +103,7 @@ export default function ForgotPasswordPage() {
                     message: 'Неверный формат email',
                   },
                 })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200 text-gray-900 bg-white placeholder:text-gray-500"
                 placeholder="ivan@example.com"
               />
               {errors.email && (

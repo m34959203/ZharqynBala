@@ -168,7 +168,7 @@ export default function RegisterPage() {
                       message: 'Минимум 2 символа',
                     },
                   })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200 text-gray-900 bg-white placeholder:text-gray-500"
                   placeholder="Иван"
                 />
                 {errors.firstName && (
@@ -195,7 +195,7 @@ export default function RegisterPage() {
                       message: 'Минимум 2 символа',
                     },
                   })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200 text-gray-900 bg-white placeholder:text-gray-500"
                   placeholder="Иванов"
                 />
                 {errors.lastName && (
@@ -224,7 +224,7 @@ export default function RegisterPage() {
                     message: 'Неверный формат email',
                   },
                 })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200 text-gray-900 bg-white placeholder:text-gray-500"
                 placeholder="ivan@example.com"
               />
               {errors.email && (
@@ -249,7 +249,7 @@ export default function RegisterPage() {
                     message: 'Неверный формат телефона',
                   },
                 })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200 text-gray-900 bg-white placeholder:text-gray-500"
                 placeholder="+7 (777) 123-45-67"
               />
               {errors.phone && (
@@ -275,7 +275,7 @@ export default function RegisterPage() {
                     message: 'Пароль должен быть минимум 6 символов',
                   },
                 })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200 text-gray-900 bg-white placeholder:text-gray-500"
                 placeholder="••••••••"
               />
               {errors.password && (
@@ -301,7 +301,7 @@ export default function RegisterPage() {
                   validate: (value) =>
                     value === password || 'Пароли не совпадают',
                 })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200 text-gray-900 bg-white placeholder:text-gray-500"
                 placeholder="••••••••"
               />
               {errors.confirmPassword && (
@@ -322,7 +322,7 @@ export default function RegisterPage() {
               <select
                 id="language"
                 {...register('language')}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200 text-gray-900 bg-white placeholder:text-gray-500"
               >
                 <option value="RU">Русский</option>
                 <option value="KZ">Қазақша</option>
