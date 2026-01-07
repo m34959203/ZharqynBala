@@ -212,7 +212,7 @@ function PaymentContent() {
     }
   };
 
-  if (status === 'loading') {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Spinner size="xl" />
