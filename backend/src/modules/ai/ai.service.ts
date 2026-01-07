@@ -2,6 +2,7 @@ import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { TestCategory, QuestionType } from '@prisma/client';
 
 export interface AIInterpretation {
@@ -51,17 +52,31 @@ export interface ParsedTestMethodology {
 export class AiService {
   private readonly logger = new Logger(AiService.name);
   private anthropic: Anthropic | null = null;
+  private gemini: GoogleGenerativeAI | null = null;
 
   constructor(
     private configService: ConfigService,
     private prisma: PrismaService,
   ) {
-    const apiKey = this.configService.get<string>('ANTHROPIC_API_KEY');
-    if (apiKey) {
-      this.anthropic = new Anthropic({ apiKey });
-    } else {
-      this.logger.warn('ANTHROPIC_API_KEY not set, AI features will be disabled');
+    const anthropicKey = this.configService.get<string>('ANTHROPIC_API_KEY');
+    if (anthropicKey) {
+      this.anthropic = new Anthropic({ apiKey: anthropicKey });
+      this.logger.log('Anthropic API initialized');
     }
+
+    const geminiKey = this.configService.get<string>('GEMINI_API_KEY');
+    if (geminiKey) {
+      this.gemini = new GoogleGenerativeAI(geminiKey);
+      this.logger.log('Gemini API initialized');
+    }
+
+    if (!anthropicKey && !geminiKey) {
+      this.logger.warn('No AI API keys configured, AI features will be disabled');
+    }
+  }
+
+  private isAIAvailable(): boolean {
+    return this.anthropic !== null || this.gemini !== null;
   }
 
   async interpretTestResults(resultId: string): Promise<AIInterpretation> {
@@ -286,8 +301,8 @@ ${answersText}
    * Парсинг текста методики психологического теста и извлечение структуры
    */
   async parseTestMethodology(methodologyText: string): Promise<ParsedTestMethodology> {
-    if (!this.anthropic) {
-      throw new BadRequestException('AI сервис недоступен. Необходимо настроить ANTHROPIC_API_KEY в переменных окружения.');
+    if (!this.isAIAvailable()) {
+      throw new BadRequestException('AI сервис недоступен. Необходимо настроить GEMINI_API_KEY или ANTHROPIC_API_KEY в переменных окружения.');
     }
 
     const prompt = `Ты — эксперт по психологическим тестам. Проанализируй текст методики психологического теста и извлеки из него структурированные данные.
@@ -312,7 +327,7 @@ ${methodologyText}
 - Если что-то не указано явно в методике — выведи разумное значение по умолчанию
 - Обязательно включи ВСЕ уровни интерпретации из методики
 
-Ответь ТОЛЬКО в формате JSON (без markdown):
+Ответь ТОЛЬКО в формате JSON (без markdown, без тройных кавычек):
 {
   "titleRu": "Название теста",
   "descriptionRu": "Описание теста",
@@ -343,21 +358,35 @@ ${methodologyText}
 }`;
 
     try {
-      const response = await this.anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 8000,
-        messages: [{ role: 'user', content: prompt }],
-      });
+      let responseText: string;
 
-      const content = response.content[0];
-      if (content.type !== 'text') {
-        throw new Error('Unexpected response type');
+      // Prefer Gemini if available
+      if (this.gemini) {
+        this.logger.log('Using Gemini API for methodology parsing');
+        const model = this.gemini.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const result = await model.generateContent(prompt);
+        responseText = result.response.text();
+      } else if (this.anthropic) {
+        this.logger.log('Using Anthropic API for methodology parsing');
+        const response = await this.anthropic.messages.create({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 8000,
+          messages: [{ role: 'user', content: prompt }],
+        });
+
+        const content = response.content[0];
+        if (content.type !== 'text') {
+          throw new Error('Unexpected response type');
+        }
+        responseText = content.text;
+      } else {
+        throw new Error('No AI provider available');
       }
 
       // Extract JSON from response
-      const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        this.logger.error('No JSON found in AI response:', content.text);
+        this.logger.error('No JSON found in AI response:', responseText);
         throw new Error('Failed to parse methodology: no valid JSON in response');
       }
 
