@@ -1,20 +1,22 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsUUID, IsOptional, IsString, IsEnum } from 'class-validator';
+import { IsOptional, IsString, IsEnum, IsNotEmpty } from 'class-validator';
 import { TestCategory } from '@prisma/client';
 
 export class StartTestDto {
   @ApiProperty({ description: 'ID of the child taking the test' })
-  @IsUUID()
+  @IsString()
+  @IsNotEmpty()
   childId: string;
 }
 
 export class SubmitAnswerDto {
   @ApiProperty({ description: 'ID of the question being answered' })
-  @IsUUID()
+  @IsString()
+  @IsNotEmpty()
   questionId: string;
 
   @ApiPropertyOptional({ description: 'ID of selected answer option' })
-  @IsUUID()
+  @IsString()
   @IsOptional()
   answerOptionId?: string;
 
