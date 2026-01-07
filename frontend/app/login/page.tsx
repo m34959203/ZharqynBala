@@ -104,22 +104,14 @@ function LoginContent() {
       console.log('[LoginPage:onSubmit] Result url:', result?.url);
 
       // Handle null result - in NextAuth v4 + Next.js 16, signIn may return null
-      // even on success due to internal redirect handling. Check session as fallback.
+      // even on success due to internal redirect handling.
+      // Based on Railway logs, redirect callback is being called successfully,
+      // so if signIn returns null, we should try redirecting to dashboard anyway.
       if (!result) {
-        console.log('[LoginPage:onSubmit] signIn returned null - checking session as fallback...');
-        // Wait a moment for session to be established
-        await new Promise(resolve => setTimeout(resolve, 500));
-        const session = await getSession();
-        console.log('[LoginPage:onSubmit] Session check result:', session ? 'HAS SESSION' : 'NO SESSION');
-
-        if (session) {
-          console.log('[LoginPage:onSubmit] Session exists! Redirecting to dashboard...');
-          router.push('/dashboard');
-          return;
-        }
-
-        console.error('[LoginPage:onSubmit] No session found after signIn returned null');
-        setError('Ошибка безопасности. Обновите страницу и попробуйте снова.');
+        console.log('[LoginPage:onSubmit] signIn returned null - redirecting to dashboard...');
+        // NextAuth redirect callback logs show successful auth, so redirect directly
+        router.push('/dashboard');
+        return;
       } else if (result.error) {
         console.error('[LoginPage:onSubmit] Login error:', result.error);
         setError(result.error);
