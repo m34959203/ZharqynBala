@@ -269,7 +269,7 @@ export default function OnboardingPage() {
                       type="text"
                       value={childForm.firstName}
                       onChange={(e) => handleChildFormChange('firstName', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white placeholder:text-gray-500"
                       placeholder="Алихан"
                     />
                   </div>
@@ -281,7 +281,7 @@ export default function OnboardingPage() {
                       type="text"
                       value={childForm.lastName}
                       onChange={(e) => handleChildFormChange('lastName', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white placeholder:text-gray-500"
                       placeholder="Касымов"
                     />
                   </div>
@@ -296,7 +296,7 @@ export default function OnboardingPage() {
                       type="date"
                       value={childForm.birthDate}
                       onChange={(e) => handleChildFormChange('birthDate', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white"
                     />
                   </div>
                   <div>
@@ -306,7 +306,7 @@ export default function OnboardingPage() {
                     <select
                       value={childForm.gender}
                       onChange={(e) => handleChildFormChange('gender', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white"
                     >
                       <option value="MALE">Мальчик</option>
                       <option value="FEMALE">Девочка</option>
@@ -322,7 +322,7 @@ export default function OnboardingPage() {
                     <select
                       value={childForm.grade}
                       onChange={(e) => handleChildFormChange('grade', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white"
                     >
                       <option value="">Не указан</option>
                       {[1,2,3,4,5,6,7,8,9,10,11].map(g => (
@@ -338,7 +338,7 @@ export default function OnboardingPage() {
                       type="text"
                       value={childForm.schoolName}
                       onChange={(e) => handleChildFormChange('schoolName', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white placeholder:text-gray-500"
                       placeholder="Гимназия №1"
                     />
                   </div>
