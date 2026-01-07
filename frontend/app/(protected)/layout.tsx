@@ -1,11 +1,18 @@
 'use client';
 
-import { useSession, signOut } from 'next-auth/react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { navigationByRole, roleLabels, roleColors } from '@/config/navigation';
 import { UserRole } from '@/types/auth';
+
+interface User {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: UserRole;
+}
 
 const icons: Record<string, React.ReactNode> = {
   home: (
@@ -66,18 +73,36 @@ export default function ProtectedLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { data: session, status } = useSession();
   const router = useRouter();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login');
-    }
-  }, [status, router]);
+    // Check for token in localStorage
+    const token = localStorage.getItem('accessToken');
+    const userData = localStorage.getItem('user');
 
-  if (status === 'loading') {
+    if (!token || !userData) {
+      router.push('/login');
+      return;
+    }
+
+    try {
+      setUser(JSON.parse(userData));
+    } catch {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+      router.push('/login');
+      return;
+    }
+
+    setIsLoading(false);
+  }, [router]);
+
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
@@ -85,36 +110,35 @@ export default function ProtectedLayout({
     );
   }
 
-  if (!session) {
+  if (!user) {
     return null;
   }
 
-  const handleLogout = async () => {
-    await signOut({ redirect: true, callbackUrl: '/login' });
+  const handleLogout = () => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
+    router.push('/login');
   };
 
-  // Get role from session, default to PARENT
-  const userRole: UserRole = (session.user?.role as UserRole) || 'PARENT';
+  const userRole: UserRole = user.role || 'PARENT';
   const navigation = navigationByRole[userRole] || navigationByRole.PARENT;
+  const userName = `${user.firstName} ${user.lastName}`.trim() || user.email;
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Navigation */}
       <nav className="bg-white shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
-            {/* Logo */}
             <div className="flex items-center">
               <Link href="/dashboard" className="flex items-center">
                 <span className="text-xl font-bold text-indigo-600">Жарқын Бала</span>
               </Link>
-              {/* Role badge */}
               <span className={`ml-3 px-2 py-1 text-xs font-medium rounded-full ${roleColors[userRole]}`}>
                 {roleLabels[userRole]}
               </span>
             </div>
 
-            {/* Desktop navigation */}
             <div className="hidden md:flex items-center space-x-1">
               {navigation.map((item) => (
                 <Link
@@ -132,21 +156,15 @@ export default function ProtectedLayout({
               ))}
             </div>
 
-            {/* User menu */}
             <div className="flex items-center space-x-4">
               <div className="hidden md:flex items-center">
-                <Link
-                  href="/profile"
-                  className="flex items-center text-sm text-gray-600 hover:text-gray-900 mr-4"
-                >
+                <Link href="/profile" className="flex items-center text-sm text-gray-600 hover:text-gray-900 mr-4">
                   <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center mr-2">
                     <span className="text-indigo-600 font-medium text-sm">
-                      {session.user?.name?.[0]?.toUpperCase() || session.user?.email?.[0]?.toUpperCase()}
+                      {userName[0]?.toUpperCase()}
                     </span>
                   </div>
-                  <span className="max-w-[120px] truncate">
-                    {session.user?.name || session.user?.email}
-                  </span>
+                  <span className="max-w-[120px] truncate">{userName}</span>
                 </Link>
                 <button
                   onClick={handleLogout}
@@ -156,7 +174,6 @@ export default function ProtectedLayout({
                 </button>
               </div>
 
-              {/* Mobile menu button */}
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="md:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100"
@@ -173,7 +190,6 @@ export default function ProtectedLayout({
           </div>
         </div>
 
-        {/* Mobile menu */}
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-gray-200 bg-white">
             <div className="px-4 py-3 space-y-1">
@@ -196,12 +212,12 @@ export default function ProtectedLayout({
                 <div className="flex items-center px-3 mb-2">
                   <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center mr-2">
                     <span className="text-indigo-600 font-medium text-sm">
-                      {session.user?.name?.[0]?.toUpperCase() || session.user?.email?.[0]?.toUpperCase()}
+                      {userName[0]?.toUpperCase()}
                     </span>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{session.user?.name}</p>
-                    <p className="text-xs text-gray-500">{session.user?.email}</p>
+                    <p className="text-sm font-medium text-gray-900">{userName}</p>
+                    <p className="text-xs text-gray-500">{user.email}</p>
                   </div>
                 </div>
                 <Link
@@ -223,7 +239,6 @@ export default function ProtectedLayout({
         )}
       </nav>
 
-      {/* Main content */}
       <main>{children}</main>
     </div>
   );

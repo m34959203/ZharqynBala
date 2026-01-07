@@ -1,20 +1,44 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
+import { useEffect, useState } from 'react';
 import { UserRole } from '@/types/auth';
 import ParentDashboard from './components/ParentDashboard';
 import PsychologistDashboard from './components/PsychologistDashboard';
 import SchoolDashboard from './components/SchoolDashboard';
 import AdminDashboard from './components/AdminDashboard';
 
+interface User {
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: UserRole;
+}
+
 export default function DashboardPage() {
-  const { data: session } = useSession();
+  const [user, setUser] = useState<User | null>(null);
 
-  // Get user info
-  const userName = session?.user?.name || session?.user?.email || 'Пользователь';
-  const userRole: UserRole = (session?.user?.role as UserRole) || 'PARENT';
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      try {
+        setUser(JSON.parse(userData));
+      } catch {
+        // Handle error silently - layout will redirect
+      }
+    }
+  }, []);
 
-  // Render role-specific dashboard
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  const userName = `${user.firstName} ${user.lastName}`.trim() || user.email;
+  const userRole: UserRole = user.role || 'PARENT';
+
   switch (userRole) {
     case 'PSYCHOLOGIST':
       return <PsychologistDashboard userName={userName} />;
