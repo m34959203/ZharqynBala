@@ -47,7 +47,7 @@ export class TestsController {
   @Public()
   @ApiOperation({ summary: 'Get test details with questions' })
   @ApiResponse({ status: 200, type: TestDetailDto })
-  async findOne(@Param('id', ParseUUIDPipe) id: string): Promise<TestDetailDto> {
+  async findOne(@Param('id') id: string): Promise<TestDetailDto> {
     return this.testsService.findOne(id);
   }
 
@@ -58,7 +58,7 @@ export class TestsController {
   @ApiResponse({ status: 201, type: TestSessionResponseDto })
   @ApiResponse({ status: 402, description: 'Payment required' })
   async startTest(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body() dto: StartTestDto,
     @CurrentUser('id') userId: string,
   ): Promise<TestSessionResponseDto> {
