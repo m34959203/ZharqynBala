@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
+import Cookies from 'js-cookie';
 import type { LoginRequest } from '@/types/auth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -16,7 +17,7 @@ function LoginContent() {
 
   // Check if already logged in
   useEffect(() => {
-    const token = localStorage.getItem('accessToken');
+    const token = Cookies.get('accessToken') || localStorage.getItem('accessToken');
     if (token) {
       router.push('/dashboard');
     }
@@ -60,7 +61,9 @@ function LoginContent() {
         return;
       }
 
-      // Store tokens
+      // Store tokens in both cookies (for API client) and localStorage (for protected layout)
+      Cookies.set('accessToken', result.accessToken, { expires: 1 }); // 1 day
+      Cookies.set('refreshToken', result.refreshToken, { expires: 7 }); // 7 days
       localStorage.setItem('accessToken', result.accessToken);
       localStorage.setItem('refreshToken', result.refreshToken);
       localStorage.setItem('user', JSON.stringify(result.user));
