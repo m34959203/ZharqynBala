@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { Button, Card, CardBody, Modal } from '@/components/ui';
@@ -18,7 +17,6 @@ interface Child {
 }
 
 export default function ChildrenPage() {
-  const { status } = useSession();
   const router = useRouter();
   const [children, setChildren] = useState<Child[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,12 +31,6 @@ export default function ChildrenPage() {
     grade: '',
     schoolName: '',
   });
-
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login');
-    }
-  }, [status, router]);
 
   useEffect(() => {
     fetchChildren();

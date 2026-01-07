@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ResultDetail, categoryLabels, categoryColors, TestCategory } from '@/lib/types';
@@ -16,7 +15,6 @@ import {
 } from '@/components/ui';
 
 export default function ResultDetailPage() {
-  const { data: session, status } = useSession();
   const router = useRouter();
   const params = useParams();
   const resultId = params.id as string;
@@ -25,12 +23,6 @@ export default function ResultDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [downloading, setDownloading] = useState(false);
-
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login');
-    }
-  }, [status, router]);
 
   useEffect(() => {
     if (resultId) {

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 
@@ -16,6 +15,12 @@ interface ChildForm {
   schoolName: string;
 }
 
+interface User {
+  firstName?: string;
+  lastName?: string;
+  email: string;
+}
+
 const concerns = [
   { id: 'ANXIETY', label: 'Тревожность', icon: '😰', description: 'Беспокойство, страхи, волнение' },
   { id: 'MOTIVATION', label: 'Учебная мотивация', icon: '📚', description: 'Нежелание учиться, прокрастинация' },
@@ -26,12 +31,12 @@ const concerns = [
 ];
 
 export default function OnboardingPage() {
-  const { data: session, status } = useSession();
   const router = useRouter();
 
   const [step, setStep] = useState<OnboardingStep>('welcome');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [user, setUser] = useState<User | null>(null);
 
   const [childForm, setChildForm] = useState<ChildForm>({
     firstName: '',
@@ -45,11 +50,17 @@ export default function OnboardingPage() {
   const [selectedConcerns, setSelectedConcerns] = useState<string[]>([]);
   const [createdChildId, setCreatedChildId] = useState<string | null>(null);
 
+  // Get user from localStorage (set by layout)
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login');
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      try {
+        setUser(JSON.parse(userData));
+      } catch {
+        // Invalid user data, layout will handle redirect
+      }
     }
-  }, [status, router]);
+  }, []);
 
   const handleChildFormChange = (field: keyof ChildForm, value: string) => {
     setChildForm(prev => ({ ...prev, [field]: value }));
@@ -151,13 +162,6 @@ export default function OnboardingPage() {
     router.push('/dashboard');
   };
 
-  if (status === 'loading') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 py-12 px-4">
@@ -199,7 +203,7 @@ export default function OnboardingPage() {
               </div>
 
               <h1 className="text-3xl font-bold text-gray-900 mb-4">
-                Добро пожаловать, {session?.user?.name?.split(' ')[0] || 'Родитель'}!
+                Добро пожаловать, {user?.firstName || 'Родитель'}!
               </h1>
 
               <p className="text-lg text-gray-600 mb-8 max-w-md mx-auto">

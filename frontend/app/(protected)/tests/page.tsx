@@ -1,25 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import { TestCard } from '@/components/tests/TestCard';
 import { Test, TestCategory, categoryLabels } from '@/lib/types';
 import api from '@/lib/api';
 
 export default function TestsPage() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
   const [tests, setTests] = useState<Test[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<TestCategory | 'ALL'>('ALL');
-
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login');
-    }
-  }, [status, router]);
 
   useEffect(() => {
     fetchTests();
@@ -52,7 +42,7 @@ export default function TestsPage() {
     'CAREER',
   ];
 
-  if (status === 'loading' || loading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>

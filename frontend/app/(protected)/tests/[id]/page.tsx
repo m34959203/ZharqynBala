@@ -1,14 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { TestDetail, Child, categoryLabels, categoryColors } from '@/lib/types';
 import api from '@/lib/api';
 
 export default function TestDetailPage() {
-  const { data: session, status } = useSession();
   const router = useRouter();
   const params = useParams();
   const testId = params.id as string;
@@ -19,12 +17,6 @@ export default function TestDetailPage() {
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login');
-    }
-  }, [status, router]);
 
   useEffect(() => {
     if (testId) {
@@ -79,7 +71,7 @@ export default function TestDetailPage() {
     }
   };
 
-  if (status === 'loading' || loading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
