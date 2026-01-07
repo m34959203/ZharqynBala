@@ -11,10 +11,15 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiProperty,
 } from '@nestjs/swagger';
-import { AiService } from './ai.service';
+import { IsString, IsNotEmpty } from 'class-validator';
+import { AiService, ParsedTestMethodology } from './ai.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { UserRole } from '@prisma/client';
 
 class ChatRequestDto {
   message: string;
@@ -23,6 +28,35 @@ class ChatRequestDto {
 
 class ChatResponseDto {
   response: string;
+}
+
+class ParseMethodologyDto {
+  @ApiProperty({ description: 'Text content of the methodology file' })
+  @IsString()
+  @IsNotEmpty()
+  methodologyText: string;
+}
+
+class ParseMethodologyResponseDto {
+  @ApiProperty()
+  success: boolean;
+
+  @ApiProperty()
+  parsed: ParsedTestMethodology;
+}
+
+class CreateTestFromMethodologyDto {
+  @ApiProperty({ description: 'Parsed methodology data' })
+  @IsNotEmpty()
+  methodology: ParsedTestMethodology;
+}
+
+class CreateTestResponseDto {
+  @ApiProperty()
+  success: boolean;
+
+  @ApiProperty()
+  testId: string;
 }
 
 @ApiTags('AI')
@@ -48,5 +82,30 @@ export class AiController {
   ): Promise<ChatResponseDto> {
     const response = await this.aiService.chat(userId, dto.message, dto.sessionId);
     return { response };
+  }
+
+  @Post('parse-methodology')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Parse a test methodology text using AI' })
+  @ApiResponse({ status: 200, type: ParseMethodologyResponseDto })
+  @ApiResponse({ status: 400, description: 'Failed to parse methodology' })
+  async parseMethodology(
+    @Body() dto: ParseMethodologyDto,
+  ): Promise<ParseMethodologyResponseDto> {
+    const parsed = await this.aiService.parseTestMethodology(dto.methodologyText);
+    return { success: true, parsed };
+  }
+
+  @Post('create-test-from-methodology')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Create a test from parsed methodology' })
+  @ApiResponse({ status: 201, type: CreateTestResponseDto })
+  async createTestFromMethodology(
+    @Body() dto: CreateTestFromMethodologyDto,
+  ): Promise<CreateTestResponseDto> {
+    const testId = await this.aiService.createTestFromMethodology(dto.methodology);
+    return { success: true, testId };
   }
 }

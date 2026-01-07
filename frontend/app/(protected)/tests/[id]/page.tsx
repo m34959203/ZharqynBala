@@ -207,7 +207,7 @@ export default function TestDetailPage() {
                     <select
                       value={selectedChild}
                       onChange={(e) => setSelectedChild(e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 bg-white"
                     >
                       {children.map((child) => (
                         <option key={child.id} value={child.id}>

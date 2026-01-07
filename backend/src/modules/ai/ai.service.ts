@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import Anthropic from '@anthropic-ai/sdk';
+import { TestCategory, QuestionType } from '@prisma/client';
 
 export interface AIInterpretation {
   summary: string;
@@ -14,6 +15,36 @@ export interface AIInterpretation {
   }[];
   needSpecialist: boolean;
   specialistReason?: string;
+}
+
+export interface ParsedTestMethodology {
+  titleRu: string;
+  titleKz?: string;
+  descriptionRu: string;
+  descriptionKz?: string;
+  category: TestCategory;
+  ageMin: number;
+  ageMax: number;
+  durationMinutes: number;
+  scoringType: 'percentage' | 'absolute';
+  questions: {
+    questionTextRu: string;
+    questionTextKz?: string;
+    questionType: QuestionType;
+    options: {
+      textRu: string;
+      textKz?: string;
+      score: number;
+    }[];
+  }[];
+  interpretationRanges: {
+    min: number;
+    max: number;
+    level: string;
+    title: string;
+    description: string;
+    recommendations: string;
+  }[];
 }
 
 @Injectable()
@@ -249,5 +280,223 @@ ${answersText}
       this.logger.error('Chat failed', error);
       return 'Извините, произошла ошибка. Пожалуйста, попробуйте позже.';
     }
+  }
+
+  /**
+   * Парсинг текста методики психологического теста и извлечение структуры
+   */
+  async parseTestMethodology(methodologyText: string): Promise<ParsedTestMethodology> {
+    if (!this.anthropic) {
+      throw new Error('AI service is not available. Please configure ANTHROPIC_API_KEY.');
+    }
+
+    const prompt = `Ты — эксперт по психологическим тестам. Проанализируй текст методики психологического теста и извлеки из него структурированные данные.
+
+ТЕКСТ МЕТОДИКИ:
+${methodologyText}
+
+ТВОЯ ЗАДАЧА:
+1. Определи название теста на русском языке
+2. Напиши краткое описание теста (2-3 предложения)
+3. Определи категорию теста: MOTIVATION (мотивация), SELF_ESTEEM (самооценка), ANXIETY (тревожность), BEHAVIOR (поведение), COGNITIVE (когнитивные способности), EMOTIONAL (эмоциональное развитие), SOCIAL (социальные навыки), CAREER (профориентация), OTHER (другое)
+4. Определи возрастной диапазон (ageMin, ageMax)
+5. Оцени время прохождения в минутах
+6. Определи тип подсчёта баллов: "absolute" (абсолютные баллы с диапазонами) или "percentage" (процентное соотношение)
+7. Извлеки ВСЕ вопросы с вариантами ответов и баллами за каждый вариант
+8. Извлеки шкалу интерпретации результатов (диапазоны баллов с описаниями и рекомендациями)
+
+ПРАВИЛА:
+- Сохраняй ТОЧНУЮ формулировку вопросов из методики
+- Указывай корректные баллы за каждый вариант ответа
+- Тип вопроса: MULTIPLE_CHOICE (выбор одного варианта), SCALE (шкала оценки), YES_NO (да/нет), TEXT (текстовый ответ)
+- Если что-то не указано явно в методике — выведи разумное значение по умолчанию
+- Обязательно включи ВСЕ уровни интерпретации из методики
+
+Ответь ТОЛЬКО в формате JSON (без markdown):
+{
+  "titleRu": "Название теста",
+  "descriptionRu": "Описание теста",
+  "category": "MOTIVATION|SELF_ESTEEM|ANXIETY|BEHAVIOR|COGNITIVE|EMOTIONAL|SOCIAL|CAREER|OTHER",
+  "ageMin": 7,
+  "ageMax": 17,
+  "durationMinutes": 15,
+  "scoringType": "absolute|percentage",
+  "questions": [
+    {
+      "questionTextRu": "Текст вопроса",
+      "questionType": "MULTIPLE_CHOICE|SCALE|YES_NO|TEXT",
+      "options": [
+        {"textRu": "Вариант ответа", "score": 0}
+      ]
+    }
+  ],
+  "interpretationRanges": [
+    {
+      "min": 0,
+      "max": 10,
+      "level": "low|average|high|very_high",
+      "title": "Название уровня",
+      "description": "Описание результата",
+      "recommendations": "Рекомендации для родителей"
+    }
+  ]
+}`;
+
+    try {
+      const response = await this.anthropic.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 8000,
+        messages: [{ role: 'user', content: prompt }],
+      });
+
+      const content = response.content[0];
+      if (content.type !== 'text') {
+        throw new Error('Unexpected response type');
+      }
+
+      // Extract JSON from response
+      const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        this.logger.error('No JSON found in AI response:', content.text);
+        throw new Error('Failed to parse methodology: no valid JSON in response');
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+
+      // Validate and normalize the response
+      return this.normalizeMethodology(parsed);
+    } catch (error) {
+      this.logger.error('Failed to parse methodology:', error);
+      throw new Error(`Failed to parse methodology: ${error.message}`);
+    }
+  }
+
+  private normalizeMethodology(parsed: any): ParsedTestMethodology {
+    // Validate required fields
+    if (!parsed.titleRu) {
+      throw new Error('Title is required');
+    }
+    if (!parsed.questions || !Array.isArray(parsed.questions) || parsed.questions.length === 0) {
+      throw new Error('Questions are required');
+    }
+
+    // Map category string to enum
+    const categoryMap: Record<string, TestCategory> = {
+      'MOTIVATION': TestCategory.MOTIVATION,
+      'SELF_ESTEEM': TestCategory.SELF_ESTEEM,
+      'ANXIETY': TestCategory.ANXIETY,
+      'BEHAVIOR': TestCategory.BEHAVIOR,
+      'COGNITIVE': TestCategory.COGNITIVE,
+      'EMOTIONAL': TestCategory.EMOTIONAL,
+      'SOCIAL': TestCategory.SOCIAL,
+      'CAREER': TestCategory.CAREER,
+      'OTHER': TestCategory.OTHER,
+    };
+
+    // Map question type string to enum
+    const questionTypeMap: Record<string, QuestionType> = {
+      'MULTIPLE_CHOICE': QuestionType.MULTIPLE_CHOICE,
+      'SCALE': QuestionType.SCALE,
+      'YES_NO': QuestionType.YES_NO,
+      'TEXT': QuestionType.TEXT,
+    };
+
+    return {
+      titleRu: parsed.titleRu,
+      titleKz: parsed.titleKz,
+      descriptionRu: parsed.descriptionRu || 'Психологический тест',
+      descriptionKz: parsed.descriptionKz,
+      category: categoryMap[parsed.category] || TestCategory.OTHER,
+      ageMin: parsed.ageMin || 7,
+      ageMax: parsed.ageMax || 17,
+      durationMinutes: parsed.durationMinutes || 15,
+      scoringType: parsed.scoringType === 'absolute' ? 'absolute' : 'percentage',
+      questions: parsed.questions.map((q: any) => ({
+        questionTextRu: q.questionTextRu,
+        questionTextKz: q.questionTextKz,
+        questionType: questionTypeMap[q.questionType] || QuestionType.MULTIPLE_CHOICE,
+        options: (q.options || []).map((opt: any) => ({
+          textRu: opt.textRu,
+          textKz: opt.textKz,
+          score: typeof opt.score === 'number' ? opt.score : 0,
+        })),
+      })),
+      interpretationRanges: (parsed.interpretationRanges || []).map((r: any) => ({
+        min: r.min || 0,
+        max: r.max || 100,
+        level: r.level || 'average',
+        title: r.title || 'Результат',
+        description: r.description || '',
+        recommendations: r.recommendations || '',
+      })),
+    };
+  }
+
+  /**
+   * Создаёт тест в базе данных из распарсенной методики
+   */
+  async createTestFromMethodology(methodology: ParsedTestMethodology): Promise<string> {
+    const testId = `test-${Date.now()}`;
+
+    // Build interpretation config
+    const interpretationConfig = methodology.interpretationRanges.length > 0
+      ? { ranges: methodology.interpretationRanges }
+      : null;
+
+    // Create test
+    const test = await this.prisma.test.create({
+      data: {
+        id: testId,
+        titleRu: methodology.titleRu,
+        titleKz: methodology.titleKz || methodology.titleRu,
+        descriptionRu: methodology.descriptionRu,
+        descriptionKz: methodology.descriptionKz || methodology.descriptionRu,
+        category: methodology.category,
+        ageMin: methodology.ageMin,
+        ageMax: methodology.ageMax,
+        durationMinutes: methodology.durationMinutes,
+        price: 0,
+        isPremium: false,
+        isActive: true,
+        scoringType: methodology.scoringType,
+        interpretationConfig: interpretationConfig,
+      },
+    });
+
+    // Create questions and options
+    for (let i = 0; i < methodology.questions.length; i++) {
+      const q = methodology.questions[i];
+      const questionId = `${testId}-q-${i + 1}`;
+
+      const question = await this.prisma.question.create({
+        data: {
+          id: questionId,
+          testId: test.id,
+          questionTextRu: q.questionTextRu,
+          questionTextKz: q.questionTextKz || q.questionTextRu,
+          questionType: q.questionType,
+          order: i + 1,
+          isRequired: true,
+        },
+      });
+
+      // Create answer options
+      for (let j = 0; j < q.options.length; j++) {
+        const opt = q.options[j];
+        await this.prisma.answerOption.create({
+          data: {
+            id: `${questionId}-opt-${j + 1}`,
+            questionId: question.id,
+            optionTextRu: opt.textRu,
+            optionTextKz: opt.textKz || opt.textRu,
+            score: opt.score,
+            order: j + 1,
+          },
+        });
+      }
+    }
+
+    this.logger.log(`Created test "${methodology.titleRu}" with ${methodology.questions.length} questions`);
+    return test.id;
   }
 }
