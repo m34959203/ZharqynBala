@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { DashboardStatsDto } from './dto/admin.dto';
+import { DashboardStatsDto, CreateTestDto, UpdateTestDto } from './dto/admin.dto';
 
 @Injectable()
 export class AdminService {
@@ -157,11 +157,111 @@ export class AdminService {
     });
   }
 
-  async updateTest(id: string, data: any) {
+  async getTestById(id: string) {
+    const test = await this.prisma.test.findUnique({
+      where: { id },
+      include: {
+        questions: {
+          orderBy: { order: 'asc' },
+          include: {
+            options: {
+              orderBy: { order: 'asc' },
+            },
+          },
+        },
+        _count: {
+          select: { questions: true, sessions: true },
+        },
+      },
+    });
+
+    if (!test) throw new NotFoundException('Test not found');
+    return test;
+  }
+
+  async createTest(dto: CreateTestDto) {
+    const { questions, ...testData } = dto;
+
+    // Create test with questions and options in a transaction
+    const test = await this.prisma.test.create({
+      data: {
+        ...testData,
+        price: testData.price ?? 0,
+        isPremium: testData.isPremium ?? false,
+        isActive: testData.isActive ?? false, // Default to draft (inactive)
+        order: testData.order ?? 0,
+        questions: questions
+          ? {
+              create: questions.map((q) => ({
+                questionTextRu: q.questionTextRu,
+                questionTextKz: q.questionTextKz,
+                questionType: q.questionType,
+                order: q.order,
+                isRequired: q.isRequired ?? true,
+                options: {
+                  create: q.options.map((o) => ({
+                    optionTextRu: o.optionTextRu,
+                    optionTextKz: o.optionTextKz,
+                    score: o.score,
+                    order: o.order,
+                  })),
+                },
+              })),
+            }
+          : undefined,
+      },
+      include: {
+        questions: {
+          include: {
+            options: true,
+          },
+        },
+        _count: {
+          select: { questions: true, sessions: true },
+        },
+      },
+    });
+
+    this.logger.log(`Test created: ${test.id} - ${test.titleRu}`);
+    return test;
+  }
+
+  async updateTest(id: string, data: UpdateTestDto) {
+    const test = await this.prisma.test.findUnique({ where: { id } });
+    if (!test) throw new NotFoundException('Test not found');
+
     return this.prisma.test.update({
       where: { id },
       data,
+      include: {
+        _count: {
+          select: { questions: true, sessions: true },
+        },
+      },
     });
+  }
+
+  async deleteTest(id: string) {
+    const test = await this.prisma.test.findUnique({
+      where: { id },
+      include: { _count: { select: { sessions: true } } },
+    });
+
+    if (!test) throw new NotFoundException('Test not found');
+
+    // Prevent deletion if test has sessions
+    if (test._count.sessions > 0) {
+      // Instead of deleting, just deactivate it
+      return this.prisma.test.update({
+        where: { id },
+        data: { isActive: false },
+      });
+    }
+
+    // Delete test and all related questions/options (cascade)
+    await this.prisma.test.delete({ where: { id } });
+    this.logger.log(`Test deleted: ${id}`);
+    return { success: true, message: 'Test deleted successfully' };
   }
 
   async toggleTest(id: string) {
