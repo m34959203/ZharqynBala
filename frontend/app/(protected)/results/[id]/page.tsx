@@ -316,7 +316,17 @@ export default function ResultDetailPage() {
                       <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-indigo-200 text-indigo-800 rounded-full text-sm font-medium mr-3">
                         {i + 1}
                       </span>
-                      <span className="text-indigo-800">{rec}</span>
+                      <div className="text-indigo-800">
+                        <span className="font-medium">{rec.title}</span>
+                        <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
+                          rec.priority === 'high' ? 'bg-red-100 text-red-700' :
+                          rec.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-green-100 text-green-700'
+                        }`}>
+                          {rec.priority === 'high' ? 'Важно' : rec.priority === 'medium' ? 'Средне' : 'Низкий'}
+                        </span>
+                        <p className="text-sm mt-1 opacity-90">{rec.description}</p>
+                      </div>
                     </li>
                   ))}
                 </ol>
