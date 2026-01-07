@@ -88,6 +88,8 @@ export class ResultsService {
         ? Math.round((result.totalScore / result.maxScore) * 100)
         : 0;
 
+    const test = result.session.test as any;
+
     return {
       id: result.id,
       sessionId: result.sessionId,
@@ -100,6 +102,7 @@ export class ResultsService {
       createdAt: result.createdAt,
       testTitle: result.session.test.titleRu,
       testCategory: result.session.test.category,
+      scoringType: test.scoringType || 'percentage',
       childName: `${result.session.child.firstName} ${result.session.child.lastName}`,
       answers: result.session.answers.map((a) => ({
         questionText: a.question.questionTextRu,
@@ -358,6 +361,7 @@ export class ResultsService {
       createdAt: result.createdAt,
       testTitle: result.session?.test?.titleRu,
       testCategory: result.session?.test?.category,
+      scoringType: result.session?.test?.scoringType || 'percentage',
       childName: result.session?.child
         ? `${result.session.child.firstName} ${result.session.child.lastName}`
         : undefined,

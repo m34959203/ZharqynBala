@@ -132,7 +132,9 @@ export default function ResultsPage() {
                         result.percentage
                       )}`}
                     >
-                      {result.percentage}%
+                      {result.scoringType === 'absolute'
+                        ? `${result.totalScore}/${result.maxScore}`
+                        : `${result.percentage}%`}
                     </div>
                     <Link
                       href={`/results/${result.id}`}

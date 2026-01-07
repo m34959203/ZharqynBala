@@ -200,10 +200,14 @@ export default function ResultDetailPage() {
                 Общий результат
               </h2>
               <div className={`text-5xl font-bold ${getScoreColor(result.percentage)}`}>
-                {result.percentage}%
+                {result.scoringType === 'absolute'
+                  ? `${result.totalScore}/${result.maxScore}`
+                  : `${result.percentage}%`}
               </div>
               <p className="text-gray-500 mt-1">
-                {result.totalScore} из {result.maxScore} баллов
+                {result.scoringType === 'absolute'
+                  ? `${result.percentage}% от максимума`
+                  : `${result.totalScore} из ${result.maxScore} баллов`}
               </p>
               <p className={`mt-2 text-sm font-medium ${getScoreColor(result.percentage)}`}>
                 {getScoreLabel(result.percentage)}

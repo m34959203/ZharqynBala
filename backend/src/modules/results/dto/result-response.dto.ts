@@ -35,6 +35,9 @@ export class ResultResponseDto {
   @ApiPropertyOptional()
   testCategory?: string;
 
+  @ApiPropertyOptional({ description: 'Scoring type: percentage or absolute' })
+  scoringType?: 'percentage' | 'absolute';
+
   // Child info
   @ApiPropertyOptional()
   childName?: string;
