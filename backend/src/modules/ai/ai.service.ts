@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import Anthropic from '@anthropic-ai/sdk';
@@ -287,7 +287,7 @@ ${answersText}
    */
   async parseTestMethodology(methodologyText: string): Promise<ParsedTestMethodology> {
     if (!this.anthropic) {
-      throw new Error('AI service is not available. Please configure ANTHROPIC_API_KEY.');
+      throw new BadRequestException('AI сервис недоступен. Необходимо настроить ANTHROPIC_API_KEY в переменных окружения.');
     }
 
     const prompt = `Ты — эксперт по психологическим тестам. Проанализируй текст методики психологического теста и извлеки из него структурированные данные.
@@ -367,7 +367,7 @@ ${methodologyText}
       return this.normalizeMethodology(parsed);
     } catch (error) {
       this.logger.error('Failed to parse methodology:', error);
-      throw new Error(`Failed to parse methodology: ${error.message}`);
+      throw new BadRequestException(`Ошибка парсинга методики: ${error.message}`);
     }
   }
 
