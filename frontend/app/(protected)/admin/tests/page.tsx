@@ -298,13 +298,13 @@ export default function AdminTestsPage() {
               placeholder="Поиск по названию..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900 placeholder:text-gray-500 bg-white"
             />
           </div>
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900 bg-white"
           >
             <option value="all">Все категории</option>
             {categories.map(cat => (
@@ -314,7 +314,7 @@ export default function AdminTestsPage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900 bg-white"
           >
             <option value="all">Все статусы</option>
             <option value="ACTIVE">Активные</option>
@@ -456,7 +456,7 @@ export default function AdminTestsPage() {
                     value={formData.titleRu}
                     onChange={handleInputChange}
                     required
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900 placeholder:text-gray-500"
                     placeholder="Тест на тревожность"
                   />
                 </div>
@@ -470,7 +470,7 @@ export default function AdminTestsPage() {
                     value={formData.titleKz}
                     onChange={handleInputChange}
                     required
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900 placeholder:text-gray-500"
                     placeholder="Алаңдаушылық тесті"
                   />
                 </div>
@@ -486,7 +486,7 @@ export default function AdminTestsPage() {
                   onChange={handleInputChange}
                   required
                   rows={3}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900 placeholder:text-gray-500"
                   placeholder="Описание теста на русском языке..."
                 />
               </div>
@@ -501,7 +501,7 @@ export default function AdminTestsPage() {
                   onChange={handleInputChange}
                   required
                   rows={3}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900 placeholder:text-gray-500"
                   placeholder="Тест сипаттамасы қазақ тілінде..."
                 />
               </div>
@@ -516,7 +516,7 @@ export default function AdminTestsPage() {
                     value={formData.category}
                     onChange={handleInputChange}
                     required
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900 bg-white"
                   >
                     {TEST_CATEGORIES.map(cat => (
                       <option key={cat.value} value={cat.value}>{cat.label}</option>
@@ -535,7 +535,7 @@ export default function AdminTestsPage() {
                     required
                     min={1}
                     max={99}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900 bg-white"
                   />
                 </div>
                 <div>
@@ -550,7 +550,7 @@ export default function AdminTestsPage() {
                     required
                     min={1}
                     max={99}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900 bg-white"
                   />
                 </div>
               </div>
@@ -567,7 +567,7 @@ export default function AdminTestsPage() {
                     onChange={handleInputChange}
                     required
                     min={1}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900 bg-white"
                   />
                 </div>
                 <div>
@@ -580,7 +580,7 @@ export default function AdminTestsPage() {
                     value={formData.price}
                     onChange={handleInputChange}
                     min={0}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900 bg-white"
                   />
                 </div>
               </div>
