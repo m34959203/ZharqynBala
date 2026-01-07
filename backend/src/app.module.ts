@@ -18,8 +18,10 @@ import { CrisisModule } from './modules/crisis/crisis.module';
 @Module({
   imports: [
     // Configuration
+    // In production (Docker), env vars come from container environment, not .env file
     ConfigModule.forRoot({
       isGlobal: true,
+      ignoreEnvFile: process.env.NODE_ENV === 'production',
       envFilePath: '.env',
     }),
 

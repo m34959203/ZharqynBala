@@ -324,7 +324,8 @@ export const authOptions: AuthOptions = {
     strategy: "jwt",
   },
 
-  secret: process.env.NEXTAUTH_SECRET || "zharqynbala-default-secret-change-in-production",
+  // NEXTAUTH_SECRET is required in production - no fallback allowed
+  secret: process.env.NEXTAUTH_SECRET,
 
   // Let NextAuth handle cookies automatically
   // Removed custom cookie config as it may conflict with Railway proxy
