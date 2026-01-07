@@ -137,6 +137,11 @@ export class TestsService {
       throw new NotFoundException('Test not found or inactive');
     }
 
+    // Verify test has questions
+    if (test._count.questions === 0) {
+      throw new BadRequestException('Test has no questions. Please add questions before starting.');
+    }
+
     // Verify child belongs to user
     const child = await this.prisma.child.findFirst({
       where: {
