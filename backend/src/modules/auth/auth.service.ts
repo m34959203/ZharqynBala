@@ -275,7 +275,9 @@ export class AuthService {
       lastName: user.lastName,
       role: user.role,
       language: user.language,
+      avatarUrl: user.avatarUrl,
       isVerified: user.isVerified,
+      isActive: user.isActive,
       createdAt: user.createdAt,
     };
   }
