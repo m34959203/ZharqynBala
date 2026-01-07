@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
-import { signIn, getCsrfToken, getSession } from 'next-auth/react';
+import { signIn } from 'next-auth/react';
 import type { LoginRequest } from '@/types/auth';
 
 interface AvailableProviders {
@@ -25,11 +25,15 @@ function LoginContent() {
     credentials: true,
   });
 
-  // Check for OAuth error in URL
+  // Check for auth error in URL (NextAuth passes errors via ?error= parameter)
   useEffect(() => {
     const errorParam = searchParams.get('error');
     if (errorParam === 'OAuthSignin') {
       setError('Ошибка OAuth авторизации. Провайдер не настроен.');
+    } else if (errorParam === 'CredentialsSignin') {
+      setError('Неверный email или пароль');
+    } else if (errorParam === 'SessionRequired') {
+      setError('Требуется авторизация');
     } else if (errorParam) {
       setError('Ошибка авторизации: ' + errorParam);
     }
@@ -71,73 +75,30 @@ function LoginContent() {
   const onSubmit = async (data: LoginRequest) => {
     console.log('[LoginPage:onSubmit] ========== Login Started ==========');
     console.log('[LoginPage:onSubmit] Email:', data.email);
-    console.log('[LoginPage:onSubmit] Has password:', !!data.password);
 
     try {
       setIsLoading(true);
       setError('');
 
-      // Debug: Check CSRF token before signIn
-      console.log('[LoginPage:onSubmit] Checking CSRF token...');
-      const csrfToken = await getCsrfToken();
-      console.log('[LoginPage:onSubmit] CSRF token:', csrfToken ? 'present' : 'MISSING');
-
-      if (!csrfToken) {
-        console.error('[LoginPage:onSubmit] No CSRF token available!');
-        setError('Ошибка безопасности. Обновите страницу и попробуйте снова.');
-        return;
-      }
-
-      console.log('[LoginPage:onSubmit] Calling signIn with CSRF token...');
-      const result = await signIn('credentials', {
-        redirect: false,
+      // Use redirect: true to let NextAuth handle the full flow server-side
+      // This works better with Next.js 16 + NextAuth v4
+      // Errors will be returned via URL parameter ?error=...
+      await signIn('credentials', {
+        redirect: true,
         email: data.email,
         password: data.password,
-        csrfToken: csrfToken,  // CRITICAL: Pass CSRF token to signIn
         callbackUrl: '/dashboard',
       });
 
-      console.log('[LoginPage:onSubmit] signIn result:', JSON.stringify(result, null, 2));
-      console.log('[LoginPage:onSubmit] Result status:', result?.status);
-      console.log('[LoginPage:onSubmit] Result ok:', result?.ok);
-      console.log('[LoginPage:onSubmit] Result error:', result?.error);
-      console.log('[LoginPage:onSubmit] Result url:', result?.url);
-
-      // Handle null result - in NextAuth v4 + Next.js 16, signIn may return null
-      // even on success due to internal redirect handling.
-      // Based on Railway logs, redirect callback is being called successfully,
-      // so if signIn returns null, we should try redirecting to dashboard anyway.
-      if (!result) {
-        console.log('[LoginPage:onSubmit] signIn returned null - redirecting to dashboard...');
-        // NextAuth redirect callback logs show successful auth, so redirect directly
-        router.push('/dashboard');
-        return;
-      } else if (result.error) {
-        console.error('[LoginPage:onSubmit] Login error:', result.error);
-        setError(result.error);
-      } else if (result.ok) {
-        console.log('[LoginPage:onSubmit] Login successful, redirecting to dashboard...');
-        router.push('/dashboard');
-      } else if (result.status === 401) {
-        setError('Неверный email или пароль');
-      } else if (result.status === 403) {
-        setError('Доступ запрещен');
-      } else if (result.status && result.status >= 500) {
-        setError('Ошибка сервера. Попробуйте позже.');
-      } else {
-        console.error('[LoginPage:onSubmit] Unexpected result:', result);
-        setError(`Ошибка авторизации (статус: ${result.status || 'unknown'})`);
-      }
+      // If we reach here, signIn didn't redirect (shouldn't happen with redirect: true)
+      console.log('[LoginPage:onSubmit] signIn completed without redirect');
     } catch (err: any) {
       console.error('[LoginPage:onSubmit] ========== EXCEPTION ==========');
-      console.error('[LoginPage:onSubmit] Error name:', err.name);
-      console.error('[LoginPage:onSubmit] Error message:', err.message);
-      console.error('[LoginPage:onSubmit] Error stack:', err.stack);
+      console.error('[LoginPage:onSubmit] Error:', err.message);
       setError('Ошибка входа. Проверьте данные.');
-    } finally {
       setIsLoading(false);
-      console.log('[LoginPage:onSubmit] ========== Login Finished ==========');
     }
+    // Note: setIsLoading(false) not called in finally because page will redirect
   };
 
   const handleOAuthSignIn = async (provider: 'google' | 'mailru') => {
