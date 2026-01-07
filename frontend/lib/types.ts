@@ -68,6 +68,7 @@ export interface Result {
   createdAt: string;
   testTitle?: string;
   testCategory?: string;
+  scoringType?: 'percentage' | 'absolute';
   childName?: string;
 }
 
