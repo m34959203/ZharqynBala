@@ -23,8 +23,14 @@ export class UserResponseDto {
   @ApiProperty({ enum: Language, example: Language.RU, description: 'Язык' })
   language: Language;
 
+  @ApiProperty({ example: 'https://example.com/avatar.jpg', description: 'URL аватара', nullable: true })
+  avatarUrl: string | null;
+
   @ApiProperty({ example: false, description: 'Email подтвержден' })
   isVerified: boolean;
+
+  @ApiProperty({ example: true, description: 'Активен ли пользователь' })
+  isActive: boolean;
 
   @ApiProperty({ example: '2025-12-05T12:00:00.000Z', description: 'Дата создания' })
   createdAt: Date;
