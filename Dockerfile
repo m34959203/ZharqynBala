@@ -8,6 +8,9 @@ FROM node:20-alpine AS builder
 # Устанавливаем OpenSSL (требуется для Prisma)
 RUN apk add --no-cache openssl
 
+# Пропускаем скачивание Chromium для Puppeteer
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+
 WORKDIR /app
 
 # Копируем package files
@@ -40,7 +43,7 @@ RUN apk add --no-cache \
     dumb-init \
     openssl
 
-# Переменные для Puppeteer (PDF отключен)
+# Пропускаем скачивание Chromium для Puppeteer (PDF отключен)
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
 WORKDIR /app
@@ -52,8 +55,8 @@ RUN addgroup -g 1001 -S nodejs && \
 # Копируем package files
 COPY backend/package*.json ./
 
-# Устанавливаем только production зависимости
-RUN npm ci --only=production && npm cache clean --force
+# Устанавливаем только production зависимости (без Chromium)
+RUN npm ci --omit=dev && npm cache clean --force
 
 # Копируем Prisma schema
 COPY backend/prisma ./prisma/
