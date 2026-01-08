@@ -34,22 +34,14 @@ RUN npx tsc prisma/seed.ts --outDir dist/prisma --module commonjs --target es202
 # ===================================
 FROM node:20-alpine AS runner
 
-# Устанавливаем dumb-init, OpenSSL и Chromium для PDF генерации
+# Устанавливаем dumb-init и OpenSSL
+# PDF/Chromium временно отключены для оптимизации деплоя
 RUN apk add --no-cache \
     dumb-init \
-    openssl \
-    chromium \
-    nss \
-    freetype \
-    harfbuzz \
-    ca-certificates \
-    ttf-freefont \
-    font-noto \
-    font-noto-cjk
+    openssl
 
-# Устанавливаем переменные окружения для Puppeteer
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+# Переменные для Puppeteer (PDF отключен)
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
 WORKDIR /app
 
