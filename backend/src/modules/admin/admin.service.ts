@@ -244,41 +244,51 @@ export class AdminService {
   async deleteTest(id: string, force: boolean = false) {
     const test = await this.prisma.test.findUnique({
       where: { id },
-      include: { _count: { select: { sessions: true } } },
+      include: {
+        _count: { select: { sessions: true } },
+        questions: { select: { id: true } },
+      },
     });
 
     if (!test) throw new NotFoundException('Test not found');
 
-    // Force delete - удаляем все связанные данные
+    // Force delete - удаляем все связанные данные в транзакции
     if (force || test._count.sessions === 0) {
-      // Удаляем в правильном порядке из-за foreign keys
-      // 1. Удаляем ответы
-      await this.prisma.answer.deleteMany({
-        where: { session: { testId: id } },
-      });
+      const questionIds = test.questions.map(q => q.id);
 
-      // 2. Удаляем результаты
-      await this.prisma.result.deleteMany({
-        where: { session: { testId: id } },
-      });
+      await this.prisma.$transaction(async (tx) => {
+        // 1. Удаляем ответы (ссылаются на questions и answer_options)
+        if (questionIds.length > 0) {
+          await tx.answer.deleteMany({
+            where: { questionId: { in: questionIds } },
+          });
+        }
 
-      // 3. Удаляем сессии
-      await this.prisma.testSession.deleteMany({
-        where: { testId: id },
-      });
+        // 2. Удаляем результаты
+        await tx.result.deleteMany({
+          where: { session: { testId: id } },
+        });
 
-      // 4. Удаляем варианты ответов
-      await this.prisma.answerOption.deleteMany({
-        where: { question: { testId: id } },
-      });
+        // 3. Удаляем сессии
+        await tx.testSession.deleteMany({
+          where: { testId: id },
+        });
 
-      // 5. Удаляем вопросы
-      await this.prisma.question.deleteMany({
-        where: { testId: id },
-      });
+        // 4. Удаляем варианты ответов
+        if (questionIds.length > 0) {
+          await tx.answerOption.deleteMany({
+            where: { questionId: { in: questionIds } },
+          });
+        }
 
-      // 6. Удаляем сам тест
-      await this.prisma.test.delete({ where: { id } });
+        // 5. Удаляем вопросы
+        await tx.question.deleteMany({
+          where: { testId: id },
+        });
+
+        // 6. Удаляем сам тест
+        await tx.test.delete({ where: { id } });
+      });
 
       this.logger.log(`Test deleted${force ? ' (forced)' : ''}: ${id}`);
       return { success: true, message: 'Тест полностью удалён' };
