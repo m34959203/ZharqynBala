@@ -274,19 +274,24 @@ export class AdminService {
           where: { testId: id },
         });
 
-        // 4. Удаляем варианты ответов
+        // 4. Удаляем групповые тесты (школы)
+        await tx.groupTest.deleteMany({
+          where: { testId: id },
+        });
+
+        // 5. Удаляем варианты ответов
         if (questionIds.length > 0) {
           await tx.answerOption.deleteMany({
             where: { questionId: { in: questionIds } },
           });
         }
 
-        // 5. Удаляем вопросы
+        // 6. Удаляем вопросы
         await tx.question.deleteMany({
           where: { testId: id },
         });
 
-        // 6. Удаляем сам тест
+        // 7. Удаляем сам тест
         await tx.test.delete({ where: { id } });
       });
 
