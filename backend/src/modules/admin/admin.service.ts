@@ -535,6 +535,7 @@ export class AdminService {
       sessions: 0,
       answers: 0,
       results: 0,
+      consultations: 0,
       children: 0,
       users: 0,
     };
@@ -547,7 +548,13 @@ export class AdminService {
       });
       const questionIds = questions.map(q => q.id);
 
-      // 1. Удаляем ответы
+      // Находим демо пользователя
+      const demoUser = await tx.user.findUnique({
+        where: { email: 'parent@test.kz' },
+        select: { id: true },
+      });
+
+      // 1. Удаляем ответы на вопросы демо тестов (от любых детей)
       if (questionIds.length > 0) {
         const deleted = await tx.answer.deleteMany({
           where: { questionId: { in: questionIds } },
@@ -555,13 +562,13 @@ export class AdminService {
         results.answers = deleted.count;
       }
 
-      // 2. Удаляем результаты
+      // 2. Удаляем результаты демо тестов
       const deletedResults = await tx.result.deleteMany({
         where: { session: { testId: { in: demoTestIds } } },
       });
       results.results = deletedResults.count;
 
-      // 3. Удаляем сессии
+      // 3. Удаляем сессии демо тестов
       const deletedSessions = await tx.testSession.deleteMany({
         where: { testId: { in: demoTestIds } },
       });
@@ -572,7 +579,7 @@ export class AdminService {
         where: { testId: { in: demoTestIds } },
       });
 
-      // 5. Удаляем варианты ответов
+      // 5. Удаляем варианты ответов демо тестов
       if (questionIds.length > 0) {
         const deletedOptions = await tx.answerOption.deleteMany({
           where: { questionId: { in: questionIds } },
@@ -580,7 +587,7 @@ export class AdminService {
         results.answerOptions = deletedOptions.count;
       }
 
-      // 6. Удаляем вопросы
+      // 6. Удаляем вопросы демо тестов
       const deletedQuestions = await tx.question.deleteMany({
         where: { testId: { in: demoTestIds } },
       });
@@ -592,13 +599,55 @@ export class AdminService {
       });
       results.tests = deletedTests.count;
 
-      // 8. Удаляем демо ребёнка
+      // === Удаление демо ребёнка и пользователя ===
+
+      // 8. Удаляем консультации демо ребёнка
+      const deletedConsultations = await tx.consultation.deleteMany({
+        where: { childId: 'demo-child-1' },
+      });
+      results.consultations = deletedConsultations.count;
+
+      // 9. Удаляем ответы сессий демо ребёнка (для не-демо тестов)
+      const demoChildSessions = await tx.testSession.findMany({
+        where: { childId: 'demo-child-1' },
+        select: { id: true },
+      });
+      if (demoChildSessions.length > 0) {
+        const sessionIds = demoChildSessions.map(s => s.id);
+        await tx.answer.deleteMany({
+          where: { sessionId: { in: sessionIds } },
+        });
+        await tx.result.deleteMany({
+          where: { sessionId: { in: sessionIds } },
+        });
+        await tx.testSession.deleteMany({
+          where: { id: { in: sessionIds } },
+        });
+      }
+
+      // 10. Удаляем демо ребёнка
       const deletedChildren = await tx.child.deleteMany({
         where: { id: 'demo-child-1' },
       });
       results.children = deletedChildren.count;
 
-      // 9. Удаляем демо родителя
+      // 11. Если есть демо пользователь - удаляем связанные данные
+      if (demoUser) {
+        await tx.subscription.deleteMany({
+          where: { userId: demoUser.id },
+        });
+        await tx.payment.deleteMany({
+          where: { userId: demoUser.id },
+        });
+        await tx.refreshToken.deleteMany({
+          where: { userId: demoUser.id },
+        });
+        await tx.securityLog.deleteMany({
+          where: { userId: demoUser.id },
+        });
+      }
+
+      // 12. Удаляем демо родителя
       const deletedUsers = await tx.user.deleteMany({
         where: { email: 'parent@test.kz' },
       });
