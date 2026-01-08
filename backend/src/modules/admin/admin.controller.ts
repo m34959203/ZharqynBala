@@ -121,8 +121,11 @@ export class AdminController {
 
   @Delete('tests/:id')
   @ApiOperation({ summary: 'Delete test' })
-  async deleteTest(@Param('id') id: string) {
-    return this.adminService.deleteTest(id);
+  async deleteTest(
+    @Param('id') id: string,
+    @Query('force') force?: string,
+  ) {
+    return this.adminService.deleteTest(id, force === 'true');
   }
 
   @Post('tests/:id/toggle')

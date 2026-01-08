@@ -241,7 +241,7 @@ export class AdminService {
     });
   }
 
-  async deleteTest(id: string) {
+  async deleteTest(id: string, force: boolean = false) {
     const test = await this.prisma.test.findUnique({
       where: { id },
       include: { _count: { select: { sessions: true } } },
@@ -249,19 +249,46 @@ export class AdminService {
 
     if (!test) throw new NotFoundException('Test not found');
 
-    // Prevent deletion if test has sessions
-    if (test._count.sessions > 0) {
-      // Instead of deleting, just deactivate it
-      return this.prisma.test.update({
-        where: { id },
-        data: { isActive: false },
+    // Force delete - удаляем все связанные данные
+    if (force || test._count.sessions === 0) {
+      // Удаляем в правильном порядке из-за foreign keys
+      // 1. Удаляем ответы
+      await this.prisma.answer.deleteMany({
+        where: { session: { testId: id } },
       });
+
+      // 2. Удаляем результаты
+      await this.prisma.result.deleteMany({
+        where: { session: { testId: id } },
+      });
+
+      // 3. Удаляем сессии
+      await this.prisma.testSession.deleteMany({
+        where: { testId: id },
+      });
+
+      // 4. Удаляем варианты ответов
+      await this.prisma.answerOption.deleteMany({
+        where: { question: { testId: id } },
+      });
+
+      // 5. Удаляем вопросы
+      await this.prisma.question.deleteMany({
+        where: { testId: id },
+      });
+
+      // 6. Удаляем сам тест
+      await this.prisma.test.delete({ where: { id } });
+
+      this.logger.log(`Test deleted${force ? ' (forced)' : ''}: ${id}`);
+      return { success: true, message: 'Тест полностью удалён' };
     }
 
-    // Delete test and all related questions/options (cascade)
-    await this.prisma.test.delete({ where: { id } });
-    this.logger.log(`Test deleted: ${id}`);
-    return { success: true, message: 'Test deleted successfully' };
+    // Без force - только деактивируем если есть сессии
+    return this.prisma.test.update({
+      where: { id },
+      data: { isActive: false },
+    });
   }
 
   async toggleTest(id: string) {

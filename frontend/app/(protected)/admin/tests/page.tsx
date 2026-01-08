@@ -217,10 +217,10 @@ export default function AdminTestsPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, force: boolean = false) => {
     setIsDeleting(true);
     try {
-      await adminApi.deleteTest(id);
+      await adminApi.deleteTest(id, force);
       setDeleteConfirmId(null);
       await fetchTests();
     } catch (err: unknown) {
@@ -431,19 +431,51 @@ export default function AdminTestsPage() {
                       </svg>
                     </button>
                     {deleteConfirmId === test.id && (
-                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border z-10">
+                      <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border z-10">
                         <button
                           onClick={() => handleToggleStatus(test)}
-                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
                         >
-                          {test.isActive ? 'Деактивировать' : 'Активировать'}
+                          {test.isActive ? (
+                            <>
+                              <svg className="w-4 h-4 mr-2 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              В черновик
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-4 h-4 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              Активировать
+                            </>
+                          )}
+                        </button>
+                        <hr className="my-1" />
+                        <button
+                          onClick={() => handleDelete(test.id, false)}
+                          disabled={isDeleting}
+                          className="w-full px-4 py-2 text-left text-sm text-orange-600 hover:bg-orange-50 flex items-center"
+                        >
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          {isDeleting ? 'Удаление...' : 'Удалить'}
                         </button>
                         <button
-                          onClick={() => handleDelete(test.id)}
+                          onClick={() => {
+                            if (confirm('Вы уверены? Это удалит тест и ВСЕ данные прохождений безвозвратно!')) {
+                              handleDelete(test.id, true);
+                            }
+                          }}
                           disabled={isDeleting}
-                          className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                          className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center"
                         >
-                          {isDeleting ? 'Удаление...' : 'Удалить'}
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                          Удалить полностью
                         </button>
                       </div>
                     )}
