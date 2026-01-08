@@ -242,15 +242,17 @@ export const selfEsteemQuestions = [
     ],
   },
   {
+    // Вопрос 2 - ПОЗИТИВНОЕ утверждение (ответственность = высокая самооценка)
+    // Требует ИНВЕРТИРОВАННОЙ шкалы: часто = меньше баллов
     questionTextRu: 'Постоянно чувствую свою ответственность за работу (учёбу).',
     questionTextKz: 'Мен жұмысым (оқуым) үшін жауапкершілікті үнемі сезінемін.',
     questionType: QuestionType.SCALE,
     options: [
-      { textRu: 'Никогда', textKz: 'Ешқашан', score: 0 },
-      { textRu: 'Редко', textKz: 'Сирек', score: 1 },
+      { textRu: 'Никогда', textKz: 'Ешқашан', score: 4 },
+      { textRu: 'Редко', textKz: 'Сирек', score: 3 },
       { textRu: 'Иногда', textKz: 'Кейде', score: 2 },
-      { textRu: 'Часто', textKz: 'Жиі', score: 3 },
-      { textRu: 'Очень часто', textKz: 'Өте жиі', score: 4 },
+      { textRu: 'Часто', textKz: 'Жиі', score: 1 },
+      { textRu: 'Очень часто', textKz: 'Өте жиі', score: 0 },
     ],
   },
   {
