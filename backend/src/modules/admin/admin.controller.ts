@@ -99,7 +99,7 @@ export class AdminController {
 
   @Get('tests/:id')
   @ApiOperation({ summary: 'Get test by ID with questions and options' })
-  async getTestById(@Param('id', ParseUUIDPipe) id: string) {
+  async getTestById(@Param('id') id: string) {
     return this.adminService.getTestById(id);
   }
 
@@ -113,7 +113,7 @@ export class AdminController {
   @Patch('tests/:id')
   @ApiOperation({ summary: 'Update test' })
   async updateTest(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body() data: UpdateTestDto,
   ) {
     return this.adminService.updateTest(id, data);
@@ -121,13 +121,13 @@ export class AdminController {
 
   @Delete('tests/:id')
   @ApiOperation({ summary: 'Delete test' })
-  async deleteTest(@Param('id', ParseUUIDPipe) id: string) {
+  async deleteTest(@Param('id') id: string) {
     return this.adminService.deleteTest(id);
   }
 
   @Post('tests/:id/toggle')
   @ApiOperation({ summary: 'Toggle test active status' })
-  async toggleTest(@Param('id', ParseUUIDPipe) id: string) {
+  async toggleTest(@Param('id') id: string) {
     return this.adminService.toggleTest(id);
   }
 
