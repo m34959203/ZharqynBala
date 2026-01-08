@@ -128,8 +128,8 @@ export const adminApi = {
     return response.data;
   },
 
-  deleteTest: async (id: string): Promise<void> => {
-    await api.delete(`/admin/tests/${id}`);
+  deleteTest: async (id: string, force: boolean = false): Promise<void> => {
+    await api.delete(`/admin/tests/${id}${force ? '?force=true' : ''}`);
   },
 
   toggleTest: async (id: string): Promise<TestData> => {
