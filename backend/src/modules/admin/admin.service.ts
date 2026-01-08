@@ -509,4 +509,108 @@ export class AdminService {
       };
     });
   }
+
+  /**
+   * Удаление всех демо данных из системы
+   */
+  async cleanupDemoData() {
+    this.logger.log('Starting demo data cleanup...');
+
+    // ID демо тестов (из seed.ts)
+    const demoTestIds = [
+      'test-anxiety-1',
+      'test-motivation-1',
+      'test-selfesteem-1',
+      'test-attention-1',
+      'test-emotions-1',
+      'test-social-1',
+      'test-stress-1',
+      'test-learning-style-1',
+    ];
+
+    const results = {
+      tests: 0,
+      questions: 0,
+      answerOptions: 0,
+      sessions: 0,
+      answers: 0,
+      results: 0,
+      children: 0,
+      users: 0,
+    };
+
+    await this.prisma.$transaction(async (tx) => {
+      // Получаем ID вопросов демо тестов
+      const questions = await tx.question.findMany({
+        where: { testId: { in: demoTestIds } },
+        select: { id: true },
+      });
+      const questionIds = questions.map(q => q.id);
+
+      // 1. Удаляем ответы
+      if (questionIds.length > 0) {
+        const deleted = await tx.answer.deleteMany({
+          where: { questionId: { in: questionIds } },
+        });
+        results.answers = deleted.count;
+      }
+
+      // 2. Удаляем результаты
+      const deletedResults = await tx.result.deleteMany({
+        where: { session: { testId: { in: demoTestIds } } },
+      });
+      results.results = deletedResults.count;
+
+      // 3. Удаляем сессии
+      const deletedSessions = await tx.testSession.deleteMany({
+        where: { testId: { in: demoTestIds } },
+      });
+      results.sessions = deletedSessions.count;
+
+      // 4. Удаляем групповые тесты
+      await tx.groupTest.deleteMany({
+        where: { testId: { in: demoTestIds } },
+      });
+
+      // 5. Удаляем варианты ответов
+      if (questionIds.length > 0) {
+        const deletedOptions = await tx.answerOption.deleteMany({
+          where: { questionId: { in: questionIds } },
+        });
+        results.answerOptions = deletedOptions.count;
+      }
+
+      // 6. Удаляем вопросы
+      const deletedQuestions = await tx.question.deleteMany({
+        where: { testId: { in: demoTestIds } },
+      });
+      results.questions = deletedQuestions.count;
+
+      // 7. Удаляем демо тесты
+      const deletedTests = await tx.test.deleteMany({
+        where: { id: { in: demoTestIds } },
+      });
+      results.tests = deletedTests.count;
+
+      // 8. Удаляем демо ребёнка
+      const deletedChildren = await tx.child.deleteMany({
+        where: { id: 'demo-child-1' },
+      });
+      results.children = deletedChildren.count;
+
+      // 9. Удаляем демо родителя
+      const deletedUsers = await tx.user.deleteMany({
+        where: { email: 'parent@test.kz' },
+      });
+      results.users = deletedUsers.count;
+    });
+
+    this.logger.log('Demo data cleanup completed:', results);
+
+    return {
+      success: true,
+      message: 'Демо данные успешно удалены',
+      deleted: results,
+    };
+  }
 }

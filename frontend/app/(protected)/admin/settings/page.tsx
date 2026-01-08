@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { adminApi } from '@/lib/api';
 
 export default function AdminSettingsPage() {
   const [activeTab, setActiveTab] = useState<'general' | 'payments' | 'notifications' | 'security'>('general');
@@ -29,8 +30,27 @@ export default function AdminSettingsPage() {
   const [sessionTimeout, setSessionTimeout] = useState(30);
   const [maxLoginAttempts, setMaxLoginAttempts] = useState(5);
 
+  // Demo cleanup
+  const [cleaningDemo, setCleaningDemo] = useState(false);
+
   const handleSave = () => {
     alert('Настройки сохранены!');
+  };
+
+  const handleCleanupDemo = async () => {
+    if (!confirm('Вы уверены? Это удалит все демо тесты, демо пользователя и демо ребёнка. Действие необратимо!')) {
+      return;
+    }
+    setCleaningDemo(true);
+    try {
+      const result = await adminApi.cleanupDemoData();
+      alert(`Успешно удалено:\n- Тестов: ${result.deleted.tests}\n- Вопросов: ${result.deleted.questions}\n- Сессий: ${result.deleted.sessions}\n- Пользователей: ${result.deleted.users}`);
+    } catch (error) {
+      console.error('Failed to cleanup demo data:', error);
+      alert('Ошибка при удалении демо данных');
+    } finally {
+      setCleaningDemo(false);
+    }
   };
 
   const tabs = [
@@ -279,12 +299,19 @@ export default function AdminSettingsPage() {
             <div className="p-4 bg-red-50 rounded-lg border border-red-200">
               <h3 className="font-medium text-red-800 mb-2">Опасная зона</h3>
               <p className="text-sm text-red-600 mb-3">Эти действия необратимы</p>
-              <div className="flex space-x-3">
+              <div className="flex flex-wrap gap-3">
                 <button className="px-4 py-2 bg-red-100 text-red-700 text-sm font-medium rounded-lg hover:bg-red-200">
                   Очистить кэш
                 </button>
                 <button className="px-4 py-2 bg-red-100 text-red-700 text-sm font-medium rounded-lg hover:bg-red-200">
                   Сбросить сессии
+                </button>
+                <button
+                  onClick={handleCleanupDemo}
+                  disabled={cleaningDemo}
+                  className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50"
+                >
+                  {cleaningDemo ? 'Удаление...' : 'Удалить демо данные'}
                 </button>
               </div>
             </div>

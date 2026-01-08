@@ -198,4 +198,12 @@ export class AdminController {
   async getTestsReport() {
     return this.adminService.getTestsReport();
   }
+
+  // Demo Data Cleanup
+  @Delete('cleanup-demo')
+  @ApiOperation({ summary: 'Remove all demo data from system' })
+  @ApiResponse({ status: 200, description: 'Demo data cleaned up successfully' })
+  async cleanupDemoData() {
+    return this.adminService.cleanupDemoData();
+  }
 }
