@@ -246,11 +246,11 @@ export const selfEsteemQuestions = [
     questionTextKz: 'Мен жұмысым (оқуым) үшін жауапкершілікті үнемі сезінемін.',
     questionType: QuestionType.SCALE,
     options: [
-      { textRu: 'Никогда', textKz: 'Ешқашан', score: 4 },
-      { textRu: 'Редко', textKz: 'Сирек', score: 3 },
+      { textRu: 'Никогда', textKz: 'Ешқашан', score: 0 },
+      { textRu: 'Редко', textKz: 'Сирек', score: 1 },
       { textRu: 'Иногда', textKz: 'Кейде', score: 2 },
-      { textRu: 'Часто', textKz: 'Жиі', score: 1 },
-      { textRu: 'Очень часто', textKz: 'Өте жиі', score: 0 },
+      { textRu: 'Часто', textKz: 'Жиі', score: 3 },
+      { textRu: 'Очень часто', textKz: 'Өте жиі', score: 4 },
     ],
   },
   {
