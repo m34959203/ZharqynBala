@@ -148,6 +148,12 @@ export const adminApi = {
     const response = await api.get('/admin/users', { params });
     return response.data;
   },
+
+  // Demo data cleanup
+  cleanupDemoData: async (): Promise<{ success: boolean; message: string; deleted: Record<string, number> }> => {
+    const response = await api.delete('/admin/cleanup-demo');
+    return response.data;
+  },
 };
 
 // Auth API
