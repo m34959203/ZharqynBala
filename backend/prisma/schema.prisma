@@ -54,6 +54,9 @@ model User {
   // Audit
   securityLogs  SecurityLog[]
 
+  // Консультации как клиент
+  clientConsultations Consultation[] @relation("ClientConsultations")
+
   @@map("users")
 }
 
@@ -410,40 +413,66 @@ model Result {
 // ============================================
 
 enum ConsultationStatus {
-  SCHEDULED
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
+  PENDING      // Ожидает подтверждения психолога
+  CONFIRMED    // Подтверждена, ожидает начала
+  REJECTED     // Отклонена психологом
+  IN_PROGRESS  // Идёт
+  COMPLETED    // Завершена
+  CANCELLED    // Отменена клиентом
+  NO_SHOW      // Клиент не явился
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  REFUNDED
 }
 
 model Consultation {
   id              String             @id @default(uuid())
 
+  // Участники
   psychologistId  String             @map("psychologist_id")
   psychologist    Psychologist       @relation(fields: [psychologistId], references: [id])
+  clientId        String             @map("client_id")
+  client          User               @relation("ClientConsultations", fields: [clientId], references: [id])
+  childId         String?            @map("child_id")
+  child           Child?             @relation(fields: [childId], references: [id])
 
-  parentId        String             @map("parent_id")
-  childId         String             @map("child_id")
-  child           Child              @relation(fields: [childId], references: [id])
-
+  // Время
   scheduledAt     DateTime           @map("scheduled_at")
-  durationMinutes Int                @map("duration_minutes") @default(60)
+  durationMinutes Int                @map("duration_minutes") @default(50)
 
-  status          ConsultationStatus @default(SCHEDULED)
-  meetingUrl      String?            @map("meeting_url")
+  // Статус
+  status          ConsultationStatus @default(PENDING)
 
+  // Видеокомната (Daily.co / Jitsi)
+  roomName        String?            @map("room_name")
+  roomUrl         String?            @map("room_url")
+
+  // Оплата
   price           Int
-  notes           String?
+  paymentStatus   PaymentStatus      @default(PENDING) @map("payment_status")
+  paymentId       String?            @map("payment_id")
 
-  rating          Int?
+  // Дополнительно
+  notes           String?            // Заметки от клиента
+  cancelReason    String?            @map("cancel_reason")
+
+  // Отзыв
+  rating          Int?               // 1-5
   review          String?
 
   createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
   completedAt     DateTime?          @map("completed_at")
 
   @@map("consultations")
   @@index([psychologistId])
+  @@index([clientId])
   @@index([childId])
+  @@index([status])
+  @@index([scheduledAt])
 }
 
 // ============================================
@@ -480,7 +509,7 @@ model Subscription {
 // ПЛАТЕЖИ
 // ============================================
 
-enum PaymentStatus {
+enum TransactionStatus {
   PENDING
   COMPLETED
   FAILED
@@ -499,19 +528,19 @@ enum PaymentProvider {
 }
 
 model Payment {
-  id            String          @id @default(uuid())
-  userId        String          @map("user_id")
+  id            String            @id @default(uuid())
+  userId        String            @map("user_id")
 
   amount        Int
-  currency      String          @default("KZT")
+  currency      String            @default("KZT")
 
-  paymentType   PaymentType     @map("payment_type")
-  relatedId     String?         @map("related_id") // ID of test, consultation, or subscription
+  paymentType   PaymentType       @map("payment_type")
+  relatedId     String?           @map("related_id") // ID of test, consultation, or subscription
 
   provider      PaymentProvider
-  externalId    String?         @map("external_id")
+  externalId    String?           @map("external_id")
 
-  status        PaymentStatus   @default(PENDING)
+  status        TransactionStatus @default(PENDING)
 
   createdAt     DateTime        @default(now()) @map("created_at")
   completedAt   DateTime?       @map("completed_at")
