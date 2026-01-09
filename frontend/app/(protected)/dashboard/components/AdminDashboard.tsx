@@ -2,10 +2,12 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { adminApi } from '@/lib/api';
 
 interface RecentUser {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   role: string;
   createdAt: string;
@@ -13,10 +15,20 @@ interface RecentUser {
 
 interface RecentPayment {
   id: string;
-  userName: string;
   amount: number;
   status: string;
   createdAt: string;
+  userId?: string;
+}
+
+interface DashboardStats {
+  totalUsers: number;
+  totalChildren: number;
+  totalTests: number;
+  completedSessions: number;
+  totalRevenue: number;
+  newUsersToday: number;
+  testsToday: number;
 }
 
 interface AdminDashboardProps {
@@ -27,39 +39,50 @@ export default function AdminDashboard({ userName }: AdminDashboardProps) {
   const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
   const [recentPayments, setRecentPayments] = useState<RecentPayment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<DashboardStats>({
     totalUsers: 0,
-    activeUsers: 0,
-    revenue: 0,
-    testsCompleted: 0,
-    growthUsers: 0,
-    growthRevenue: 0,
+    totalChildren: 0,
+    totalTests: 0,
+    completedSessions: 0,
+    totalRevenue: 0,
+    newUsersToday: 0,
+    testsToday: 0,
   });
 
   useEffect(() => {
-    // Simulate data loading
-    setLoading(false);
-    // Mock data
-    setRecentUsers([
-      { id: '1', name: 'Асем Нурпеисова', email: 'asem@mail.kz', role: 'PARENT', createdAt: '2025-12-25T10:30:00' },
-      { id: '2', name: 'Марат Сагынбаев', email: 'marat@mail.kz', role: 'PARENT', createdAt: '2025-12-25T09:15:00' },
-      { id: '3', name: 'СШ №45', email: 'school45@edu.kz', role: 'SCHOOL', createdAt: '2025-12-24T16:45:00' },
-      { id: '4', name: 'Др. Айгуль К.', email: 'aigul@psych.kz', role: 'PSYCHOLOGIST', createdAt: '2025-12-24T14:20:00' },
-    ]);
-    setRecentPayments([
-      { id: '1', userName: 'Асем Н.', amount: 5000, status: 'COMPLETED', createdAt: '2025-12-25T11:00:00' },
-      { id: '2', userName: 'Марат С.', amount: 15000, status: 'COMPLETED', createdAt: '2025-12-25T10:30:00' },
-      { id: '3', userName: 'СШ №45', amount: 150000, status: 'COMPLETED', createdAt: '2025-12-24T15:00:00' },
-      { id: '4', userName: 'Динара Ж.', amount: 5000, status: 'PENDING', createdAt: '2025-12-24T12:00:00' },
-    ]);
-    setStats({
-      totalUsers: 12450,
-      activeUsers: 3250,
-      revenue: 2500000,
-      testsCompleted: 8920,
-      growthUsers: 15,
-      growthRevenue: 23,
-    });
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+
+        // Fetch dashboard stats
+        const dashboardStats = await adminApi.getDashboardStats();
+        setStats(dashboardStats);
+
+        // Fetch recent users
+        try {
+          const usersData = await adminApi.getUsers({ limit: 4 });
+          const users = usersData.users || usersData;
+          setRecentUsers(Array.isArray(users) ? users.slice(0, 4) : []);
+        } catch {
+          setRecentUsers([]);
+        }
+
+        // Fetch recent payments
+        try {
+          const paymentsData = await adminApi.getPayments({ page: 1 });
+          const payments = paymentsData.payments || [];
+          setRecentPayments(payments.slice(0, 4));
+        } catch {
+          setRecentPayments([]);
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
   }, []);
 
   const formatCurrency = (amount: number) => {
@@ -131,12 +154,14 @@ export default function AdminDashboard({ userName }: AdminDashboardProps) {
             <div>
               <p className="text-sm font-medium text-gray-500">Пользователей</p>
               <p className="text-2xl font-bold text-gray-900">{stats.totalUsers.toLocaleString()}</p>
-              <p className="text-xs text-green-600 flex items-center mt-1">
-                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                </svg>
-                +{stats.growthUsers}% за месяц
-              </p>
+              {stats.newUsersToday > 0 && (
+                <p className="text-xs text-green-600 flex items-center mt-1">
+                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                  </svg>
+                  +{stats.newUsersToday} сегодня
+                </p>
+              )}
             </div>
             <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
               <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -149,10 +174,10 @@ export default function AdminDashboard({ userName }: AdminDashboardProps) {
         <div className="bg-white rounded-xl shadow-sm p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-500">Активных (MAU)</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.activeUsers.toLocaleString()}</p>
+              <p className="text-sm font-medium text-gray-500">Детей</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.totalChildren.toLocaleString()}</p>
               <p className="text-xs text-gray-500 mt-1">
-                {Math.round((stats.activeUsers / stats.totalUsers) * 100)}% от всех
+                зарегистрировано
               </p>
             </div>
             <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -167,13 +192,8 @@ export default function AdminDashboard({ userName }: AdminDashboardProps) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-500">Выручка</p>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.revenue)}</p>
-              <p className="text-xs text-green-600 flex items-center mt-1">
-                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                </svg>
-                +{stats.growthRevenue}% за месяц
-              </p>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.totalRevenue)}</p>
+              <p className="text-xs text-gray-500 mt-1">за всё время</p>
             </div>
             <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
               <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -187,8 +207,10 @@ export default function AdminDashboard({ userName }: AdminDashboardProps) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-500">Тестов пройдено</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.testsCompleted.toLocaleString()}</p>
-              <p className="text-xs text-gray-500 mt-1">за всё время</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.completedSessions.toLocaleString()}</p>
+              {stats.testsToday > 0 && (
+                <p className="text-xs text-green-600 mt-1">+{stats.testsToday} сегодня</p>
+              )}
             </div>
             <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
               <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -215,25 +237,33 @@ export default function AdminDashboard({ userName }: AdminDashboardProps) {
             </div>
           ) : (
             <div className="space-y-4">
-              {recentUsers.map((user) => (
-                <div key={user.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center">
-                    <div className="w-10 h-10 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
-                      {user.name[0]}
+              {recentUsers.length === 0 ? (
+                <p className="text-gray-500 text-center py-4">Нет пользователей</p>
+              ) : (
+                recentUsers.map((user) => (
+                  <div key={user.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center">
+                      <div className="w-10 h-10 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
+                        {(user.firstName || user.email)[0].toUpperCase()}
+                      </div>
+                      <div className="ml-3">
+                        <p className="font-medium text-gray-900">
+                          {user.firstName && user.lastName
+                            ? `${user.firstName} ${user.lastName}`
+                            : user.email}
+                        </p>
+                        <p className="text-sm text-gray-500">{user.email}</p>
+                      </div>
                     </div>
-                    <div className="ml-3">
-                      <p className="font-medium text-gray-900">{user.name}</p>
-                      <p className="text-sm text-gray-500">{user.email}</p>
+                    <div className="text-right">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRoleColor(user.role)}`}>
+                        {getRoleLabel(user.role)}
+                      </span>
+                      <p className="text-xs text-gray-400 mt-1">{formatTime(user.createdAt)}</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRoleColor(user.role)}`}>
-                      {getRoleLabel(user.role)}
-                    </span>
-                    <p className="text-xs text-gray-400 mt-1">{formatTime(user.createdAt)}</p>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           )}
         </div>
@@ -253,27 +283,31 @@ export default function AdminDashboard({ userName }: AdminDashboardProps) {
             </div>
           ) : (
             <div className="space-y-4">
-              {recentPayments.map((payment) => (
-                <div key={payment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center">
-                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
+              {recentPayments.length === 0 ? (
+                <p className="text-gray-500 text-center py-4">Нет платежей</p>
+              ) : (
+                recentPayments.map((payment) => (
+                  <div key={payment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center">
+                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <p className="font-medium text-gray-900">Платёж #{payment.id.slice(0, 8)}</p>
+                        <p className="text-sm text-gray-500">{formatTime(payment.createdAt)}</p>
+                      </div>
                     </div>
-                    <div className="ml-3">
-                      <p className="font-medium text-gray-900">{payment.userName}</p>
-                      <p className="text-sm text-gray-500">{formatTime(payment.createdAt)}</p>
+                    <div className="text-right">
+                      <p className="font-bold text-gray-900">{payment.amount.toLocaleString()} ₸</p>
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPaymentStatusColor(payment.status)}`}>
+                        {payment.status === 'COMPLETED' ? 'Оплачено' : payment.status === 'PENDING' ? 'Ожидает' : payment.status}
+                      </span>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold text-gray-900">{payment.amount.toLocaleString()} ₸</p>
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPaymentStatusColor(payment.status)}`}>
-                      {payment.status === 'COMPLETED' ? 'Оплачено' : payment.status === 'PENDING' ? 'Ожидает' : payment.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           )}
         </div>
