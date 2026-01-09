@@ -1,18 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 
 interface TimeSlot {
   id: string;
   time: string;
+  hour: number;
+  dateObj: Date;
   isAvailable: boolean;
   isWorkingHour: boolean;
+  isPast: boolean;
 }
 
 interface DaySchedule {
   date: string;
   dayName: string;
+  dateObj: Date;
   slots: TimeSlot[];
 }
 
@@ -20,7 +24,17 @@ export default function SchedulePage() {
   const [currentWeek, setCurrentWeek] = useState(0);
   const [workingHours, setWorkingHours] = useState<{ [key: string]: boolean }>({});
 
-  // Генерируем расписание на неделю (без фейковых данных)
+  // Текущая дата и время для проверки прошедших слотов
+  const now = useMemo(() => new Date(), []);
+
+  // Проверка, прошло ли время слота
+  const isSlotPast = (slotDate: Date, hour: number): boolean => {
+    const slotDateTime = new Date(slotDate);
+    slotDateTime.setHours(hour, 0, 0, 0);
+    return slotDateTime < now;
+  };
+
+  // Генерируем расписание на неделю
   const generateWeekSchedule = (): DaySchedule[] => {
     const days = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
     const today = new Date();
@@ -29,34 +43,58 @@ export default function SchedulePage() {
     return days.map((dayName, index) => {
       const date = new Date(today);
       date.setDate(today.getDate() - today.getDay() + index + 1);
+      date.setHours(0, 0, 0, 0);
 
       const slots: TimeSlot[] = [];
       for (let hour = 9; hour <= 18; hour++) {
         const slotKey = `${date.toISOString().split('T')[0]}-${hour}`;
+        const isPast = isSlotPast(date, hour);
         slots.push({
           id: slotKey,
           time: `${hour}:00`,
-          isAvailable: true,
+          hour,
+          dateObj: new Date(date),
+          isAvailable: !isPast,
           isWorkingHour: workingHours[slotKey] || false,
+          isPast,
         });
       }
 
       return {
         date: date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
         dayName,
+        dateObj: date,
         slots,
       };
     });
   };
 
-  const toggleWorkingHour = (slotId: string) => {
+  const toggleWorkingHour = (slot: TimeSlot) => {
+    // Не позволяем изменять прошедшие слоты
+    if (slot.isPast) return;
+
     setWorkingHours(prev => ({
       ...prev,
-      [slotId]: !prev[slotId]
+      [slot.id]: !prev[slot.id]
     }));
   };
 
   const weekSchedule = generateWeekSchedule();
+
+  // Отметить рабочую неделю (только будущие слоты)
+  const markWorkWeek = () => {
+    const newWorkingHours: { [key: string]: boolean } = {};
+    weekSchedule.forEach((day, dayIndex) => {
+      if (dayIndex < 5) { // Пн-Пт
+        day.slots.forEach(slot => {
+          if (!slot.isPast) {
+            newWorkingHours[slot.id] = true;
+          }
+        });
+      }
+    });
+    setWorkingHours(prev => ({ ...prev, ...newWorkingHours }));
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -101,13 +139,14 @@ export default function SchedulePage() {
             <h3 className="text-sm font-medium text-blue-800">Настройте ваше расписание</h3>
             <p className="mt-1 text-sm text-blue-700">
               Нажмите на ячейку, чтобы отметить рабочие часы. Клиенты смогут записываться только на отмеченное время.
+              Прошедшие даты и время недоступны для редактирования.
             </p>
           </div>
         </div>
       </div>
 
       {/* Legend */}
-      <div className="flex items-center space-x-6 mb-6">
+      <div className="flex items-center flex-wrap gap-4 mb-6">
         <div className="flex items-center">
           <div className="w-4 h-4 bg-green-100 border border-green-300 rounded mr-2"></div>
           <span className="text-sm text-gray-600">Рабочие часы</span>
@@ -115,6 +154,14 @@ export default function SchedulePage() {
         <div className="flex items-center">
           <div className="w-4 h-4 bg-gray-100 border border-gray-300 rounded mr-2"></div>
           <span className="text-sm text-gray-600">Нерабочее время</span>
+        </div>
+        <div className="flex items-center">
+          <div className="w-4 h-4 bg-gray-200 border border-gray-400 rounded mr-2 relative">
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-full h-0.5 bg-gray-400 transform -rotate-45"></div>
+            </div>
+          </div>
+          <span className="text-sm text-gray-600">Прошедшее время</span>
         </div>
       </div>
 
@@ -141,14 +188,18 @@ export default function SchedulePage() {
                 return (
                   <div
                     key={`${day.date}-${slot.time}`}
-                    onClick={() => toggleWorkingHour(slot.id)}
-                    className={`p-2 border-l text-center cursor-pointer transition-colors ${
-                      slot.isWorkingHour
-                        ? 'bg-green-50 hover:bg-green-100'
-                        : 'bg-gray-50 hover:bg-gray-100'
+                    onClick={() => toggleWorkingHour(slot)}
+                    className={`p-2 border-l text-center transition-colors ${
+                      slot.isPast
+                        ? 'bg-gray-200 cursor-not-allowed'
+                        : slot.isWorkingHour
+                          ? 'bg-green-50 hover:bg-green-100 cursor-pointer'
+                          : 'bg-gray-50 hover:bg-gray-100 cursor-pointer'
                     }`}
                   >
-                    {slot.isWorkingHour ? (
+                    {slot.isPast ? (
+                      <span className="text-xs text-gray-400 line-through">—</span>
+                    ) : slot.isWorkingHour ? (
                       <span className="text-xs text-green-600">Свободно</span>
                     ) : (
                       <span className="text-xs text-gray-400">—</span>
@@ -164,18 +215,7 @@ export default function SchedulePage() {
       {/* Quick Actions */}
       <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
         <button
-          onClick={() => {
-            // Отметить все рабочие дни с 9:00 до 18:00
-            const newWorkingHours: { [key: string]: boolean } = {};
-            weekSchedule.forEach((day, dayIndex) => {
-              if (dayIndex < 5) { // Пн-Пт
-                day.slots.forEach(slot => {
-                  newWorkingHours[slot.id] = true;
-                });
-              }
-            });
-            setWorkingHours(prev => ({ ...prev, ...newWorkingHours }));
-          }}
+          onClick={markWorkWeek}
           className="flex items-center justify-center p-4 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700"
         >
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
