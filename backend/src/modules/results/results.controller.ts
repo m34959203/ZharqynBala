@@ -39,8 +39,12 @@ export class ResultsController {
   @Get()
   @ApiOperation({ summary: 'Get all results for current user' })
   @ApiResponse({ status: 200, type: ResultsHistoryDto })
-  async findAll(@CurrentUser('id') userId: string): Promise<ResultsHistoryDto> {
-    return this.resultsService.findAll(userId);
+  async findAll(
+    @CurrentUser('id') userId: string,
+    @Query('limit') limit?: string,
+  ): Promise<ResultsHistoryDto> {
+    const limitNum = limit ? parseInt(limit, 10) : undefined;
+    return this.resultsService.findAll(userId, limitNum);
   }
 
   @Get('child/:childId')

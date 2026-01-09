@@ -23,7 +23,7 @@ export class ResultsService {
     private scoringService: ScoringService,
   ) {}
 
-  async findAll(userId: string): Promise<ResultsHistoryDto> {
+  async findAll(userId: string, limit?: number): Promise<ResultsHistoryDto> {
     // Get all children of the user
     const children = await this.prisma.child.findMany({
       where: { parentId: userId },
@@ -31,6 +31,15 @@ export class ResultsService {
     });
 
     const childIds = children.map((c) => c.id);
+
+    // Get total count
+    const total = await this.prisma.result.count({
+      where: {
+        session: {
+          childId: { in: childIds },
+        },
+      },
+    });
 
     const results = await this.prisma.result.findMany({
       where: {
@@ -47,11 +56,12 @@ export class ResultsService {
         },
       },
       orderBy: { createdAt: 'desc' },
+      ...(limit ? { take: limit } : {}),
     });
 
     return {
       results: results.map((r) => this.mapToDto(r)),
-      total: results.length,
+      total,
     };
   }
 
