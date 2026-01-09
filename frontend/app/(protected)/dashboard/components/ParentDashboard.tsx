@@ -332,11 +332,13 @@ export default function ParentDashboard({ userName }: ParentDashboardProps) {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{result.testTitle}</p>
-                        <p className="text-xs text-gray-500">{result.childName}</p>
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {result.testTitle || 'Тест'}
+                        </p>
+                        <p className="text-xs text-gray-500">{result.childName || '—'}</p>
                       </div>
-                      <span className={`ml-2 px-2 py-1 rounded text-sm font-medium ${getScoreColor(result.percentage || 0)}`}>
-                        {result.percentage || 0}%
+                      <span className={`ml-2 px-2 py-1 rounded text-sm font-medium ${getScoreColor(typeof result.percentage === 'number' ? result.percentage : 0)}`}>
+                        {typeof result.percentage === 'number' ? result.percentage : 0}%
                       </span>
                     </div>
                   </Link>
