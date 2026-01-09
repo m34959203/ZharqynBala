@@ -245,12 +245,12 @@ export default function RegisterPage() {
                 type="tel"
                 {...register('phone', {
                   pattern: {
-                    value: /^[\d\s\+\-\(\)]+$/,
-                    message: 'Неверный формат телефона',
+                    value: /^\+7\d{10}$/,
+                    message: 'Формат: +77771234567',
                   },
                 })}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200 text-gray-900 bg-white placeholder:text-gray-500"
-                placeholder="+7 (777) 123-45-67"
+                placeholder="+77771234567"
               />
               {errors.phone && (
                 <p className="mt-1 text-sm text-red-600">{errors.phone.message}</p>
@@ -271,8 +271,12 @@ export default function RegisterPage() {
                 {...register('password', {
                   required: 'Пароль обязателен',
                   minLength: {
-                    value: 6,
-                    message: 'Пароль должен быть минимум 6 символов',
+                    value: 8,
+                    message: 'Пароль должен быть минимум 8 символов',
+                  },
+                  pattern: {
+                    value: /^(?=.*[A-Za-z])(?=.*\d)/,
+                    message: 'Пароль должен содержать буквы и цифры',
                   },
                 })}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200 text-gray-900 bg-white placeholder:text-gray-500"
@@ -283,6 +287,9 @@ export default function RegisterPage() {
                   {errors.password.message}
                 </p>
               )}
+              <p className="mt-1 text-xs text-gray-500">
+                Минимум 8 символов, буквы и цифры
+              </p>
             </div>
 
             {/* Подтверждение пароля */}
