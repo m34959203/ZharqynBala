@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import api, { adminApi, TestData, CreateTestData, UpdateTestData } from '@/lib/api';
+import { adminApi, TestData, UpdateTestData } from '@/lib/api';
 
 const TEST_CATEGORIES = [
   { value: 'ANXIETY', label: 'Тревожность', labelKz: 'Алаңдаушылық' },
@@ -75,13 +75,6 @@ export default function AdminTestsPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Methodology upload modal
-  const [isMethodologyModalOpen, setIsMethodologyModalOpen] = useState(false);
-  const [methodologyText, setMethodologyText] = useState('');
-  const [isParsing, setIsParsing] = useState(false);
-  const [parsedMethodology, setParsedMethodology] = useState<any>(null);
-  const [parseError, setParseError] = useState<string | null>(null);
-  const [isCreatingFromMethodology, setIsCreatingFromMethodology] = useState(false);
 
   // Fetch tests from API
   useEffect(() => {
@@ -125,14 +118,6 @@ export default function AdminTestsPage() {
   };
 
   // Modal handlers
-  const openCreateModal = () => {
-    setFormData(initialFormData);
-    setIsEditing(false);
-    setEditingTestId(null);
-    setFormError(null);
-    setIsModalOpen(true);
-  };
-
   const openEditModal = (test: TestData) => {
     setFormData({
       titleRu: test.titleRu,
@@ -176,23 +161,16 @@ export default function AdminTestsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!editingTestId) return;
+
     setFormError(null);
     setIsSaving(true);
 
     try {
-      if (isEditing && editingTestId) {
-        // Update existing test
-        const updateData: UpdateTestData = {
-          ...formData,
-        };
-        await adminApi.updateTest(editingTestId, updateData);
-      } else {
-        // Create new test
-        const createData: CreateTestData = {
-          ...formData,
-        };
-        await adminApi.createTest(createData);
-      }
+      const updateData: UpdateTestData = {
+        ...formData,
+      };
+      await adminApi.updateTest(editingTestId, updateData);
 
       closeModal();
       await fetchTests();
@@ -232,65 +210,6 @@ export default function AdminTestsPage() {
     }
   };
 
-  // Methodology modal handlers
-  const openMethodologyModal = () => {
-    setMethodologyText('');
-    setParsedMethodology(null);
-    setParseError(null);
-    setIsMethodologyModalOpen(true);
-  };
-
-  const closeMethodologyModal = () => {
-    setIsMethodologyModalOpen(false);
-    setMethodologyText('');
-    setParsedMethodology(null);
-    setParseError(null);
-  };
-
-  const handleParseMethodology = async () => {
-    if (!methodologyText.trim()) {
-      setParseError('Вставьте текст методики');
-      return;
-    }
-
-    setIsParsing(true);
-    setParseError(null);
-
-    try {
-      const response = await api.post('/ai/parse-methodology', {
-        methodologyText: methodologyText.trim(),
-      });
-      setParsedMethodology(response.data.parsed);
-    } catch (err: unknown) {
-      console.error('Error parsing methodology:', err);
-      const error = err as { response?: { data?: { message?: string } } };
-      setParseError(error.response?.data?.message || 'Ошибка анализа методики. Попробуйте снова.');
-    } finally {
-      setIsParsing(false);
-    }
-  };
-
-  const handleCreateFromMethodology = async () => {
-    if (!parsedMethodology) return;
-
-    setIsCreatingFromMethodology(true);
-    setParseError(null);
-
-    try {
-      await api.post('/ai/create-test-from-methodology', {
-        methodology: parsedMethodology,
-      });
-      closeMethodologyModal();
-      await fetchTests();
-    } catch (err: unknown) {
-      console.error('Error creating test:', err);
-      const error = err as { response?: { data?: { message?: string } } };
-      setParseError(error.response?.data?.message || 'Ошибка создания теста');
-    } finally {
-      setIsCreatingFromMethodology(false);
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -316,24 +235,6 @@ export default function AdminTestsPage() {
             <p className="mt-2 text-gray-600">Управление психологическими тестами</p>
           </div>
           <div className="flex gap-3">
-            <button
-              onClick={openMethodologyModal}
-              className="px-6 py-3 bg-green-600 text-white font-medium rounded-xl hover:bg-green-700 flex items-center"
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-              </svg>
-              Загрузить методику (AI)
-            </button>
-            <button
-              onClick={openCreateModal}
-              className="px-6 py-3 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 flex items-center"
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Добавить тест
-            </button>
           </div>
         </div>
       </div>
@@ -405,12 +306,6 @@ export default function AdminTestsPage() {
       {filteredTests.length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm p-8 text-center">
           <p className="text-gray-500">Тесты не найдены</p>
-          <button
-            onClick={openCreateModal}
-            className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-          >
-            Создать первый тест
-          </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -531,14 +426,14 @@ export default function AdminTestsPage() {
         </div>
       )}
 
-      {/* Create/Edit Modal */}
+      {/* Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-bold text-gray-900">
-                  {isEditing ? 'Редактировать тест' : 'Создать новый тест'}
+                  Редактировать тест
                 </h2>
                 <button onClick={closeModal} className="text-gray-400 hover:text-gray-600">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -731,7 +626,7 @@ export default function AdminTestsPage() {
                   disabled={isSaving}
                   className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
                 >
-                  {isSaving ? 'Сохранение...' : (isEditing ? 'Сохранить' : 'Создать')}
+                  {isSaving ? 'Сохранение...' : 'Сохранить'}
                 </button>
               </div>
             </form>
@@ -739,171 +634,6 @@ export default function AdminTestsPage() {
         </div>
       )}
 
-      {/* Methodology Upload Modal */}
-      {isMethodologyModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">
-                    Создать тест из методики (AI)
-                  </h2>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Вставьте текст методики, и AI автоматически создаст тест с вопросами
-                  </p>
-                </div>
-                <button onClick={closeMethodologyModal} className="text-gray-400 hover:text-gray-600">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6">
-              {parseError && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-                  {parseError}
-                </div>
-              )}
-
-              {!parsedMethodology ? (
-                <>
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Текст методики
-                    </label>
-                    <textarea
-                      value={methodologyText}
-                      onChange={(e) => setMethodologyText(e.target.value)}
-                      rows={15}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-900 placeholder:text-gray-500 font-mono text-sm"
-                      placeholder="Вставьте сюда полный текст методики психологического теста, включая:&#10;&#10;- Название теста&#10;- Описание и цель методики&#10;- Возрастной диапазон&#10;- Все вопросы с вариантами ответов&#10;- Ключ для подсчёта баллов&#10;- Интерпретацию результатов (уровни, описания, рекомендации)"
-                    />
-                  </div>
-
-                  <div className="flex justify-end space-x-3">
-                    <button
-                      type="button"
-                      onClick={closeMethodologyModal}
-                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-                    >
-                      Отмена
-                    </button>
-                    <button
-                      onClick={handleParseMethodology}
-                      disabled={isParsing || !methodologyText.trim()}
-                      className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center"
-                    >
-                      {isParsing ? (
-                        <>
-                          <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                          </svg>
-                          Анализирую...
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                          </svg>
-                          Проанализировать
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="mb-6">
-                    <div className="flex items-center mb-4">
-                      <svg className="w-6 h-6 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <h3 className="text-lg font-semibold text-gray-900">Методика успешно проанализирована!</h3>
-                    </div>
-
-                    <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                      <div>
-                        <span className="text-sm text-gray-500">Название:</span>
-                        <p className="font-medium text-gray-900">{parsedMethodology.titleRu}</p>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-500">Описание:</span>
-                        <p className="text-gray-700">{parsedMethodology.descriptionRu}</p>
-                      </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div>
-                          <span className="text-sm text-gray-500">Категория:</span>
-                          <p className="font-medium text-gray-900">{getCategoryLabel(parsedMethodology.category)}</p>
-                        </div>
-                        <div>
-                          <span className="text-sm text-gray-500">Возраст:</span>
-                          <p className="font-medium text-gray-900">{parsedMethodology.ageMin}-{parsedMethodology.ageMax} лет</p>
-                        </div>
-                        <div>
-                          <span className="text-sm text-gray-500">Вопросов:</span>
-                          <p className="font-medium text-gray-900">{parsedMethodology.questions?.length || 0}</p>
-                        </div>
-                        <div>
-                          <span className="text-sm text-gray-500">Длительность:</span>
-                          <p className="font-medium text-gray-900">{parsedMethodology.durationMinutes} мин</p>
-                        </div>
-                      </div>
-                      {parsedMethodology.interpretationRanges?.length > 0 && (
-                        <div>
-                          <span className="text-sm text-gray-500">Уровни интерпретации:</span>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {parsedMethodology.interpretationRanges.map((range: any, idx: number) => (
-                              <span key={idx} className="px-2 py-1 bg-indigo-100 text-indigo-700 text-xs rounded-full">
-                                {range.title} ({range.min}-{range.max})
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end space-x-3">
-                    <button
-                      type="button"
-                      onClick={() => setParsedMethodology(null)}
-                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-                    >
-                      Изменить текст
-                    </button>
-                    <button
-                      onClick={handleCreateFromMethodology}
-                      disabled={isCreatingFromMethodology}
-                      className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center"
-                    >
-                      {isCreatingFromMethodology ? (
-                        <>
-                          <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                          </svg>
-                          Создаю тест...
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                          </svg>
-                          Создать тест
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
