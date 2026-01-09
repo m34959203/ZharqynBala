@@ -117,6 +117,7 @@ model Psychologist {
 
   hourlyRate        Int      @map("hourly_rate")
   bio               String?
+  languages         String[] @default(["Русский"])
 
   isApproved        Boolean  @default(false) @map("is_approved")
   isAvailable       Boolean  @default(true) @map("is_available")

@@ -4,6 +4,7 @@ import {
   PsychologistResponseDto,
   PsychologistDetailResponseDto,
   PsychologistListResponseDto,
+  UpdatePsychologistProfileDto,
 } from './dto';
 
 @Injectable()
@@ -93,6 +94,7 @@ export class PsychologistsService {
       lastName: psychologist.user.lastName || '',
       avatarUrl: psychologist.user.avatarUrl,
       specialization: psychologist.specialization,
+      languages: psychologist.languages,
       experienceYears: psychologist.experienceYears,
       education: psychologist.education,
       bio: psychologist.bio,
@@ -144,11 +146,126 @@ export class PsychologistsService {
   }
 
   /**
+   * Получить собственный профиль психолога
+   */
+  async getMyProfile(userId: string): Promise<PsychologistDetailResponseDto & { isProfileComplete: boolean }> {
+    const psychologist = await this.prisma.psychologist.findUnique({
+      where: { userId },
+      include: {
+        user: {
+          select: {
+            firstName: true,
+            lastName: true,
+            avatarUrl: true,
+          },
+        },
+        availability: true,
+      },
+    });
+
+    if (!psychologist) {
+      throw new NotFoundException('Профиль психолога не найден');
+    }
+
+    // Проверяем заполненность профиля
+    const isProfileComplete =
+      psychologist.specialization.length > 0 &&
+      psychologist.experienceYears > 0 &&
+      psychologist.education !== 'Не указано' &&
+      psychologist.bio !== null;
+
+    return {
+      id: psychologist.id,
+      firstName: psychologist.user.firstName,
+      lastName: psychologist.user.lastName || '',
+      avatarUrl: psychologist.user.avatarUrl,
+      specialization: psychologist.specialization,
+      languages: psychologist.languages,
+      experienceYears: psychologist.experienceYears,
+      education: psychologist.education,
+      bio: psychologist.bio,
+      hourlyRate: psychologist.hourlyRate,
+      rating: psychologist.rating,
+      totalConsultations: psychologist.totalConsultations,
+      isAvailable: psychologist.isAvailable,
+      certificateUrl: psychologist.certificateUrl,
+      availability: psychologist.availability.map((a) => ({
+        dayOfWeek: a.dayOfWeek,
+        startTime: a.startTime,
+        endTime: a.endTime,
+      })),
+      isProfileComplete,
+    };
+  }
+
+  /**
+   * Обновить профиль психолога
+   */
+  async updateMyProfile(
+    userId: string,
+    dto: UpdatePsychologistProfileDto,
+  ): Promise<PsychologistDetailResponseDto> {
+    const psychologist = await this.prisma.psychologist.findUnique({
+      where: { userId },
+    });
+
+    if (!psychologist) {
+      throw new NotFoundException('Профиль психолога не найден');
+    }
+
+    const updated = await this.prisma.psychologist.update({
+      where: { userId },
+      data: {
+        specialization: dto.specialization,
+        languages: dto.languages,
+        experienceYears: dto.experienceYears,
+        education: dto.education,
+        bio: dto.bio,
+        hourlyRate: dto.hourlyRate,
+        certificateUrl: dto.certificateUrl,
+      },
+      include: {
+        user: {
+          select: {
+            firstName: true,
+            lastName: true,
+            avatarUrl: true,
+          },
+        },
+        availability: true,
+      },
+    });
+
+    return {
+      id: updated.id,
+      firstName: updated.user.firstName,
+      lastName: updated.user.lastName || '',
+      avatarUrl: updated.user.avatarUrl,
+      specialization: updated.specialization,
+      languages: updated.languages,
+      experienceYears: updated.experienceYears,
+      education: updated.education,
+      bio: updated.bio,
+      hourlyRate: updated.hourlyRate,
+      rating: updated.rating,
+      totalConsultations: updated.totalConsultations,
+      isAvailable: updated.isAvailable,
+      certificateUrl: updated.certificateUrl,
+      availability: updated.availability.map((a) => ({
+        dayOfWeek: a.dayOfWeek,
+        startTime: a.startTime,
+        endTime: a.endTime,
+      })),
+    };
+  }
+
+  /**
    * Маппинг в DTO ответа
    */
   private mapToResponse(psychologist: {
     id: string;
     specialization: string[];
+    languages: string[];
     experienceYears: number;
     education: string;
     bio: string | null;
@@ -168,6 +285,7 @@ export class PsychologistsService {
       lastName: psychologist.user.lastName || '',
       avatarUrl: psychologist.user.avatarUrl,
       specialization: psychologist.specialization,
+      languages: psychologist.languages,
       experienceYears: psychologist.experienceYears,
       education: psychologist.education,
       bio: psychologist.bio,

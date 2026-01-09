@@ -4,6 +4,7 @@ export class PsychologistResponseDto {
   lastName: string;
   avatarUrl: string | null;
   specialization: string[];
+  languages: string[];
   experienceYears: number;
   education: string;
   bio: string | null;
