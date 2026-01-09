@@ -122,6 +122,31 @@ export class AdminService {
   }
 
   async updateUser(id: string, data: any) {
+    // Если роль меняется на PSYCHOLOGIST, нужно создать профиль психолога
+    if (data.role === 'PSYCHOLOGIST') {
+      // Проверяем, существует ли уже профиль психолога
+      const existingProfile = await this.prisma.psychologist.findUnique({
+        where: { userId: id },
+      });
+
+      if (!existingProfile) {
+        // Создаём профиль психолога с дефолтными значениями
+        await this.prisma.psychologist.create({
+          data: {
+            userId: id,
+            specialization: [],
+            experienceYears: 0,
+            education: 'Не указано',
+            hourlyRate: 5000,
+            bio: null,
+            isApproved: false,
+            isAvailable: true,
+          },
+        });
+        this.logger.log(`Created psychologist profile for user: ${id}`);
+      }
+    }
+
     return this.prisma.user.update({
       where: { id },
       data,

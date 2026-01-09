@@ -7,12 +7,34 @@ export class ScheduleService {
   constructor(private prisma: PrismaService) {}
 
   async getPsychologistId(userId: string): Promise<string> {
-    const psychologist = await this.prisma.psychologist.findUnique({
+    let psychologist = await this.prisma.psychologist.findUnique({
       where: { userId },
     });
 
+    // Если профиля нет, создаём его автоматически для пользователей с ролью PSYCHOLOGIST
     if (!psychologist) {
-      throw new NotFoundException('Профиль психолога не найден');
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
+      });
+
+      if (user?.role === 'PSYCHOLOGIST') {
+        // Создаём профиль психолога с дефолтными значениями
+        psychologist = await this.prisma.psychologist.create({
+          data: {
+            userId,
+            specialization: [],
+            experienceYears: 0,
+            education: 'Не указано',
+            hourlyRate: 5000,
+            bio: null,
+            isApproved: false,
+            isAvailable: true,
+          },
+        });
+      } else {
+        throw new NotFoundException('Профиль психолога не найден');
+      }
     }
 
     return psychologist.id;
