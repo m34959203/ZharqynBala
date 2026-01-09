@@ -130,6 +130,7 @@ model Psychologist {
   // Relations
   consultations     Consultation[]
   availability      PsychologistAvailability[]
+  scheduleSlots     ScheduleSlot[]
 
   @@map("psychologists")
 }
@@ -145,6 +146,25 @@ model PsychologistAvailability {
 
   @@map("psychologist_availability")
   @@index([psychologistId])
+}
+
+// Конкретные слоты расписания (для определенных дат)
+model ScheduleSlot {
+  id             String       @id @default(uuid())
+  psychologistId String       @map("psychologist_id")
+  psychologist   Psychologist @relation(fields: [psychologistId], references: [id], onDelete: Cascade)
+
+  date           DateTime     @db.Date
+  hour           Int          // 0-23
+  isAvailable    Boolean      @default(true) @map("is_available")
+
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  @@map("schedule_slots")
+  @@unique([psychologistId, date, hour])
+  @@index([psychologistId])
+  @@index([date])
 }
 
 // ============================================
