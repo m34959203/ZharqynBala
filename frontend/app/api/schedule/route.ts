@@ -1,14 +1,36 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getToken } from 'next-auth/jwt';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+// Helper to get token from request - uses getToken which handles cookies automatically
+async function getAuthToken(request: Request) {
+  try {
+    // getToken will automatically find and decode the JWT from cookies
+    const token = await getToken({
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET,
+    });
+
+    console.log('[Schedule API] Token decoded:', token ? 'yes' : 'no');
+    console.log('[Schedule API] Token accessToken:', token?.accessToken ? 'present' : 'missing');
+    console.log('[Schedule API] Token user:', token?.user ? JSON.stringify(token.user) : 'no user');
+
+    return token;
+  } catch (error) {
+    console.error('[Schedule API] Error decoding token:', error);
+    return null;
+  }
+}
+
 export async function GET(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const token = await getAuthToken(request);
 
-    if (!session?.accessToken) {
+    console.log('[Schedule API] GET - Token:', token ? 'exists' : 'null');
+
+    if (!token?.accessToken) {
+      console.log('[Schedule API] GET - Returning 401 - no accessToken');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -16,18 +38,22 @@ export async function GET(request: Request) {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
-    let url = `${API_URL}/api/schedule`;
+    let url = `${API_URL}/api/v1/schedule`;
     const params = new URLSearchParams();
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
     if (params.toString()) url += `?${params.toString()}`;
 
+    console.log('[Schedule API] GET - Fetching from:', url);
+
     const response = await fetch(url, {
       headers: {
-        'Authorization': `Bearer ${session.accessToken}`,
+        'Authorization': `Bearer ${token.accessToken}`,
         'Content-Type': 'application/json',
       },
     });
+
+    console.log('[Schedule API] GET - Backend response status:', response.status);
 
     if (!response.ok) {
       if (response.status === 404) {
@@ -48,18 +74,21 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const token = await getAuthToken(request);
 
-    if (!session?.accessToken) {
+    console.log('[Schedule API] POST - Token:', token ? 'exists' : 'null');
+
+    if (!token?.accessToken) {
+      console.log('[Schedule API] POST - Returning 401 - no accessToken');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
 
-    const response = await fetch(`${API_URL}/api/schedule`, {
+    const response = await fetch(`${API_URL}/api/v1/schedule`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${session.accessToken}`,
+        'Authorization': `Bearer ${token.accessToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
@@ -80,9 +109,9 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const token = await getAuthToken(request);
 
-    if (!session?.accessToken) {
+    if (!token?.accessToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -95,11 +124,11 @@ export async function DELETE(request: Request) {
     }
 
     const response = await fetch(
-      `${API_URL}/api/schedule?startDate=${startDate}&endDate=${endDate}`,
+      `${API_URL}/api/v1/schedule?startDate=${startDate}&endDate=${endDate}`,
       {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${session.accessToken}`,
+          'Authorization': `Bearer ${token.accessToken}`,
           'Content-Type': 'application/json',
         },
       }
