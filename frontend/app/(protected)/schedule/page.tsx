@@ -27,8 +27,6 @@ interface SavedSlot {
   isAvailable: boolean;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
 export default function SchedulePage() {
   const [currentWeek, setCurrentWeek] = useState(0);
   const [workingHours, setWorkingHours] = useState<{ [key: string]: boolean }>({});
@@ -95,31 +93,24 @@ export default function SchedulePage() {
     return { startDate, endDate };
   }, [generateWeekSchedule]);
 
-  // Загрузка расписания с сервера
+  // Загрузка расписания с сервера (через локальный API route)
   const loadSchedule = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
       const { startDate, endDate } = getWeekDates();
 
       const response = await fetch(
-        `${API_URL}/api/schedule?startDate=${startDate}&endDate=${endDate}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        }
+        `/api/schedule?startDate=${startDate}&endDate=${endDate}`
       );
 
-      if (response.status === 404) {
-        // Профиль психолога не найден - это нормально для нового пользователя
+      if (response.status === 401) {
+        // Не авторизован - это нормально, просто показываем пустое расписание
         setLoading(false);
         return;
       }
 
       if (!response.ok) {
-        throw new Error('Ошибка загрузки расписания');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Ошибка загрузки расписания');
       }
 
       const slots: SavedSlot[] = await response.json();
@@ -176,16 +167,11 @@ export default function SchedulePage() {
     setSaveStatus('idle');
   };
 
-  // Сохранить расписание на сервер
+  // Сохранить расписание на сервер (через локальный API route)
   const saveSchedule = async () => {
     setSaveStatus('saving');
 
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('Не авторизован');
-      }
-
       // Собираем все слоты текущей недели
       const slots: SavedSlot[] = [];
       weekSchedule.forEach((day) => {
@@ -200,10 +186,9 @@ export default function SchedulePage() {
         });
       });
 
-      const response = await fetch(`${API_URL}/api/schedule`, {
+      const response = await fetch('/api/schedule', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ slots }),
@@ -211,7 +196,7 @@ export default function SchedulePage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Ошибка сохранения');
+        throw new Error(errorData.error || 'Ошибка сохранения');
       }
 
       setSaveStatus('saved');
