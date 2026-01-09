@@ -252,13 +252,19 @@ export default function ParentDashboard({ userName }: ParentDashboardProps) {
                   <div className="mb-3">
                     <div className="flex justify-between text-sm mb-1">
                       <span className="text-gray-500">Прогресс развития</span>
-                      <span className="font-medium text-gray-700">{child.averageScore || 75}%</span>
+                      <span className="font-medium text-gray-700">
+                        {child.averageScore !== undefined ? `${child.averageScore}%` : '—'}
+                      </span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full ${getProgressColor(child.averageScore || 75)}`}
-                        style={{ width: `${child.averageScore || 75}%` }}
-                      ></div>
+                      {child.averageScore !== undefined ? (
+                        <div
+                          className={`h-2 rounded-full ${getProgressColor(child.averageScore)}`}
+                          style={{ width: `${child.averageScore}%` }}
+                        ></div>
+                      ) : (
+                        <div className="h-2 rounded-full bg-gray-300" style={{ width: '0%' }}></div>
+                      )}
                     </div>
                   </div>
 

@@ -41,6 +41,20 @@ export class ChildResponseDto {
   @ApiProperty({ example: 'parent-uuid', description: 'ID родителя' })
   parentId: string;
 
+  @ApiPropertyOptional({
+    example: 75,
+    description: 'Средний балл по всем тестам (в процентах)',
+    nullable: true,
+  })
+  averageScore?: number;
+
+  @ApiPropertyOptional({
+    example: '2025-12-20T10:00:00.000Z',
+    description: 'Дата последнего теста',
+    nullable: true,
+  })
+  lastTestDate?: string;
+
   @ApiProperty({
     example: '2025-12-05T12:00:00.000Z',
     description: 'Дата создания',

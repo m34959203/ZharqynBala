@@ -91,15 +91,63 @@ export class UsersService {
   // ========== CHILDREN MANAGEMENT ==========
 
   /**
-   * Получить всех детей родителя
+   * Получить всех детей родителя с их средним баллом
    */
   async findChildren(parentId: string): Promise<ChildResponseDto[]> {
     const children = await this.prisma.child.findMany({
       where: { parentId },
       orderBy: { createdAt: 'desc' },
+      include: {
+        sessions: {
+          where: { status: 'COMPLETED' },
+          include: {
+            result: true,
+          },
+          orderBy: { completedAt: 'desc' },
+          take: 1, // Get last test date
+        },
+      },
     });
 
-    return children.map(this.mapChildToResponse);
+    // Calculate average score for each child
+    const childrenWithStats = await Promise.all(
+      children.map(async (child) => {
+        // Get all completed results for this child
+        const results = await this.prisma.result.findMany({
+          where: {
+            session: {
+              childId: child.id,
+              status: 'COMPLETED',
+            },
+          },
+          select: {
+            totalScore: true,
+            maxScore: true,
+          },
+        });
+
+        // Calculate average percentage
+        let averageScore: number | undefined;
+        if (results.length > 0) {
+          const totalPercentage = results.reduce((sum, r) => {
+            const percentage = r.maxScore > 0 ? (r.totalScore / r.maxScore) * 100 : 0;
+            return sum + percentage;
+          }, 0);
+          averageScore = Math.round(totalPercentage / results.length);
+        }
+
+        // Get last test date
+        const lastTestDate = child.sessions[0]?.completedAt?.toISOString();
+
+        return this.mapChildToResponse({
+          ...child,
+          averageScore,
+          lastTestDate,
+        });
+      }),
+    );
+
+    return childrenWithStats;
   }
 
   /**
@@ -215,7 +263,9 @@ export class UsersService {
   /**
    * Маппинг Child в ChildResponseDto
    */
-  private mapChildToResponse(child: Child): ChildResponseDto {
+  private mapChildToResponse(
+    child: Child & { averageScore?: number; lastTestDate?: string },
+  ): ChildResponseDto {
     return {
       id: child.id,
       firstName: child.firstName,
@@ -225,6 +275,8 @@ export class UsersService {
       grade: child.grade,
       schoolName: child.schoolName,
       parentId: child.parentId,
+      averageScore: child.averageScore,
+      lastTestDate: child.lastTestDate,
       createdAt: child.createdAt,
       updatedAt: child.updatedAt,
     };
