@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 
 interface TimeSlot {
@@ -20,9 +20,26 @@ interface DaySchedule {
   slots: TimeSlot[];
 }
 
+const STORAGE_KEY = 'psychologist_schedule';
+
 export default function SchedulePage() {
   const [currentWeek, setCurrentWeek] = useState(0);
   const [workingHours, setWorkingHours] = useState<{ [key: string]: boolean }>({});
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [hasChanges, setHasChanges] = useState(false);
+
+  // Загрузка сохраненного расписания при монтировании
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setWorkingHours(parsed);
+      } catch (e) {
+        console.error('Failed to load schedule:', e);
+      }
+    }
+  }, []);
 
   // Текущая дата и время для проверки прошедших слотов
   const now = useMemo(() => new Date(), []);
@@ -77,15 +94,17 @@ export default function SchedulePage() {
       ...prev,
       [slot.id]: !prev[slot.id]
     }));
+    setHasChanges(true);
+    setSaveStatus('idle');
   };
 
   const weekSchedule = generateWeekSchedule();
 
-  // Отметить рабочую неделю (только будущие слоты)
+  // Отметить рабочую неделю (только будущие слоты Пн-Пт)
   const markWorkWeek = () => {
     const newWorkingHours: { [key: string]: boolean } = {};
     weekSchedule.forEach((day, dayIndex) => {
-      if (dayIndex < 5) { // Пн-Пт
+      if (dayIndex < 5) { // Пн-Пт (индексы 0-4)
         day.slots.forEach(slot => {
           if (!slot.isPast) {
             newWorkingHours[slot.id] = true;
@@ -94,6 +113,40 @@ export default function SchedulePage() {
       }
     });
     setWorkingHours(prev => ({ ...prev, ...newWorkingHours }));
+    setHasChanges(true);
+    setSaveStatus('idle');
+  };
+
+  // Сохранить расписание
+  const saveSchedule = () => {
+    setSaveStatus('saving');
+
+    // Сохраняем в localStorage (позже можно заменить на API)
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(workingHours));
+      setTimeout(() => {
+        setSaveStatus('saved');
+        setHasChanges(false);
+        // Сбросить статус через 3 секунды
+        setTimeout(() => setSaveStatus('idle'), 3000);
+      }, 500);
+    } catch (e) {
+      console.error('Failed to save schedule:', e);
+      setSaveStatus('idle');
+    }
+  };
+
+  // Очистить расписание текущей недели
+  const clearWeekSchedule = () => {
+    const clearedHours = { ...workingHours };
+    weekSchedule.forEach(day => {
+      day.slots.forEach(slot => {
+        delete clearedHours[slot.id];
+      });
+    });
+    setWorkingHours(clearedHours);
+    setHasChanges(true);
+    setSaveStatus('idle');
   };
 
   return (
@@ -138,7 +191,7 @@ export default function SchedulePage() {
           <div>
             <h3 className="text-sm font-medium text-blue-800">Настройте ваше расписание</h3>
             <p className="mt-1 text-sm text-blue-700">
-              Нажмите на ячейку, чтобы отметить рабочие часы. Клиенты смогут записываться только на отмеченное время.
+              Нажмите на ячейку, чтобы отметить рабочие часы. Не забудьте сохранить изменения.
               Прошедшие даты и время недоступны для редактирования.
             </p>
           </div>
@@ -213,7 +266,43 @@ export default function SchedulePage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-4">
+        <button
+          onClick={saveSchedule}
+          disabled={saveStatus === 'saving'}
+          className={`flex items-center justify-center p-4 rounded-xl font-medium transition-colors ${
+            saveStatus === 'saved'
+              ? 'bg-green-600 text-white'
+              : hasChanges
+                ? 'bg-green-600 text-white hover:bg-green-700'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          {saveStatus === 'saving' ? (
+            <>
+              <svg className="animate-spin w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Сохранение...
+            </>
+          ) : saveStatus === 'saved' ? (
+            <>
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Сохранено!
+            </>
+          ) : (
+            <>
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+              </svg>
+              Сохранить
+            </>
+          )}
+        </button>
+
         <button
           onClick={markWorkWeek}
           className="flex items-center justify-center p-4 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700"
@@ -221,15 +310,38 @@ export default function SchedulePage() {
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
           </svg>
-          Отметить рабочую неделю (Пн-Пт)
+          Пн-Пт
         </button>
+
+        <button
+          onClick={clearWeekSchedule}
+          className="flex items-center justify-center p-4 border border-gray-300 rounded-xl hover:bg-gray-50 text-gray-700"
+        >
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+          Очистить
+        </button>
+
         <Link href="/dashboard" className="flex items-center justify-center p-4 border border-gray-300 rounded-xl hover:bg-gray-50">
           <svg className="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
-          Назад к дашборду
+          Назад
         </Link>
       </div>
+
+      {/* Unsaved Changes Warning */}
+      {hasChanges && (
+        <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+          <div className="flex items-center">
+            <svg className="w-5 h-5 text-yellow-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span className="text-sm text-yellow-800">У вас есть несохраненные изменения</span>
+          </div>
+        </div>
+      )}
 
       {/* Coming Soon Notice */}
       <div className="mt-8 p-6 bg-amber-50 border border-amber-200 rounded-xl">
@@ -241,6 +353,7 @@ export default function SchedulePage() {
             <h3 className="font-medium text-amber-800">Функция в разработке</h3>
             <p className="text-sm text-amber-700 mt-1">
               Полная интеграция расписания с записью клиентов будет доступна в ближайшее время.
+              Сейчас расписание сохраняется локально в браузере.
             </p>
           </div>
         </div>
