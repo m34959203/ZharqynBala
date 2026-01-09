@@ -1,30 +1,47 @@
 import { NextResponse } from 'next/server';
-import { getToken } from 'next-auth/jwt';
+import { cookies } from 'next/headers';
+import { decode } from 'next-auth/jwt';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-// Helper to get token from request - uses getToken which handles cookies automatically
-async function getAuthToken(request: Request) {
+// Helper to get token from cookies - читаем cookie напрямую через next/headers
+async function getAuthToken() {
   try {
-    // В production NextAuth использует __Secure- префикс для cookies
-    const cookieName = process.env.NODE_ENV === 'production'
-      ? '__Secure-next-auth.session-token'
-      : 'next-auth.session-token';
+    const cookieStore = await cookies();
 
-    console.log('[Schedule API] Using cookie name:', cookieName);
-    console.log('[Schedule API] NODE_ENV:', process.env.NODE_ENV);
+    // Пробуем оба варианта имени cookie
+    const secureCookieName = '__Secure-next-auth.session-token';
+    const normalCookieName = 'next-auth.session-token';
 
-    // getToken декодирует JWT из cookies
-    const token = await getToken({
-      req: request,
-      secret: process.env.NEXTAUTH_SECRET,
-      cookieName,
+    let sessionToken = cookieStore.get(secureCookieName)?.value;
+    let usedCookieName = secureCookieName;
+
+    if (!sessionToken) {
+      sessionToken = cookieStore.get(normalCookieName)?.value;
+      usedCookieName = normalCookieName;
+    }
+
+    console.log('[Schedule API] Cookie name used:', usedCookieName);
+    console.log('[Schedule API] Session token found:', sessionToken ? 'yes' : 'no');
+
+    // Логируем все доступные cookies для отладки
+    const allCookies = cookieStore.getAll();
+    console.log('[Schedule API] All cookies:', allCookies.map(c => c.name).join(', '));
+
+    if (!sessionToken) {
+      console.log('[Schedule API] No session token cookie found');
+      return null;
+    }
+
+    // Декодируем JWT токен
+    const token = await decode({
+      token: sessionToken,
+      secret: process.env.NEXTAUTH_SECRET!,
     });
 
     console.log('[Schedule API] Token decoded:', token ? 'yes' : 'no');
     console.log('[Schedule API] Token keys:', token ? Object.keys(token) : 'null');
     console.log('[Schedule API] Token accessToken:', token?.accessToken ? 'present' : 'missing');
-    console.log('[Schedule API] Token user:', token?.user ? JSON.stringify(token.user) : 'no user');
 
     return token;
   } catch (error) {
@@ -35,7 +52,7 @@ async function getAuthToken(request: Request) {
 
 export async function GET(request: Request) {
   try {
-    const token = await getAuthToken(request);
+    const token = await getAuthToken();
 
     console.log('[Schedule API] GET - Token:', token ? 'exists' : 'null');
 
@@ -84,7 +101,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const token = await getAuthToken(request);
+    const token = await getAuthToken();
 
     console.log('[Schedule API] POST - Token:', token ? 'exists' : 'null');
 
@@ -119,7 +136,7 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const token = await getAuthToken(request);
+    const token = await getAuthToken();
 
     if (!token?.accessToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
