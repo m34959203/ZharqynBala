@@ -149,6 +149,26 @@ export const adminApi = {
     return response.data;
   },
 
+  updateUser: async (id: string, data: { firstName?: string; lastName?: string; role?: string; isActive?: boolean }) => {
+    const response = await api.patch(`/admin/users/${id}`, data);
+    return response.data;
+  },
+
+  deleteUser: async (id: string) => {
+    const response = await api.delete(`/admin/users/${id}`);
+    return response.data;
+  },
+
+  banUser: async (id: string) => {
+    const response = await api.post(`/admin/users/${id}/ban`);
+    return response.data;
+  },
+
+  unbanUser: async (id: string) => {
+    const response = await api.post(`/admin/users/${id}/unban`);
+    return response.data;
+  },
+
   // Demo data cleanup
   cleanupDemoData: async (): Promise<{ success: boolean; message: string; deleted: Record<string, number> }> => {
     const response = await api.delete('/admin/cleanup-demo');
