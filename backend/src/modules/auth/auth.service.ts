@@ -48,11 +48,10 @@ export class AuthService {
     // Хеширование пароля
     const passwordHash = await this.hashPassword(dto.password);
 
-    // Определение роли: admin@jarkinbala.kz автоматически получает роль ADMIN
+    // Роль: admin@jarkinbala.kz/admin@zharqynbala.kz = ADMIN, все остальные = PARENT
+    // Роли PSYCHOLOGIST и SCHOOL назначаются только администратором
     const adminEmails = ['admin@jarkinbala.kz', 'admin@zharqynbala.kz'];
-    const role = adminEmails.includes(dto.email.toLowerCase())
-      ? 'ADMIN'
-      : dto.role || 'PARENT';
+    const role = adminEmails.includes(dto.email.toLowerCase()) ? 'ADMIN' : 'PARENT';
 
     // Создание пользователя
     const user = await this.prisma.user.create({
