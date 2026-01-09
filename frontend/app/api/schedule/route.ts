@@ -1,14 +1,52 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getToken } from 'next-auth/jwt';
+import { cookies } from 'next/headers';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+// Helper to get token from request
+async function getAuthToken(request: Request) {
+  // Get cookies from the request
+  const cookieStore = await cookies();
+  const sessionTokenName = process.env.NODE_ENV === 'production'
+    ? '__Secure-next-auth.session-token'
+    : 'next-auth.session-token';
+
+  const sessionToken = cookieStore.get(sessionTokenName)?.value;
+
+  console.log('[Schedule API] Cookie name:', sessionTokenName);
+  console.log('[Schedule API] Session token exists:', !!sessionToken);
+
+  if (!sessionToken) {
+    return null;
+  }
+
+  try {
+    const token = await getToken({
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET,
+      secureCookie: process.env.NODE_ENV === 'production',
+      cookieName: sessionTokenName,
+    });
+
+    console.log('[Schedule API] Token decoded:', token ? 'yes' : 'no');
+    console.log('[Schedule API] Token has accessToken:', !!token?.accessToken);
+
+    return token;
+  } catch (error) {
+    console.error('[Schedule API] Error decoding token:', error);
+    return null;
+  }
+}
+
 export async function GET(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const token = await getAuthToken(request);
 
-    if (!session?.accessToken) {
+    console.log('[Schedule API] GET - Token:', token ? 'exists' : 'null');
+
+    if (!token?.accessToken) {
+      console.log('[Schedule API] GET - Returning 401 - no accessToken');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -22,12 +60,16 @@ export async function GET(request: Request) {
     if (endDate) params.append('endDate', endDate);
     if (params.toString()) url += `?${params.toString()}`;
 
+    console.log('[Schedule API] GET - Fetching from:', url);
+
     const response = await fetch(url, {
       headers: {
-        'Authorization': `Bearer ${session.accessToken}`,
+        'Authorization': `Bearer ${token.accessToken}`,
         'Content-Type': 'application/json',
       },
     });
+
+    console.log('[Schedule API] GET - Backend response status:', response.status);
 
     if (!response.ok) {
       if (response.status === 404) {
@@ -48,9 +90,12 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const token = await getAuthToken(request);
 
-    if (!session?.accessToken) {
+    console.log('[Schedule API] POST - Token:', token ? 'exists' : 'null');
+
+    if (!token?.accessToken) {
+      console.log('[Schedule API] POST - Returning 401 - no accessToken');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -59,7 +104,7 @@ export async function POST(request: Request) {
     const response = await fetch(`${API_URL}/api/schedule`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${session.accessToken}`,
+        'Authorization': `Bearer ${token.accessToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
@@ -80,9 +125,9 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const token = await getAuthToken(request);
 
-    if (!session?.accessToken) {
+    if (!token?.accessToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -99,7 +144,7 @@ export async function DELETE(request: Request) {
       {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${session.accessToken}`,
+          'Authorization': `Bearer ${token.accessToken}`,
           'Content-Type': 'application/json',
         },
       }
