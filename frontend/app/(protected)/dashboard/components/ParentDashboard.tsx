@@ -17,10 +17,10 @@ interface Child {
 
 interface RecentResult {
   id: string;
-  testName: string;
+  testTitle: string;
   childName: string;
-  completedAt: string;
-  overallScore: number;
+  createdAt: string;
+  percentage: number;
 }
 
 interface ParentDashboardProps {
@@ -31,6 +31,7 @@ export default function ParentDashboard({ userName }: ParentDashboardProps) {
   const router = useRouter();
   const [children, setChildren] = useState<Child[]>([]);
   const [recentResults, setRecentResults] = useState<RecentResult[]>([]);
+  const [totalTests, setTotalTests] = useState(0);
   const [loading, setLoading] = useState(true);
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
 
@@ -85,6 +86,7 @@ export default function ParentDashboard({ userName }: ParentDashboardProps) {
 
         if (resultsRes?.data) {
           setRecentResults(resultsRes.data.results || []);
+          setTotalTests(resultsRes.data.total || 0);
         }
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -168,7 +170,7 @@ export default function ParentDashboard({ userName }: ParentDashboardProps) {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Тестов пройдено</p>
-              <p className="text-2xl font-bold text-gray-900">{recentResults.length}</p>
+              <p className="text-2xl font-bold text-gray-900">{totalTests}</p>
             </div>
           </div>
         </div>
@@ -184,8 +186,8 @@ export default function ParentDashboard({ userName }: ParentDashboardProps) {
               <p className="text-sm font-medium text-gray-500">Средний балл</p>
               <p className="text-2xl font-bold text-gray-900">
                 {recentResults.length > 0
-                  ? Math.round(recentResults.reduce((a, b) => a + b.overallScore, 0) / recentResults.length)
-                  : '—'}%
+                  ? `${Math.round(recentResults.reduce((a, b) => a + (b.percentage || 0), 0) / recentResults.length)}%`
+                  : '—'}
               </p>
             </div>
           </div>
@@ -324,11 +326,11 @@ export default function ParentDashboard({ userName }: ParentDashboardProps) {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{result.testName}</p>
+                        <p className="text-sm font-medium text-gray-900 truncate">{result.testTitle}</p>
                         <p className="text-xs text-gray-500">{result.childName}</p>
                       </div>
-                      <span className={`ml-2 px-2 py-1 rounded text-sm font-medium ${getScoreColor(result.overallScore)}`}>
-                        {result.overallScore}%
+                      <span className={`ml-2 px-2 py-1 rounded text-sm font-medium ${getScoreColor(result.percentage || 0)}`}>
+                        {result.percentage || 0}%
                       </span>
                     </div>
                   </Link>
