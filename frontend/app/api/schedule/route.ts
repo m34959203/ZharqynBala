@@ -1,36 +1,20 @@
 import { NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
-import { cookies } from 'next/headers';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-// Helper to get token from request
+// Helper to get token from request - uses getToken which handles cookies automatically
 async function getAuthToken(request: Request) {
-  // Get cookies from the request
-  const cookieStore = await cookies();
-  const sessionTokenName = process.env.NODE_ENV === 'production'
-    ? '__Secure-next-auth.session-token'
-    : 'next-auth.session-token';
-
-  const sessionToken = cookieStore.get(sessionTokenName)?.value;
-
-  console.log('[Schedule API] Cookie name:', sessionTokenName);
-  console.log('[Schedule API] Session token exists:', !!sessionToken);
-
-  if (!sessionToken) {
-    return null;
-  }
-
   try {
+    // getToken will automatically find and decode the JWT from cookies
     const token = await getToken({
       req: request,
       secret: process.env.NEXTAUTH_SECRET,
-      secureCookie: process.env.NODE_ENV === 'production',
-      cookieName: sessionTokenName,
     });
 
     console.log('[Schedule API] Token decoded:', token ? 'yes' : 'no');
-    console.log('[Schedule API] Token has accessToken:', !!token?.accessToken);
+    console.log('[Schedule API] Token accessToken:', token?.accessToken ? 'present' : 'missing');
+    console.log('[Schedule API] Token user:', token?.user ? JSON.stringify(token.user) : 'no user');
 
     return token;
   } catch (error) {
@@ -54,7 +38,7 @@ export async function GET(request: Request) {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
-    let url = `${API_URL}/api/schedule`;
+    let url = `${API_URL}/api/v1/schedule`;
     const params = new URLSearchParams();
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
@@ -101,7 +85,7 @@ export async function POST(request: Request) {
 
     const body = await request.json();
 
-    const response = await fetch(`${API_URL}/api/schedule`, {
+    const response = await fetch(`${API_URL}/api/v1/schedule`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token.accessToken}`,
@@ -140,7 +124,7 @@ export async function DELETE(request: Request) {
     }
 
     const response = await fetch(
-      `${API_URL}/api/schedule?startDate=${startDate}&endDate=${endDate}`,
+      `${API_URL}/api/v1/schedule?startDate=${startDate}&endDate=${endDate}`,
       {
         method: 'DELETE',
         headers: {
