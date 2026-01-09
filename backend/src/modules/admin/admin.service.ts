@@ -538,128 +538,167 @@ export class AdminService {
       consultations: 0,
       children: 0,
       users: 0,
+      groupTests: 0,
     };
 
-    await this.prisma.$transaction(async (tx) => {
-      // Получаем ID вопросов демо тестов
-      const questions = await tx.question.findMany({
-        where: { testId: { in: demoTestIds } },
-        select: { id: true },
-      });
-      const questionIds = questions.map(q => q.id);
-
-      // Находим демо пользователя
-      const demoUser = await tx.user.findUnique({
-        where: { email: 'parent@test.kz' },
-        select: { id: true },
-      });
-
-      // 1. Удаляем ответы на вопросы демо тестов (от любых детей)
-      if (questionIds.length > 0) {
-        const deleted = await tx.answer.deleteMany({
-          where: { questionId: { in: questionIds } },
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        this.logger.log('Step 1: Finding demo test questions...');
+        const questions = await tx.question.findMany({
+          where: { testId: { in: demoTestIds } },
+          select: { id: true },
         });
-        results.answers = deleted.count;
-      }
+        const questionIds = questions.map(q => q.id);
+        this.logger.log(`Found ${questionIds.length} questions`);
 
-      // 2. Удаляем результаты демо тестов
-      const deletedResults = await tx.result.deleteMany({
-        where: { session: { testId: { in: demoTestIds } } },
-      });
-      results.results = deletedResults.count;
-
-      // 3. Удаляем сессии демо тестов
-      const deletedSessions = await tx.testSession.deleteMany({
-        where: { testId: { in: demoTestIds } },
-      });
-      results.sessions = deletedSessions.count;
-
-      // 4. Удаляем групповые тесты
-      await tx.groupTest.deleteMany({
-        where: { testId: { in: demoTestIds } },
-      });
-
-      // 5. Удаляем варианты ответов демо тестов
-      if (questionIds.length > 0) {
-        const deletedOptions = await tx.answerOption.deleteMany({
-          where: { questionId: { in: questionIds } },
+        this.logger.log('Step 2: Finding demo user...');
+        const demoUser = await tx.user.findUnique({
+          where: { email: 'parent@test.kz' },
+          select: { id: true },
         });
-        results.answerOptions = deletedOptions.count;
-      }
+        this.logger.log(`Demo user: ${demoUser ? demoUser.id : 'not found'}`);
 
-      // 6. Удаляем вопросы демо тестов
-      const deletedQuestions = await tx.question.deleteMany({
-        where: { testId: { in: demoTestIds } },
+        // Удаление в правильном порядке FK
+        this.logger.log('Step 3: Deleting answers for demo test questions...');
+        if (questionIds.length > 0) {
+          const deleted = await tx.answer.deleteMany({
+            where: { questionId: { in: questionIds } },
+          });
+          results.answers = deleted.count;
+          this.logger.log(`Deleted ${deleted.count} answers`);
+        }
+
+        this.logger.log('Step 4: Deleting results for demo tests...');
+        const deletedResults = await tx.result.deleteMany({
+          where: { session: { testId: { in: demoTestIds } } },
+        });
+        results.results = deletedResults.count;
+        this.logger.log(`Deleted ${deletedResults.count} results`);
+
+        this.logger.log('Step 5: Deleting sessions for demo tests...');
+        const deletedSessions = await tx.testSession.deleteMany({
+          where: { testId: { in: demoTestIds } },
+        });
+        results.sessions = deletedSessions.count;
+        this.logger.log(`Deleted ${deletedSessions.count} sessions`);
+
+        this.logger.log('Step 6: Deleting group tests...');
+        const deletedGroupTests = await tx.groupTest.deleteMany({
+          where: { testId: { in: demoTestIds } },
+        });
+        results.groupTests = deletedGroupTests.count;
+        this.logger.log(`Deleted ${deletedGroupTests.count} group tests`);
+
+        this.logger.log('Step 7: Deleting answer options...');
+        if (questionIds.length > 0) {
+          const deletedOptions = await tx.answerOption.deleteMany({
+            where: { questionId: { in: questionIds } },
+          });
+          results.answerOptions = deletedOptions.count;
+          this.logger.log(`Deleted ${deletedOptions.count} answer options`);
+        }
+
+        this.logger.log('Step 8: Deleting questions...');
+        const deletedQuestions = await tx.question.deleteMany({
+          where: { testId: { in: demoTestIds } },
+        });
+        results.questions = deletedQuestions.count;
+        this.logger.log(`Deleted ${deletedQuestions.count} questions`);
+
+        this.logger.log('Step 9: Deleting demo tests...');
+        const deletedTests = await tx.test.deleteMany({
+          where: { id: { in: demoTestIds } },
+        });
+        results.tests = deletedTests.count;
+        this.logger.log(`Deleted ${deletedTests.count} tests`);
+
+        // === Демо ребёнок и пользователь ===
+        this.logger.log('Step 10: Deleting consultations for demo child...');
+        const deletedConsultations = await tx.consultation.deleteMany({
+          where: { childId: 'demo-child-1' },
+        });
+        results.consultations = deletedConsultations.count;
+        this.logger.log(`Deleted ${deletedConsultations.count} consultations`);
+
+        this.logger.log('Step 11: Finding and deleting demo child sessions...');
+        const demoChildSessions = await tx.testSession.findMany({
+          where: { childId: 'demo-child-1' },
+          select: { id: true },
+        });
+        this.logger.log(`Found ${demoChildSessions.length} sessions for demo child`);
+
+        if (demoChildSessions.length > 0) {
+          const sessionIds = demoChildSessions.map(s => s.id);
+          await tx.answer.deleteMany({
+            where: { sessionId: { in: sessionIds } },
+          });
+          await tx.result.deleteMany({
+            where: { sessionId: { in: sessionIds } },
+          });
+          await tx.testSession.deleteMany({
+            where: { id: { in: sessionIds } },
+          });
+          this.logger.log('Deleted demo child sessions and related data');
+        }
+
+        this.logger.log('Step 12: Deleting demo child...');
+        const deletedChildren = await tx.child.deleteMany({
+          where: { id: 'demo-child-1' },
+        });
+        results.children = deletedChildren.count;
+        this.logger.log(`Deleted ${deletedChildren.count} children`);
+
+        if (demoUser) {
+          this.logger.log('Step 13: Deleting demo user related data...');
+
+          // Удаляем всех детей демо пользователя (на случай если есть другие)
+          const allDemoChildren = await tx.child.findMany({
+            where: { parentId: demoUser.id },
+            select: { id: true },
+          });
+
+          for (const child of allDemoChildren) {
+            await tx.consultation.deleteMany({ where: { childId: child.id } });
+            const childSessions = await tx.testSession.findMany({
+              where: { childId: child.id },
+              select: { id: true },
+            });
+            if (childSessions.length > 0) {
+              const sIds = childSessions.map(s => s.id);
+              await tx.answer.deleteMany({ where: { sessionId: { in: sIds } } });
+              await tx.result.deleteMany({ where: { sessionId: { in: sIds } } });
+              await tx.testSession.deleteMany({ where: { id: { in: sIds } } });
+            }
+          }
+          await tx.child.deleteMany({ where: { parentId: demoUser.id } });
+
+          await tx.subscription.deleteMany({ where: { userId: demoUser.id } });
+          await tx.payment.deleteMany({ where: { userId: demoUser.id } });
+          await tx.refreshToken.deleteMany({ where: { userId: demoUser.id } });
+          await tx.securityLog.deleteMany({ where: { userId: demoUser.id } });
+          this.logger.log('Deleted demo user related data');
+        }
+
+        this.logger.log('Step 14: Deleting demo user...');
+        const deletedUsers = await tx.user.deleteMany({
+          where: { email: 'parent@test.kz' },
+        });
+        results.users = deletedUsers.count;
+        this.logger.log(`Deleted ${deletedUsers.count} users`);
+      }, {
+        timeout: 30000, // 30 seconds timeout
       });
-      results.questions = deletedQuestions.count;
 
-      // 7. Удаляем демо тесты
-      const deletedTests = await tx.test.deleteMany({
-        where: { id: { in: demoTestIds } },
-      });
-      results.tests = deletedTests.count;
+      this.logger.log('Demo data cleanup completed successfully:', results);
 
-      // === Удаление демо ребёнка и пользователя ===
-
-      // 8. Удаляем консультации демо ребёнка
-      const deletedConsultations = await tx.consultation.deleteMany({
-        where: { childId: 'demo-child-1' },
-      });
-      results.consultations = deletedConsultations.count;
-
-      // 9. Удаляем ответы сессий демо ребёнка (для не-демо тестов)
-      const demoChildSessions = await tx.testSession.findMany({
-        where: { childId: 'demo-child-1' },
-        select: { id: true },
-      });
-      if (demoChildSessions.length > 0) {
-        const sessionIds = demoChildSessions.map(s => s.id);
-        await tx.answer.deleteMany({
-          where: { sessionId: { in: sessionIds } },
-        });
-        await tx.result.deleteMany({
-          where: { sessionId: { in: sessionIds } },
-        });
-        await tx.testSession.deleteMany({
-          where: { id: { in: sessionIds } },
-        });
-      }
-
-      // 10. Удаляем демо ребёнка
-      const deletedChildren = await tx.child.deleteMany({
-        where: { id: 'demo-child-1' },
-      });
-      results.children = deletedChildren.count;
-
-      // 11. Если есть демо пользователь - удаляем связанные данные
-      if (demoUser) {
-        await tx.subscription.deleteMany({
-          where: { userId: demoUser.id },
-        });
-        await tx.payment.deleteMany({
-          where: { userId: demoUser.id },
-        });
-        await tx.refreshToken.deleteMany({
-          where: { userId: demoUser.id },
-        });
-        await tx.securityLog.deleteMany({
-          where: { userId: demoUser.id },
-        });
-      }
-
-      // 12. Удаляем демо родителя
-      const deletedUsers = await tx.user.deleteMany({
-        where: { email: 'parent@test.kz' },
-      });
-      results.users = deletedUsers.count;
-    });
-
-    this.logger.log('Demo data cleanup completed:', results);
-
-    return {
-      success: true,
-      message: 'Демо данные успешно удалены',
-      deleted: results,
-    };
+      return {
+        success: true,
+        message: 'Демо данные успешно удалены',
+        deleted: results,
+      };
+    } catch (error) {
+      this.logger.error('Demo data cleanup failed:', error);
+      throw error;
+    }
   }
 }
