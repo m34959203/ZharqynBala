@@ -1,62 +1,38 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { decode } from 'next-auth/jwt';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-// Helper to get token from cookies - читаем cookie напрямую через next/headers
-async function getAuthToken() {
+// Helper to get accessToken from cookies - токен сохраняется напрямую в cookie при логине
+async function getAccessToken(): Promise<string | null> {
   try {
     const cookieStore = await cookies();
 
-    // Пробуем оба варианта имени cookie
-    const secureCookieName = '__Secure-next-auth.session-token';
-    const normalCookieName = 'next-auth.session-token';
+    // Читаем accessToken напрямую из cookies (сохраняется при логине)
+    const accessToken = cookieStore.get('accessToken')?.value;
 
-    let sessionToken = cookieStore.get(secureCookieName)?.value;
-    let usedCookieName = secureCookieName;
+    console.log('[Schedule API] accessToken cookie found:', accessToken ? 'yes' : 'no');
 
-    if (!sessionToken) {
-      sessionToken = cookieStore.get(normalCookieName)?.value;
-      usedCookieName = normalCookieName;
+    if (!accessToken) {
+      // Логируем все cookies для отладки
+      const allCookies = cookieStore.getAll();
+      console.log('[Schedule API] All cookies:', allCookies.map(c => c.name).join(', '));
     }
 
-    console.log('[Schedule API] Cookie name used:', usedCookieName);
-    console.log('[Schedule API] Session token found:', sessionToken ? 'yes' : 'no');
-
-    // Логируем все доступные cookies для отладки
-    const allCookies = cookieStore.getAll();
-    console.log('[Schedule API] All cookies:', allCookies.map(c => c.name).join(', '));
-
-    if (!sessionToken) {
-      console.log('[Schedule API] No session token cookie found');
-      return null;
-    }
-
-    // Декодируем JWT токен
-    const token = await decode({
-      token: sessionToken,
-      secret: process.env.NEXTAUTH_SECRET!,
-    });
-
-    console.log('[Schedule API] Token decoded:', token ? 'yes' : 'no');
-    console.log('[Schedule API] Token keys:', token ? Object.keys(token) : 'null');
-    console.log('[Schedule API] Token accessToken:', token?.accessToken ? 'present' : 'missing');
-
-    return token;
+    return accessToken || null;
   } catch (error) {
-    console.error('[Schedule API] Error decoding token:', error);
+    console.error('[Schedule API] Error reading accessToken cookie:', error);
     return null;
   }
 }
 
 export async function GET(request: Request) {
   try {
-    const token = await getAuthToken();
+    const accessToken = await getAccessToken();
 
-    console.log('[Schedule API] GET - Token:', token ? 'exists' : 'null');
+    console.log('[Schedule API] GET - accessToken:', accessToken ? 'present' : 'missing');
 
-    if (!token?.accessToken) {
+    if (!accessToken) {
       console.log('[Schedule API] GET - Returning 401 - no accessToken');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -75,7 +51,7 @@ export async function GET(request: Request) {
 
     const response = await fetch(url, {
       headers: {
-        'Authorization': `Bearer ${token.accessToken}`,
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
     });
@@ -101,11 +77,11 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const token = await getAuthToken();
+    const accessToken = await getAccessToken();
 
-    console.log('[Schedule API] POST - Token:', token ? 'exists' : 'null');
+    console.log('[Schedule API] POST - accessToken:', accessToken ? 'present' : 'missing');
 
-    if (!token?.accessToken) {
+    if (!accessToken) {
       console.log('[Schedule API] POST - Returning 401 - no accessToken');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -115,7 +91,7 @@ export async function POST(request: Request) {
     const response = await fetch(`${API_URL}/api/v1/schedule`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token.accessToken}`,
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
@@ -136,9 +112,12 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const token = await getAuthToken();
+    const accessToken = await getAccessToken();
 
-    if (!token?.accessToken) {
+    console.log('[Schedule API] DELETE - accessToken:', accessToken ? 'present' : 'missing');
+
+    if (!accessToken) {
+      console.log('[Schedule API] DELETE - Returning 401 - no accessToken');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -155,7 +134,7 @@ export async function DELETE(request: Request) {
       {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token.accessToken}`,
+          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
       }
