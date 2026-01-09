@@ -98,7 +98,7 @@ export class UsersService {
       where: { parentId },
       orderBy: { createdAt: 'desc' },
       include: {
-        sessions: {
+        testSessions: {
           where: { status: 'COMPLETED' },
           include: {
             result: true,
@@ -137,7 +137,7 @@ export class UsersService {
         }
 
         // Get last test date
-        const lastTestDate = child.sessions[0]?.completedAt?.toISOString();
+        const lastTestDate = child.testSessions[0]?.completedAt?.toISOString();
 
         return this.mapChildToResponse({
           ...child,
