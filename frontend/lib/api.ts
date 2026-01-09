@@ -169,6 +169,12 @@ export const adminApi = {
     return response.data;
   },
 
+  // Payments
+  getPayments: async (params?: { status?: string; from?: string; to?: string; page?: number }) => {
+    const response = await api.get('/admin/payments', { params });
+    return response.data;
+  },
+
   // Demo data cleanup
   cleanupDemoData: async (): Promise<{ success: boolean; message: string; deleted: Record<string, number> }> => {
     const response = await api.delete('/admin/cleanup-demo');

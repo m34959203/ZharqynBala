@@ -32,11 +32,8 @@ const reportTypes: Report[] = [
   },
 ];
 
-const recentReports = [
-  { id: '1', name: 'Отчёт 5-А класс', date: '2025-12-25', type: 'PDF' },
-  { id: '2', name: 'Параллель 6 классов', date: '2025-12-24', type: 'Excel' },
-  { id: '3', name: 'Общешкольный Q4 2025', date: '2025-12-20', type: 'PDF' },
-];
+// Reports will be stored on the server once generation is implemented
+const recentReports: { id: string; name: string; date: string; type: string }[] = [];
 
 export default function ReportsPage() {
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
@@ -169,30 +166,40 @@ export default function ReportsPage() {
       {/* Recent Reports */}
       <div className="bg-white rounded-xl shadow-sm p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Последние отчёты</h2>
-        <div className="divide-y">
-          {recentReports.map((report) => (
-            <div key={report.id} className="py-4 flex items-center justify-between">
-              <div className="flex items-center">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                  report.type === 'PDF' ? 'bg-red-100' : 'bg-green-100'
-                }`}>
-                  <span className={`text-xs font-bold ${
-                    report.type === 'PDF' ? 'text-red-600' : 'text-green-600'
+        {recentReports.length === 0 ? (
+          <div className="py-8 text-center">
+            <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <p className="text-gray-500">Нет сгенерированных отчётов</p>
+            <p className="text-sm text-gray-400 mt-1">Сгенерированные отчёты будут отображаться здесь</p>
+          </div>
+        ) : (
+          <div className="divide-y">
+            {recentReports.map((report) => (
+              <div key={report.id} className="py-4 flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    report.type === 'PDF' ? 'bg-red-100' : 'bg-green-100'
                   }`}>
-                    {report.type}
-                  </span>
+                    <span className={`text-xs font-bold ${
+                      report.type === 'PDF' ? 'text-red-600' : 'text-green-600'
+                    }`}>
+                      {report.type}
+                    </span>
+                  </div>
+                  <div className="ml-4">
+                    <p className="font-medium text-gray-900">{report.name}</p>
+                    <p className="text-sm text-gray-500">{new Date(report.date).toLocaleDateString('ru-RU')}</p>
+                  </div>
                 </div>
-                <div className="ml-4">
-                  <p className="font-medium text-gray-900">{report.name}</p>
-                  <p className="text-sm text-gray-500">{new Date(report.date).toLocaleDateString('ru-RU')}</p>
-                </div>
+                <button className="px-4 py-2 text-indigo-600 hover:text-indigo-500 font-medium text-sm">
+                  Скачать
+                </button>
               </div>
-              <button className="px-4 py-2 text-indigo-600 hover:text-indigo-500 font-medium text-sm">
-                Скачать
-              </button>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

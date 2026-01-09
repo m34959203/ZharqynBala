@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 interface Client {
@@ -14,57 +14,20 @@ interface Client {
   status: 'ACTIVE' | 'INACTIVE';
 }
 
-const mockClients: Client[] = [
-  {
-    id: '1',
-    name: 'Асем Нурпеисова',
-    email: 'asem@mail.kz',
-    phone: '+7 701 123 4567',
-    children: [
-      { id: '1', name: 'Айгерим', age: 12 },
-      { id: '2', name: 'Алихан', age: 8 },
-    ],
-    lastConsultation: '2025-12-20',
-    totalConsultations: 8,
-    status: 'ACTIVE',
-  },
-  {
-    id: '2',
-    name: 'Марат Сагынбаев',
-    email: 'marat@mail.kz',
-    phone: '+7 702 234 5678',
-    children: [{ id: '3', name: 'Алишер', age: 10 }],
-    lastConsultation: '2025-12-18',
-    totalConsultations: 5,
-    status: 'ACTIVE',
-  },
-  {
-    id: '3',
-    name: 'Динара Жумабаева',
-    email: 'dinara@mail.kz',
-    phone: '+7 707 345 6789',
-    children: [{ id: '4', name: 'Камила', age: 14 }],
-    lastConsultation: '2025-12-15',
-    totalConsultations: 3,
-    status: 'ACTIVE',
-  },
-  {
-    id: '4',
-    name: 'Бауыржан Касымов',
-    email: 'baurzhan@mail.kz',
-    phone: '+7 705 456 7890',
-    children: [{ id: '5', name: 'Ернар', age: 9 }],
-    lastConsultation: '2025-11-28',
-    totalConsultations: 12,
-    status: 'INACTIVE',
-  },
-];
-
 export default function ClientsPage() {
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
 
-  const filteredClients = mockClients.filter((client) => {
+  useEffect(() => {
+    // Load data - currently no backend API for psychologist clients
+    // Will show empty state until API is implemented
+    setLoading(false);
+    setClients([]);
+  }, []);
+
+  const filteredClients = clients.filter((client) => {
     const matchesSearch = client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       client.email.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'ALL' || client.status === statusFilter;
@@ -80,7 +43,7 @@ export default function ClientsPage() {
         </div>
         <div className="flex items-center space-x-3">
           <span className="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm font-medium">
-            {mockClients.length} клиентов
+            {clients.length} клиентов
           </span>
         </div>
       </div>
