@@ -1,18 +1,50 @@
 import {
   Controller,
   Get,
+  Put,
+  Body,
   Param,
   Query,
+  UseGuards,
+  Request,
 } from '@nestjs/common';
 import { PsychologistsService } from './psychologists.service';
 import {
   PsychologistListResponseDto,
   PsychologistDetailResponseDto,
+  UpdatePsychologistProfileDto,
 } from './dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 
 @Controller('psychologists')
 export class PsychologistsController {
   constructor(private readonly psychologistsService: PsychologistsService) {}
+
+  /**
+   * Получить собственный профиль психолога (требует авторизации)
+   */
+  @Get('me')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.PSYCHOLOGIST)
+  async getMyProfile(@Request() req: any) {
+    return this.psychologistsService.getMyProfile(req.user.id);
+  }
+
+  /**
+   * Обновить собственный профиль психолога (требует авторизации)
+   */
+  @Put('me')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.PSYCHOLOGIST)
+  async updateMyProfile(
+    @Request() req: any,
+    @Body() dto: UpdatePsychologistProfileDto,
+  ): Promise<PsychologistDetailResponseDto> {
+    return this.psychologistsService.updateMyProfile(req.user.id, dto);
+  }
 
   /**
    * Получить список психологов (публичный эндпоинт)
