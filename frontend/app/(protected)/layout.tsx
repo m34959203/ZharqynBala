@@ -2,6 +2,7 @@
 
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import Cookies from 'js-cookie';
 import { navigationByRole, roleLabels, roleColors } from '@/config/navigation';
@@ -136,7 +137,14 @@ export default function ProtectedLayout({
           <div className="flex justify-between h-16">
             <div className="flex items-center">
               <Link href="/dashboard" className="flex items-center">
-                <span className="text-xl font-bold text-indigo-600">Жарқын Бала</span>
+                <Image
+                  src="/logo.png"
+                  alt="Жарқын Бала"
+                  width={120}
+                  height={40}
+                  className="h-10 w-auto"
+                  priority
+                />
               </Link>
               <span className={`ml-3 px-2 py-1 text-xs font-medium rounded-full ${roleColors[userRole]}`}>
                 {roleLabels[userRole]}
