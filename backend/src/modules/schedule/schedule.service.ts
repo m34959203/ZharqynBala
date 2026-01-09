@@ -23,12 +23,12 @@ export class ScheduleService {
         psychologist = await this.prisma.psychologist.create({
           data: {
             userId,
-            specialization: [],
+            specialization: ['Детский психолог'],
             experienceYears: 0,
             education: 'Не указано',
             hourlyRate: 5000,
             bio: null,
-            isApproved: false,
+            isApproved: true, // Автоматически одобряем для отображения в списке
             isAvailable: true,
           },
         });
