@@ -129,7 +129,80 @@ export class AdminService {
   }
 
   async deleteUser(id: string) {
-    return this.prisma.user.delete({ where: { id } });
+    this.logger.log(`Deleting user: ${id}`);
+
+    // Проверяем существование пользователя
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: { id: true, email: true, role: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Пользователь не найден');
+    }
+
+    // Защита от удаления админа системы
+    if (user.email === 'admin@zharqynbala.kz') {
+      throw new Error('Нельзя удалить системного администратора');
+    }
+
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        // 1. Находим всех детей пользователя
+        const children = await tx.child.findMany({
+          where: { parentId: id },
+          select: { id: true },
+        });
+
+        // 2. Для каждого ребёнка удаляем связанные данные
+        for (const child of children) {
+          // Удаляем консультации ребёнка
+          await tx.consultation.deleteMany({ where: { childId: child.id } });
+
+          // Удаляем сессии тестов и связанные данные
+          const sessions = await tx.testSession.findMany({
+            where: { childId: child.id },
+            select: { id: true },
+          });
+
+          if (sessions.length > 0) {
+            const sessionIds = sessions.map(s => s.id);
+            await tx.answer.deleteMany({ where: { sessionId: { in: sessionIds } } });
+            await tx.result.deleteMany({ where: { sessionId: { in: sessionIds } } });
+            await tx.testSession.deleteMany({ where: { id: { in: sessionIds } } });
+          }
+        }
+
+        // 3. Удаляем детей
+        await tx.child.deleteMany({ where: { parentId: id } });
+
+        // 4. Удаляем профиль психолога (если есть)
+        await tx.psychologist.deleteMany({ where: { userId: id } });
+
+        // 5. Удаляем подписки
+        await tx.subscription.deleteMany({ where: { userId: id } });
+
+        // 6. Удаляем платежи
+        await tx.payment.deleteMany({ where: { userId: id } });
+
+        // 7. Удаляем refresh токены
+        await tx.refreshToken.deleteMany({ where: { userId: id } });
+
+        // 8. Удаляем логи безопасности
+        await tx.securityLog.deleteMany({ where: { userId: id } });
+
+        // 9. Удаляем самого пользователя
+        await tx.user.delete({ where: { id } });
+      }, {
+        timeout: 30000,
+      });
+
+      this.logger.log(`User deleted successfully: ${id}`);
+      return { success: true, message: 'Пользователь успешно удалён' };
+    } catch (error) {
+      this.logger.error(`Failed to delete user ${id}:`, error);
+      throw error;
+    }
   }
 
   async banUser(id: string) {
