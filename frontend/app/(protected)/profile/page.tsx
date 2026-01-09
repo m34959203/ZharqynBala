@@ -17,6 +17,7 @@ interface UserProfile {
 interface PsychologistProfile {
   id: string;
   specialization: string[];
+  languages: string[];
   experienceYears: number;
   education: string;
   bio: string | null;
@@ -37,6 +38,12 @@ const SPECIALIZATIONS = [
   'Школьный психолог',
 ];
 
+const LANGUAGES = [
+  'Русский',
+  'Казахский',
+  'Английский',
+];
+
 export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [psychologistProfile, setPsychologistProfile] = useState<PsychologistProfile | null>(null);
@@ -52,6 +59,7 @@ export default function ProfilePage() {
   });
   const [psychologistFormData, setPsychologistFormData] = useState({
     specialization: [] as string[],
+    languages: ['Русский'] as string[],
     experienceYears: 0,
     education: '',
     bio: '',
@@ -82,6 +90,7 @@ export default function ProfilePage() {
             setPsychologistProfile(psychData);
             setPsychologistFormData({
               specialization: psychData.specialization || [],
+              languages: psychData.languages || ['Русский'],
               experienceYears: psychData.experienceYears || 0,
               education: psychData.education || '',
               bio: psychData.bio || '',
@@ -139,6 +148,15 @@ export default function ProfilePage() {
       specialization: prev.specialization.includes(spec)
         ? prev.specialization.filter((s) => s !== spec)
         : [...prev.specialization, spec],
+    }));
+  };
+
+  const toggleLanguage = (lang: string) => {
+    setPsychologistFormData((prev) => ({
+      ...prev,
+      languages: prev.languages.includes(lang)
+        ? prev.languages.filter((l) => l !== lang)
+        : [...prev.languages, lang],
     }));
   };
 
@@ -292,6 +310,28 @@ export default function ProfilePage() {
                       </div>
                     </div>
 
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Языки консультации *
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {LANGUAGES.map((lang) => (
+                          <button
+                            key={lang}
+                            type="button"
+                            onClick={() => toggleLanguage(lang)}
+                            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                              psychologistFormData.languages.includes(lang)
+                                ? 'bg-green-600 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            {lang}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -392,6 +432,7 @@ export default function ProfilePage() {
                         isLoading={savingPsychologist}
                         disabled={
                           psychologistFormData.specialization.length === 0 ||
+                          psychologistFormData.languages.length === 0 ||
                           !psychologistFormData.education ||
                           psychologistFormData.education === 'Не указано'
                         }
@@ -415,6 +456,24 @@ export default function ProfilePage() {
                               className="px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-700"
                             >
                               {spec}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-gray-400">Не указаны</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-gray-100">
+                      <p className="text-sm text-gray-500 mb-2">Языки консультации</p>
+                      <div className="flex flex-wrap gap-2">
+                        {psychologistProfile.languages?.length > 0 ? (
+                          psychologistProfile.languages.map((lang) => (
+                            <span
+                              key={lang}
+                              className="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-700"
+                            >
+                              {lang}
                             </span>
                           ))
                         ) : (

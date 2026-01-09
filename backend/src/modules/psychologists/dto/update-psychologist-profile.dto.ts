@@ -6,6 +6,11 @@ export class UpdatePsychologistProfileDto {
   @ArrayMinSize(1, { message: 'Укажите хотя бы одну специализацию' })
   specialization: string[];
 
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMinSize(1, { message: 'Укажите хотя бы один язык' })
+  languages: string[];
+
   @IsNumber()
   @Min(0)
   @Max(50)

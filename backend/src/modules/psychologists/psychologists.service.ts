@@ -94,6 +94,7 @@ export class PsychologistsService {
       lastName: psychologist.user.lastName || '',
       avatarUrl: psychologist.user.avatarUrl,
       specialization: psychologist.specialization,
+      languages: psychologist.languages,
       experienceYears: psychologist.experienceYears,
       education: psychologist.education,
       bio: psychologist.bio,
@@ -179,6 +180,7 @@ export class PsychologistsService {
       lastName: psychologist.user.lastName || '',
       avatarUrl: psychologist.user.avatarUrl,
       specialization: psychologist.specialization,
+      languages: psychologist.languages,
       experienceYears: psychologist.experienceYears,
       education: psychologist.education,
       bio: psychologist.bio,
@@ -215,6 +217,7 @@ export class PsychologistsService {
       where: { userId },
       data: {
         specialization: dto.specialization,
+        languages: dto.languages,
         experienceYears: dto.experienceYears,
         education: dto.education,
         bio: dto.bio,
@@ -239,6 +242,7 @@ export class PsychologistsService {
       lastName: updated.user.lastName || '',
       avatarUrl: updated.user.avatarUrl,
       specialization: updated.specialization,
+      languages: updated.languages,
       experienceYears: updated.experienceYears,
       education: updated.education,
       bio: updated.bio,
@@ -261,6 +265,7 @@ export class PsychologistsService {
   private mapToResponse(psychologist: {
     id: string;
     specialization: string[];
+    languages: string[];
     experienceYears: number;
     education: string;
     bio: string | null;
@@ -280,6 +285,7 @@ export class PsychologistsService {
       lastName: psychologist.user.lastName || '',
       avatarUrl: psychologist.user.avatarUrl,
       specialization: psychologist.specialization,
+      languages: psychologist.languages,
       experienceYears: psychologist.experienceYears,
       education: psychologist.education,
       bio: psychologist.bio,

@@ -9,6 +9,7 @@ interface Psychologist {
   lastName: string;
   avatarUrl: string | null;
   specialization: string[];
+  languages: string[];
   experienceYears: number;
   education: string;
   bio: string | null;
@@ -85,13 +86,25 @@ function PsychologistCard({ psychologist }: { psychologist: Psychologist }) {
               </div>
 
               {/* Specializations */}
-              <div className="flex flex-wrap gap-1 mb-3">
+              <div className="flex flex-wrap gap-1 mb-2">
                 {psychologist.specialization.slice(0, 3).map((spec) => (
                   <span
                     key={spec}
                     className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700"
                   >
                     {spec}
+                  </span>
+                ))}
+              </div>
+
+              {/* Languages */}
+              <div className="flex flex-wrap gap-1 mb-3">
+                {psychologist.languages?.map((lang) => (
+                  <span
+                    key={lang}
+                    className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700"
+                  >
+                    {lang}
                   </span>
                 ))}
               </div>
