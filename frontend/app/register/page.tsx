@@ -232,31 +232,6 @@ export default function RegisterPage() {
               )}
             </div>
 
-            {/* Телефон */}
-            <div>
-              <label
-                htmlFor="phone"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Телефон
-              </label>
-              <input
-                id="phone"
-                type="tel"
-                {...register('phone', {
-                  pattern: {
-                    value: /^\+7\d{10}$/,
-                    message: 'Формат: +77771234567',
-                  },
-                })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200 text-gray-900 bg-white placeholder:text-gray-500"
-                placeholder="+77771234567"
-              />
-              {errors.phone && (
-                <p className="mt-1 text-sm text-red-600">{errors.phone.message}</p>
-              )}
-            </div>
-
             {/* Пароль */}
             <div>
               <label
