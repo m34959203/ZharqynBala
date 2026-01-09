@@ -14,6 +14,7 @@ import { SchoolsModule } from './modules/schools/schools.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { PdfModule } from './modules/pdf/pdf.module';
 import { CrisisModule } from './modules/crisis/crisis.module';
+import { ScheduleModule } from './modules/schedule/schedule.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { CrisisModule } from './modules/crisis/crisis.module';
     AdminModule,
     PdfModule,
     CrisisModule,
+    ScheduleModule,
   ],
 })
 export class AppModule {}
