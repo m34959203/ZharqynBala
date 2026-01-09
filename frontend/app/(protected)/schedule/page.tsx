@@ -99,7 +99,8 @@ export default function SchedulePage() {
       const { startDate, endDate } = getWeekDates();
 
       const response = await fetch(
-        `/api/schedule?startDate=${startDate}&endDate=${endDate}`
+        `/api/schedule?startDate=${startDate}&endDate=${endDate}`,
+        { credentials: 'include' }
       );
 
       if (response.status === 401) {
@@ -191,6 +192,7 @@ export default function SchedulePage() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({ slots }),
       });
 
