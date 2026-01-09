@@ -15,6 +15,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { PdfModule } from './modules/pdf/pdf.module';
 import { CrisisModule } from './modules/crisis/crisis.module';
 import { ScheduleModule } from './modules/schedule/schedule.module';
+import { PsychologistsModule } from './modules/psychologists/psychologists.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { ScheduleModule } from './modules/schedule/schedule.module';
     PdfModule,
     CrisisModule,
     ScheduleModule,
+    PsychologistsModule,
   ],
 })
 export class AppModule {}
