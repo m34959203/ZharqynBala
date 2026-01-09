@@ -36,37 +36,16 @@ export default function PsychologistDashboard({ userName }: PsychologistDashboar
   });
 
   useEffect(() => {
-    // Simulate data loading
+    // Load data - currently no backend API for psychologist dashboard
+    // Will show empty state until API is implemented
     setLoading(false);
-    // Mock data for demonstration
-    setTodayConsultations([
-      {
-        id: '1',
-        clientName: 'Асем Нурпеисова',
-        childName: 'Айгерим',
-        scheduledAt: '2025-12-25T10:00:00',
-        status: 'SCHEDULED',
-        type: 'ONLINE',
-      },
-      {
-        id: '2',
-        clientName: 'Марат Сагынбаев',
-        childName: 'Алишер',
-        scheduledAt: '2025-12-25T14:00:00',
-        status: 'SCHEDULED',
-        type: 'ONLINE',
-      },
-    ]);
-    setClients([
-      { id: '1', name: 'Асем Нурпеисова', childrenCount: 2, lastConsultation: '2025-12-20' },
-      { id: '2', name: 'Марат Сагынбаев', childrenCount: 1, lastConsultation: '2025-12-18' },
-      { id: '3', name: 'Динара Жумабаева', childrenCount: 1, lastConsultation: '2025-12-15' },
-    ]);
+    setTodayConsultations([]);
+    setClients([]);
     setStats({
-      totalClients: 24,
-      consultationsThisMonth: 18,
-      revenue: 450000,
-      rating: 4.8,
+      totalClients: 0,
+      consultationsThisMonth: 0,
+      revenue: 0,
+      rating: 0,
     });
   }, []);
 

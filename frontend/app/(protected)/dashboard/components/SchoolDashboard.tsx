@@ -35,26 +35,16 @@ export default function SchoolDashboard({ userName }: SchoolDashboardProps) {
   });
 
   useEffect(() => {
-    // Simulate data loading
+    // Load data - currently no backend API for school dashboard
+    // Will show empty state until API is implemented
     setLoading(false);
-    // Mock data
-    setClasses([
-      { id: '1', name: '1-А', studentsCount: 28, testedCount: 25, averageScore: 78 },
-      { id: '2', name: '1-Б', studentsCount: 30, testedCount: 28, averageScore: 72 },
-      { id: '3', name: '2-А', studentsCount: 26, testedCount: 24, averageScore: 81 },
-      { id: '4', name: '2-Б', studentsCount: 27, testedCount: 22, averageScore: 69 },
-      { id: '5', name: '3-А', studentsCount: 29, testedCount: 27, averageScore: 75 },
-    ]);
-    setAtRiskStudents([
-      { id: '1', name: 'Иванов А.', className: '2-Б', concern: 'Тревожность', score: 35 },
-      { id: '2', name: 'Петрова М.', className: '1-А', concern: 'Внимание', score: 42 },
-      { id: '3', name: 'Сидоров К.', className: '3-А', concern: 'Эмоции', score: 38 },
-    ]);
+    setClasses([]);
+    setAtRiskStudents([]);
     setStats({
-      totalStudents: 450,
-      testedStudents: 320,
-      totalTests: 1250,
-      averageScore: 75,
+      totalStudents: 0,
+      testedStudents: 0,
+      totalTests: 0,
+      averageScore: 0,
     });
   }, []);
 

@@ -1,42 +1,51 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { adminApi } from '@/lib/api';
 
 interface Payment {
   id: string;
   userId: string;
-  userName: string;
-  userEmail: string;
   amount: number;
-  type: 'SUBSCRIPTION' | 'CONSULTATION' | 'TEST_PACK' | 'SCHOOL_LICENSE';
+  type: string;
   status: 'COMPLETED' | 'PENDING' | 'FAILED' | 'REFUNDED';
   createdAt: string;
-  paymentMethod: string;
+  paymentMethod?: string;
 }
 
-const mockPayments: Payment[] = [
-  { id: '1', userId: '1', userName: 'Асем Нурпеисова', userEmail: 'asem@mail.kz', amount: 5000, type: 'SUBSCRIPTION', status: 'COMPLETED', createdAt: '2025-12-26T10:30:00', paymentMethod: 'Kaspi' },
-  { id: '2', userId: '2', userName: 'Марат Сагынбаев', userEmail: 'marat@mail.kz', amount: 15000, type: 'CONSULTATION', status: 'COMPLETED', createdAt: '2025-12-25T15:45:00', paymentMethod: 'Kaspi' },
-  { id: '3', userId: '3', userName: 'СШ №45', userEmail: 'school45@edu.kz', amount: 150000, type: 'SCHOOL_LICENSE', status: 'COMPLETED', createdAt: '2025-12-24T09:00:00', paymentMethod: 'Bank Transfer' },
-  { id: '4', userId: '4', userName: 'Динара Жумабаева', userEmail: 'dinara@mail.kz', amount: 5000, type: 'SUBSCRIPTION', status: 'PENDING', createdAt: '2025-12-24T14:20:00', paymentMethod: 'Kaspi' },
-  { id: '5', userId: '5', userName: 'Бауыржан Касымов', userEmail: 'baurz@mail.kz', amount: 10000, type: 'TEST_PACK', status: 'FAILED', createdAt: '2025-12-23T11:15:00', paymentMethod: 'Card' },
-  { id: '6', userId: '6', userName: 'Гимназия №56', userEmail: 'gym56@edu.kz', amount: 200000, type: 'SCHOOL_LICENSE', status: 'COMPLETED', createdAt: '2025-12-22T16:30:00', paymentMethod: 'Bank Transfer' },
-  { id: '7', userId: '7', userName: 'Алия Мухамедова', userEmail: 'aliya@mail.kz', amount: 15000, type: 'CONSULTATION', status: 'REFUNDED', createdAt: '2025-12-21T10:00:00', paymentMethod: 'Kaspi' },
-];
-
 export default function AdminPaymentsPage() {
-  const [payments] = useState<Payment[]>(mockPayments);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
+  useEffect(() => {
+    const fetchPayments = async () => {
+      try {
+        setLoading(true);
+        const params: { status?: string; page: number } = { page };
+        if (statusFilter !== 'all') {
+          params.status = statusFilter;
+        }
+        const data = await adminApi.getPayments(params);
+        setPayments(data.payments || []);
+        setTotalPages(data.totalPages || 1);
+      } catch (error) {
+        console.error('Failed to fetch payments:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPayments();
+  }, [page, statusFilter]);
+
   const filteredPayments = payments.filter(payment => {
-    const matchesSearch = payment.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         payment.userEmail.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = typeFilter === 'all' || payment.type === typeFilter;
-    const matchesStatus = statusFilter === 'all' || payment.status === statusFilter;
-    return matchesSearch && matchesType && matchesStatus;
+    return matchesType;
   });
 
   const getTypeLabel = (type: string) => {
@@ -183,50 +192,86 @@ export default function AdminPaymentsPage() {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {filteredPayments.map((payment) => (
-                <tr key={payment.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm text-gray-500">#{payment.id}</td>
-                  <td className="px-6 py-4">
-                    <div>
-                      <p className="font-medium text-gray-900">{payment.userName}</p>
-                      <p className="text-sm text-gray-500">{payment.userEmail}</p>
+              {loading ? (
+                <tr>
+                  <td colSpan={8} className="px-6 py-12 text-center">
+                    <div className="flex justify-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getTypeColor(payment.type)}`}>
-                      {getTypeLabel(payment.type)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 font-bold text-gray-900">
-                    {payment.amount.toLocaleString()} ₸
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {payment.paymentMethod}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(payment.status)}`}>
-                      {getStatusLabel(payment.status)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {new Date(payment.createdAt).toLocaleString('ru-RU', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </td>
-                  <td className="px-6 py-4">
-                    <button className="text-indigo-600 hover:text-indigo-500 text-sm font-medium">
-                      Подробнее
-                    </button>
+                </tr>
+              ) : filteredPayments.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
+                    Платежи не найдены
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredPayments.map((payment) => (
+                  <tr key={payment.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 text-sm text-gray-500">#{payment.id.slice(0, 8)}</td>
+                    <td className="px-6 py-4">
+                      <p className="text-sm text-gray-500">{payment.userId.slice(0, 8)}...</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getTypeColor(payment.type)}`}>
+                        {getTypeLabel(payment.type)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 font-bold text-gray-900">
+                      {payment.amount.toLocaleString()} ₸
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {payment.paymentMethod || 'Kaspi'}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(payment.status)}`}>
+                        {getStatusLabel(payment.status)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {new Date(payment.createdAt).toLocaleString('ru-RU', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </td>
+                    <td className="px-6 py-4">
+                      <button className="text-indigo-600 hover:text-indigo-500 text-sm font-medium">
+                        Подробнее
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-6 py-4 border-t">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+            >
+              Назад
+            </button>
+            <span className="text-sm text-gray-600">
+              Страница {page} из {totalPages}
+            </span>
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+            >
+              Вперёд
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
