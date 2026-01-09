@@ -6,13 +6,23 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 // Helper to get token from request - uses getToken which handles cookies automatically
 async function getAuthToken(request: Request) {
   try {
-    // getToken will automatically find and decode the JWT from cookies
+    // В production NextAuth использует __Secure- префикс для cookies
+    const cookieName = process.env.NODE_ENV === 'production'
+      ? '__Secure-next-auth.session-token'
+      : 'next-auth.session-token';
+
+    console.log('[Schedule API] Using cookie name:', cookieName);
+    console.log('[Schedule API] NODE_ENV:', process.env.NODE_ENV);
+
+    // getToken декодирует JWT из cookies
     const token = await getToken({
       req: request,
       secret: process.env.NEXTAUTH_SECRET,
+      cookieName,
     });
 
     console.log('[Schedule API] Token decoded:', token ? 'yes' : 'no');
+    console.log('[Schedule API] Token keys:', token ? Object.keys(token) : 'null');
     console.log('[Schedule API] Token accessToken:', token?.accessToken ? 'present' : 'missing');
     console.log('[Schedule API] Token user:', token?.user ? JSON.stringify(token.user) : 'no user');
 
