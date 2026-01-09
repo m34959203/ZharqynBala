@@ -3,36 +3,107 @@ import { cookies } from 'next/headers';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-// Helper to get accessToken from cookies - токен сохраняется напрямую в cookie при логине
-async function getAccessToken(): Promise<string | null> {
+// Helper to get tokens from cookies
+async function getTokens(): Promise<{ accessToken: string | null; refreshToken: string | null }> {
   try {
     const cookieStore = await cookies();
 
-    // Читаем accessToken напрямую из cookies (сохраняется при логине)
-    const accessToken = cookieStore.get('accessToken')?.value;
+    const accessToken = cookieStore.get('accessToken')?.value || null;
+    const refreshToken = cookieStore.get('refreshToken')?.value || null;
 
     console.log('[Schedule API] accessToken cookie found:', accessToken ? 'yes' : 'no');
+    console.log('[Schedule API] refreshToken cookie found:', refreshToken ? 'yes' : 'no');
 
-    if (!accessToken) {
-      // Логируем все cookies для отладки
-      const allCookies = cookieStore.getAll();
-      console.log('[Schedule API] All cookies:', allCookies.map(c => c.name).join(', '));
+    return { accessToken, refreshToken };
+  } catch (error) {
+    console.error('[Schedule API] Error reading cookies:', error);
+    return { accessToken: null, refreshToken: null };
+  }
+}
+
+// Helper to refresh access token
+async function refreshAccessToken(refreshToken: string): Promise<string | null> {
+  try {
+    console.log('[Schedule API] Attempting to refresh access token...');
+
+    const response = await fetch(`${API_URL}/api/v1/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ refreshToken }),
+    });
+
+    if (!response.ok) {
+      console.error('[Schedule API] Token refresh failed:', response.status);
+      return null;
     }
 
-    return accessToken || null;
+    const data = await response.json();
+    console.log('[Schedule API] Token refreshed successfully');
+    return data.accessToken;
   } catch (error) {
-    console.error('[Schedule API] Error reading accessToken cookie:', error);
+    console.error('[Schedule API] Error refreshing token:', error);
     return null;
   }
 }
 
+// Helper to make authenticated request with retry on 401
+async function makeAuthenticatedRequest(
+  url: string,
+  options: RequestInit,
+  tokens: { accessToken: string | null; refreshToken: string | null }
+): Promise<{ response: Response; newAccessToken?: string }> {
+  const { accessToken, refreshToken } = tokens;
+
+  if (!accessToken) {
+    throw new Error('No access token');
+  }
+
+  // First attempt with current access token
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      ...options.headers,
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  console.log('[Schedule API] Backend response status:', response.status);
+
+  // If 401 and we have refresh token, try to refresh
+  if (response.status === 401 && refreshToken) {
+    console.log('[Schedule API] Got 401, attempting token refresh...');
+
+    const newAccessToken = await refreshAccessToken(refreshToken);
+
+    if (newAccessToken) {
+      // Retry with new token
+      const retryResponse = await fetch(url, {
+        ...options,
+        headers: {
+          ...options.headers,
+          'Authorization': `Bearer ${newAccessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('[Schedule API] Retry response status:', retryResponse.status);
+      return { response: retryResponse, newAccessToken };
+    }
+  }
+
+  return { response };
+}
+
 export async function GET(request: Request) {
   try {
-    const accessToken = await getAccessToken();
+    const tokens = await getTokens();
 
-    console.log('[Schedule API] GET - accessToken:', accessToken ? 'present' : 'missing');
+    console.log('[Schedule API] GET - accessToken:', tokens.accessToken ? 'present' : 'missing');
 
-    if (!accessToken) {
+    if (!tokens.accessToken) {
       console.log('[Schedule API] GET - Returning 401 - no accessToken');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -49,14 +120,7 @@ export async function GET(request: Request) {
 
     console.log('[Schedule API] GET - Fetching from:', url);
 
-    const response = await fetch(url, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    console.log('[Schedule API] GET - Backend response status:', response.status);
+    const { response, newAccessToken } = await makeAuthenticatedRequest(url, { method: 'GET' }, tokens);
 
     if (!response.ok) {
       if (response.status === 404) {
@@ -68,7 +132,20 @@ export async function GET(request: Request) {
     }
 
     const data = await response.json();
-    return NextResponse.json(data);
+    const jsonResponse = NextResponse.json(data);
+
+    // If token was refreshed, update the cookie
+    if (newAccessToken) {
+      jsonResponse.cookies.set('accessToken', newAccessToken, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24, // 1 day
+      });
+    }
+
+    return jsonResponse;
   } catch (error) {
     console.error('Error fetching schedule:', error);
     return NextResponse.json({ error: 'Failed to fetch schedule' }, { status: 500 });
@@ -77,25 +154,22 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const accessToken = await getAccessToken();
+    const tokens = await getTokens();
 
-    console.log('[Schedule API] POST - accessToken:', accessToken ? 'present' : 'missing');
+    console.log('[Schedule API] POST - accessToken:', tokens.accessToken ? 'present' : 'missing');
 
-    if (!accessToken) {
+    if (!tokens.accessToken) {
       console.log('[Schedule API] POST - Returning 401 - no accessToken');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
 
-    const response = await fetch(`${API_URL}/api/v1/schedule`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
+    const { response, newAccessToken } = await makeAuthenticatedRequest(
+      `${API_URL}/api/v1/schedule`,
+      { method: 'POST', body: JSON.stringify(body) },
+      tokens
+    );
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Ошибка сохранения' }));
@@ -103,7 +177,20 @@ export async function POST(request: Request) {
     }
 
     const data = await response.json();
-    return NextResponse.json(data);
+    const jsonResponse = NextResponse.json(data);
+
+    // If token was refreshed, update the cookie
+    if (newAccessToken) {
+      jsonResponse.cookies.set('accessToken', newAccessToken, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24, // 1 day
+      });
+    }
+
+    return jsonResponse;
   } catch (error) {
     console.error('Error saving schedule:', error);
     return NextResponse.json({ error: 'Failed to save schedule' }, { status: 500 });
@@ -112,11 +199,11 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const accessToken = await getAccessToken();
+    const tokens = await getTokens();
 
-    console.log('[Schedule API] DELETE - accessToken:', accessToken ? 'present' : 'missing');
+    console.log('[Schedule API] DELETE - accessToken:', tokens.accessToken ? 'present' : 'missing');
 
-    if (!accessToken) {
+    if (!tokens.accessToken) {
       console.log('[Schedule API] DELETE - Returning 401 - no accessToken');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -129,15 +216,10 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'startDate and endDate are required' }, { status: 400 });
     }
 
-    const response = await fetch(
+    const { response, newAccessToken } = await makeAuthenticatedRequest(
       `${API_URL}/api/v1/schedule?startDate=${startDate}&endDate=${endDate}`,
-      {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      }
+      { method: 'DELETE' },
+      tokens
     );
 
     if (!response.ok) {
@@ -146,7 +228,20 @@ export async function DELETE(request: Request) {
     }
 
     const data = await response.json();
-    return NextResponse.json(data);
+    const jsonResponse = NextResponse.json(data);
+
+    // If token was refreshed, update the cookie
+    if (newAccessToken) {
+      jsonResponse.cookies.set('accessToken', newAccessToken, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24, // 1 day
+      });
+    }
+
+    return jsonResponse;
   } catch (error) {
     console.error('Error deleting schedule:', error);
     return NextResponse.json({ error: 'Failed to delete schedule' }, { status: 500 });
