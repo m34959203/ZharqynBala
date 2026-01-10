@@ -61,6 +61,9 @@ RUN npm ci --omit=dev && npm cache clean --force
 # Копируем Prisma schema
 COPY backend/prisma ./prisma/
 
+# Копируем скрипты
+COPY backend/scripts ./scripts/
+
 # Генерируем Prisma Client
 RUN npx prisma generate
 
