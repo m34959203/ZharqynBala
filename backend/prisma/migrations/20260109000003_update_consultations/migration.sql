@@ -35,11 +35,29 @@ BEGIN
     END IF;
 END $$;
 
--- Cleanup: удаляем ConsultationStatus_new если остался
+-- Cleanup: переименовываем или удаляем ConsultationStatus_new
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ConsultationStatus_new') THEN
+    -- Если ConsultationStatus_new существует, а ConsultationStatus нет - переименовываем
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ConsultationStatus_new')
+       AND NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ConsultationStatus') THEN
+        ALTER TYPE "ConsultationStatus_new" RENAME TO "ConsultationStatus";
+    -- Если оба существуют - удаляем _new (только если не используется)
+    ELSIF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ConsultationStatus_new')
+          AND EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ConsultationStatus') THEN
         DROP TYPE IF EXISTS "ConsultationStatus_new";
+    END IF;
+EXCEPTION WHEN OTHERS THEN
+    -- Тип может использоваться, игнорируем ошибку
+    NULL;
+END $$;
+
+-- Устанавливаем правильный default для status после RENAME
+DO $$
+BEGIN
+    -- Если ConsultationStatus существует, устанавливаем default
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ConsultationStatus') THEN
+        ALTER TABLE "consultations" ALTER COLUMN "status" SET DEFAULT 'PENDING'::"ConsultationStatus";
     END IF;
 EXCEPTION WHEN OTHERS THEN
     NULL;
@@ -69,6 +87,9 @@ BEGIN
 END $$;
 
 -- 4. Переименовываем parent_id в client_id
+-- Сначала удаляем старый FK если есть
+ALTER TABLE "consultations" DROP CONSTRAINT IF EXISTS "consultations_parent_id_fkey";
+
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'consultations' AND column_name = 'parent_id') THEN
