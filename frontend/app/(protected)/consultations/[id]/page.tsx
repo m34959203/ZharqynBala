@@ -68,6 +68,13 @@ export default function ConsultationPage() {
   const [error, setError] = useState<string | null>(null);
   const [showVideo, setShowVideo] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  // Get user role from localStorage
+  useEffect(() => {
+    const role = localStorage.getItem('userRole');
+    setUserRole(role);
+  }, []);
 
   const fetchConsultation = useCallback(async () => {
     try {
@@ -205,7 +212,11 @@ export default function ConsultationPage() {
 
   const statusInfo = STATUS_LABELS[consultation.status] || { text: consultation.status, color: 'bg-gray-100' };
   const canJoinVideo = ['CONFIRMED', 'IN_PROGRESS'].includes(consultation.status);
-  const canComplete = consultation.status === 'IN_PROGRESS';
+  const isPsychologist = userRole === 'PSYCHOLOGIST';
+  const canComplete = consultation.status === 'IN_PROGRESS' && isPsychologist;
+  const canConfirmOrReject = consultation.status === 'PENDING' && isPsychologist;
+  const canMarkNoShow = consultation.status === 'IN_PROGRESS' && isPsychologist;
+  const canRate = consultation.status === 'COMPLETED' && !isPsychologist;
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
@@ -301,6 +312,7 @@ export default function ConsultationPage() {
             </button>
           )}
 
+          {/* Psychologist-only actions */}
           {canComplete && (
             <button
               onClick={() => handleAction('complete')}
@@ -311,7 +323,7 @@ export default function ConsultationPage() {
             </button>
           )}
 
-          {consultation.status === 'PENDING' && (
+          {canConfirmOrReject && (
             <>
               <button
                 onClick={() => handleAction('confirm')}
@@ -333,6 +345,36 @@ export default function ConsultationPage() {
             </>
           )}
 
+          {canMarkNoShow && (
+            <button
+              onClick={() => handleAction('no-show')}
+              disabled={actionLoading}
+              className="rounded-lg bg-orange-600 px-4 py-2 font-medium text-white hover:bg-orange-700 disabled:opacity-50"
+            >
+              Неявка клиента
+            </button>
+          )}
+
+          {/* Client-only actions */}
+          {canRate && (
+            <button
+              onClick={() => {
+                const rating = prompt('Оцените консультацию от 1 до 5:');
+                const review = prompt('Оставьте отзыв (необязательно):');
+                if (rating && Number(rating) >= 1 && Number(rating) <= 5) {
+                  handleAction('rate', { rating: Number(rating), review: review || undefined });
+                } else if (rating) {
+                  alert('Пожалуйста, введите оценку от 1 до 5');
+                }
+              }}
+              disabled={actionLoading}
+              className="rounded-lg bg-yellow-500 px-4 py-2 font-medium text-white hover:bg-yellow-600 disabled:opacity-50"
+            >
+              Оценить консультацию
+            </button>
+          )}
+
+          {/* Both can cancel pending/confirmed consultations */}
           {['PENDING', 'CONFIRMED'].includes(consultation.status) && (
             <button
               onClick={() => {
@@ -360,6 +402,23 @@ export default function ConsultationPage() {
               <p className="mt-1 text-sm text-green-700">
                 Нажмите кнопку «Присоединиться к видеозвонку» для начала консультации.
                 Видеозвонок откроется прямо в браузере без установки дополнительных приложений.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Info for client during IN_PROGRESS */}
+      {consultation.status === 'IN_PROGRESS' && !isPsychologist && (
+        <div className="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
+          <div className="flex items-start gap-3">
+            <svg className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div>
+              <h3 className="font-medium text-blue-800">Консультация идёт</h3>
+              <p className="mt-1 text-sm text-blue-700">
+                Консультация будет завершена психологом после окончания сеанса.
               </p>
             </div>
           </div>
