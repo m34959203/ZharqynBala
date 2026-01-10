@@ -80,7 +80,7 @@ RUN chown -R nodejs:nodejs /app
 USER nodejs
 
 # Force rebuild - change this value to invalidate cache
-ARG CACHE_BUST=v11
+ARG CACHE_BUST=v12
 
 # Экспонируем порт
 EXPOSE 3001
@@ -88,7 +88,7 @@ EXPOSE 3001
 # Запускаем приложение с dumb-init
 ENTRYPOINT ["dumb-init", "--"]
 
-# Inline migration fix: delete failed migration record, then run migrations
+# Inline migration fix: delete failed migration record, then run migrations and seed
 # This is necessary because Prisma blocks on failed migrations
 CMD ["sh", "-c", "\
   echo '=== MIGRATION FIX ===' && \
@@ -96,6 +96,8 @@ CMD ["sh", "-c", "\
   echo \"DELETE FROM \\\"_prisma_migrations\\\" WHERE \\\"migration_name\\\" = '20260109000003_update_consultations' AND (\\\"rolled_back_at\\\" IS NOT NULL OR \\\"finished_at\\\" IS NULL);\" | npx prisma db execute --stdin 2>&1 || echo 'Note: DELETE failed (ok if table does not exist)' && \
   echo 'Running migrations...' && \
   npx prisma migrate deploy && \
+  echo 'Running seed...' && \
+  npx prisma db seed && \
   echo '=== STARTING APP ===' && \
   node dist/main.js \
 "]

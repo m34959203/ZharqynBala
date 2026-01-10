@@ -72,6 +72,91 @@ async function main() {
   console.log('✅ Demo child created:', demoChild.firstName, demoChild.lastName);
 
   // ============================================
+  // ДЕМО ПСИХОЛОГ ДЛЯ ТЕСТИРОВАНИЯ
+  // ============================================
+
+  const psychologistPasswordHash = await bcrypt.hash('Psychologist123!', 12);
+
+  const demoPsychologistUser = await prisma.user.upsert({
+    where: { email: 'psychologist@test.kz' },
+    update: {},
+    create: {
+      email: 'psychologist@test.kz',
+      phone: '+77009876543',
+      passwordHash: psychologistPasswordHash,
+      role: UserRole.PSYCHOLOGIST,
+      firstName: 'Алия',
+      lastName: 'Серикова',
+      isVerified: true,
+      isActive: true,
+    },
+  });
+  console.log('✅ Demo psychologist user created:', demoPsychologistUser.email);
+
+  // Создаём профиль психолога
+  const demoPsychologist = await prisma.psychologist.upsert({
+    where: { userId: demoPsychologistUser.id },
+    update: {
+      isApproved: true,
+      isAvailable: true,
+    },
+    create: {
+      userId: demoPsychologistUser.id,
+      specialization: ['Детский психолог', 'Семейный психолог'],
+      experienceYears: 8,
+      education: 'КазНУ им. аль-Фараби, факультет психологии',
+      certificateUrl: null,
+      hourlyRate: 15000,
+      bio: 'Практикующий детский и семейный психолог с 8-летним опытом работы. Специализируюсь на помощи детям и подросткам в преодолении тревожности, проблем с самооценкой и адаптации в школе.',
+      languages: ['Русский', 'Казахский'],
+      isApproved: true,
+      isAvailable: true,
+      rating: 4.8,
+      totalConsultations: 156,
+    },
+  });
+  console.log('✅ Demo psychologist profile created:', demoPsychologist.id);
+
+  // Создаём второго психолога
+  const psychologist2User = await prisma.user.upsert({
+    where: { email: 'psychologist2@test.kz' },
+    update: {},
+    create: {
+      email: 'psychologist2@test.kz',
+      phone: '+77005554433',
+      passwordHash: psychologistPasswordHash,
+      role: UserRole.PSYCHOLOGIST,
+      firstName: 'Марат',
+      lastName: 'Ахметов',
+      isVerified: true,
+      isActive: true,
+    },
+  });
+
+  await prisma.psychologist.upsert({
+    where: { userId: psychologist2User.id },
+    update: {
+      isApproved: true,
+      isAvailable: true,
+    },
+    create: {
+      userId: psychologist2User.id,
+      specialization: ['Клинический психолог', 'Психотерапевт'],
+      experienceYears: 12,
+      education: 'МГУ им. Ломоносова, факультет психологии',
+      certificateUrl: null,
+      hourlyRate: 20000,
+      bio: 'Клинический психолог и психотерапевт. Работаю с детьми и подростками, помогаю справиться с депрессией, СДВГ, и эмоциональными проблемами.',
+      languages: ['Русский', 'Английский'],
+      isApproved: true,
+      isAvailable: true,
+      rating: 4.9,
+      totalConsultations: 234,
+    },
+  });
+  console.log('✅ Second demo psychologist created');
+
+  // ============================================
   // ПСИХОЛОГИЧЕСКИЕ ТЕСТЫ
   // ============================================
 
@@ -495,6 +580,16 @@ async function main() {
   console.log('   Email: parent@test.kz');
   console.log('   Password: Parent123!');
   console.log('   Ребёнок: Айлин Тестова (10 лет)');
+  console.log('');
+  console.log('🧠 ПСИХОЛОГ 1:');
+  console.log('   Email: psychologist@test.kz');
+  console.log('   Password: Psychologist123!');
+  console.log('   Имя: Алия Серикова');
+  console.log('');
+  console.log('🧠 ПСИХОЛОГ 2:');
+  console.log('   Email: psychologist2@test.kz');
+  console.log('   Password: Psychologist123!');
+  console.log('   Имя: Марат Ахметов');
   console.log('');
   console.log('═══════════════════════════════════════════════════════════');
 }
