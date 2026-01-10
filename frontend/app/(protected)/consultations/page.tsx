@@ -709,12 +709,17 @@ export default function ConsultationsPage() {
   }, [page, isPsychologist]);
 
   useEffect(() => {
+    // Wait for userRole to be determined before fetching
+    if (userRole === null) {
+      return;
+    }
+
     if (activeTab === 'find') {
       fetchPsychologists();
     } else {
       fetchConsultations();
     }
-  }, [activeTab, fetchPsychologists, fetchConsultations]);
+  }, [activeTab, userRole, fetchPsychologists, fetchConsultations]);
 
   const totalPages = Math.ceil(total / limit);
 
