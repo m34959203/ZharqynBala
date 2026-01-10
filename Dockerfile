@@ -79,6 +79,9 @@ RUN chown -R nodejs:nodejs /app
 # Переключаемся на non-root пользователя
 USER nodejs
 
+# Force rebuild - change this value to invalidate cache
+ARG CACHE_BUST=v11
+
 # Экспонируем порт
 EXPOSE 3001
 
