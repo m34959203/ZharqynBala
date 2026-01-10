@@ -31,6 +31,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
   ADMIN: [
     { name: 'Dashboard', href: '/dashboard', icon: 'home' },
     { name: 'Пользователи', href: '/admin/users', icon: 'users' },
+    { name: 'Психологи', href: '/admin/psychologists', icon: 'video' },
     { name: 'Тесты', href: '/admin/tests', icon: 'clipboard' },
     { name: 'Платежи', href: '/admin/payments', icon: 'wallet' },
     { name: 'Аналитика', href: '/admin/analytics', icon: 'chart' },

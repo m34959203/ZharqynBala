@@ -180,6 +180,17 @@ export const adminApi = {
     const response = await api.delete('/admin/cleanup-demo');
     return response.data;
   },
+
+  // Psychologists management
+  getPsychologists: async () => {
+    const response = await api.get('/admin/psychologists');
+    return response.data;
+  },
+
+  approvePsychologist: async (id: string) => {
+    const response = await api.post(`/admin/psychologists/${id}/verify`);
+    return response.data;
+  },
 };
 
 // Auth API
