@@ -21,10 +21,31 @@ export default function ClientsPage() {
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
 
   useEffect(() => {
-    // Load data - currently no backend API for psychologist clients
-    // Will show empty state until API is implemented
-    setLoading(false);
-    setClients([]);
+    const loadClients = async () => {
+      try {
+        const response = await fetch('/api/clients', {
+          credentials: 'include',
+        });
+
+        if (response.status === 401) {
+          setLoading(false);
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error('Failed to load clients');
+        }
+
+        const data = await response.json();
+        setClients(data);
+      } catch (error) {
+        console.error('Error loading clients:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadClients();
   }, []);
 
   const filteredClients = clients.filter((client) => {

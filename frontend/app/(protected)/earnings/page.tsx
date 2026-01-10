@@ -25,18 +25,34 @@ export default function EarningsPage() {
   });
 
   useEffect(() => {
-    // Load data - currently no backend API for psychologist earnings
-    // Will show empty state until API is implemented
-    setLoading(false);
-    setTransactions([]);
-    setStats({
-      balance: 0,
-      monthEarnings: 0,
-      consultations: 0,
-      avgPerConsultation: 0,
-      pending: 0,
-    });
-  }, []);
+    const loadEarnings = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/earnings?period=${period}`, {
+          credentials: 'include',
+        });
+
+        if (response.status === 401) {
+          setLoading(false);
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error('Failed to load earnings');
+        }
+
+        const data = await response.json();
+        setStats(data.stats);
+        setTransactions(data.transactions);
+      } catch (error) {
+        console.error('Error loading earnings:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadEarnings();
+  }, [period]);
 
   const getTypeLabel = (type: string) => {
     switch (type) {
