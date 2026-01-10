@@ -100,7 +100,20 @@ export default function ConsultationPage() {
 
   // Get user role from localStorage
   useEffect(() => {
-    const role = localStorage.getItem('userRole');
+    // Try direct userRole first, then fall back to user object
+    let role = localStorage.getItem('userRole');
+    if (!role) {
+      const userData = localStorage.getItem('user');
+      if (userData) {
+        try {
+          const user = JSON.parse(userData);
+          role = user.role || null;
+        } catch (e) {
+          console.error('Error parsing user data:', e);
+        }
+      }
+    }
+    console.log('[ConsultationPage] User role from localStorage:', role);
     setUserRole(role);
   }, []);
 
