@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardBody, Button, Skeleton, EmptyStateNoConsultations } from '@/components/ui';
 
 interface Psychologist {
@@ -19,8 +20,35 @@ interface Psychologist {
   isAvailable: boolean;
 }
 
+interface Consultation {
+  id: string;
+  psychologistId: string;
+  psychologistName: string;
+  psychologistAvatarUrl: string | null;
+  clientName: string;
+  childName: string | null;
+  scheduledAt: string;
+  durationMinutes: number;
+  status: string;
+  price: number;
+  paymentStatus: string;
+}
+
+interface Child {
+  id: string;
+  firstName: string;
+  lastName: string;
+}
+
 interface PsychologistsResponse {
   psychologists: Psychologist[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+interface ConsultationsResponse {
+  consultations: Consultation[];
   total: number;
   page: number;
   limit: number;
@@ -34,7 +62,208 @@ const SPECIALIZATIONS = [
   { value: 'Психотерапевт', label: 'Психотерапевт' },
 ];
 
-function PsychologistCard({ psychologist }: { psychologist: Psychologist }) {
+const STATUS_LABELS: Record<string, { text: string; color: string }> = {
+  PENDING: { text: 'Ожидает', color: 'bg-yellow-100 text-yellow-800' },
+  CONFIRMED: { text: 'Подтверждена', color: 'bg-green-100 text-green-800' },
+  REJECTED: { text: 'Отклонена', color: 'bg-red-100 text-red-800' },
+  IN_PROGRESS: { text: 'Идёт', color: 'bg-blue-100 text-blue-800' },
+  COMPLETED: { text: 'Завершена', color: 'bg-gray-100 text-gray-800' },
+  CANCELLED: { text: 'Отменена', color: 'bg-gray-100 text-gray-800' },
+  NO_SHOW: { text: 'Неявка', color: 'bg-red-100 text-red-800' },
+};
+
+interface BookingModalProps {
+  psychologist: Psychologist;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+function BookingModal({ psychologist, onClose, onSuccess }: BookingModalProps) {
+  const [children, setChildren] = useState<Child[]>([]);
+  const [selectedChild, setSelectedChild] = useState<string>('');
+  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedTime, setSelectedTime] = useState('');
+  const [notes, setNotes] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Загружаем список детей
+    fetch('/api/children')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setChildren(data);
+        }
+      })
+      .catch(console.error);
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const scheduledAt = new Date(`${selectedDate}T${selectedTime}:00`).toISOString();
+
+      const response = await fetch('/api/consultations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          psychologistId: psychologist.id,
+          childId: selectedChild || undefined,
+          scheduledAt,
+          notes: notes || undefined,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Ошибка записи');
+      }
+
+      onSuccess();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Произошла ошибка');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Минимальная дата - завтра
+  const minDate = new Date();
+  minDate.setDate(minDate.getDate() + 1);
+  const minDateStr = minDate.toISOString().split('T')[0];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-gray-900">Запись на консультацию</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Информация о психологе */}
+        <div className="mb-6 flex items-center gap-4 rounded-lg bg-gray-50 p-4">
+          <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-full bg-indigo-100">
+            {psychologist.avatarUrl ? (
+              <img src={psychologist.avatarUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-lg font-bold text-indigo-600">
+                {psychologist.firstName[0]}
+              </div>
+            )}
+          </div>
+          <div>
+            <p className="font-semibold text-gray-900">
+              {psychologist.firstName} {psychologist.lastName}
+            </p>
+            <p className="text-sm text-gray-600">{psychologist.hourlyRate.toLocaleString()} тг / час</p>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Выбор ребёнка */}
+          {children.length > 0 && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Ребёнок (опционально)
+              </label>
+              <select
+                value={selectedChild}
+                onChange={(e) => setSelectedChild(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 p-2.5"
+              >
+                <option value="">Консультация для себя</option>
+                {children.map((child) => (
+                  <option key={child.id} value={child.id}>
+                    {child.firstName} {child.lastName}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Выбор даты */}
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Дата</label>
+            <input
+              type="date"
+              required
+              min={minDateStr}
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 p-2.5"
+            />
+          </div>
+
+          {/* Выбор времени */}
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Время</label>
+            <select
+              required
+              value={selectedTime}
+              onChange={(e) => setSelectedTime(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 p-2.5"
+            >
+              <option value="">Выберите время</option>
+              {Array.from({ length: 12 }, (_, i) => {
+                const hour = 9 + i;
+                const time = `${hour.toString().padStart(2, '0')}:00`;
+                return (
+                  <option key={time} value={time}>
+                    {time}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+
+          {/* Заметки */}
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Заметки (опционально)
+            </label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+              placeholder="Опишите причину обращения..."
+              className="w-full rounded-lg border border-gray-300 p-2.5"
+            />
+          </div>
+
+          {error && (
+            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
+          )}
+
+          <div className="flex gap-3">
+            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+              Отмена
+            </Button>
+            <Button type="submit" disabled={loading} className="flex-1">
+              {loading ? 'Записываем...' : 'Записаться'}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function PsychologistCard({
+  psychologist,
+  onBook,
+}: {
+  psychologist: Psychologist;
+  onBook: (p: Psychologist) => void;
+}) {
   const initials = `${psychologist.firstName[0]}${psychologist.lastName[0]}`.toUpperCase();
 
   return (
@@ -123,7 +352,7 @@ function PsychologistCard({ psychologist }: { psychologist: Psychologist }) {
             {/* Price */}
             <div className="flex-shrink-0 text-right">
               <div className="text-2xl font-bold text-gray-900">
-                {psychologist.hourlyRate.toLocaleString()} ₸
+                {psychologist.hourlyRate.toLocaleString()} тг
               </div>
               <div className="text-sm text-gray-500">за час</div>
             </div>
@@ -136,10 +365,67 @@ function PsychologistCard({ psychologist }: { psychologist: Psychologist }) {
 
           {/* Actions */}
           <div className="mt-4 flex gap-3">
-            <Button className="flex-1">Записаться</Button>
+            <Button className="flex-1" onClick={() => onBook(psychologist)}>
+              Записаться
+            </Button>
             <Button variant="outline" className="flex-1">
               Подробнее
             </Button>
+          </div>
+        </div>
+      </CardBody>
+    </Card>
+  );
+}
+
+function ConsultationCard({ consultation }: { consultation: Consultation }) {
+  const router = useRouter();
+  const statusInfo = STATUS_LABELS[consultation.status] || { text: consultation.status, color: 'bg-gray-100' };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ru-RU', {
+      day: 'numeric',
+      month: 'long',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  return (
+    <Card className="cursor-pointer transition-shadow hover:shadow-lg" onClick={() => router.push(`/consultations/${consultation.id}`)}>
+      <CardBody>
+        <div className="flex items-center gap-4">
+          {/* Avatar */}
+          <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-full bg-indigo-100">
+            {consultation.psychologistAvatarUrl ? (
+              <img
+                src={consultation.psychologistAvatarUrl}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-xl font-bold text-indigo-600">
+                {consultation.psychologistName.charAt(0)}
+              </div>
+            )}
+          </div>
+
+          {/* Info */}
+          <div className="flex-1">
+            <h3 className="font-semibold text-gray-900">{consultation.psychologistName}</h3>
+            <p className="text-sm text-gray-600">{formatDate(consultation.scheduledAt)}</p>
+            {consultation.childName && (
+              <p className="text-sm text-gray-500">Ребёнок: {consultation.childName}</p>
+            )}
+          </div>
+
+          {/* Status & Price */}
+          <div className="text-right">
+            <span className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${statusInfo.color}`}>
+              {statusInfo.text}
+            </span>
+            <p className="mt-1 font-semibold text-gray-900">{consultation.price.toLocaleString()} тг</p>
           </div>
         </div>
       </CardBody>
@@ -179,14 +465,16 @@ function PsychologistCardSkeleton() {
 export default function ConsultationsPage() {
   const [activeTab, setActiveTab] = useState<'find' | 'my'>('find');
   const [psychologists, setPsychologists] = useState<Psychologist[]>([]);
+  const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [specialization, setSpecialization] = useState('');
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [bookingPsychologist, setBookingPsychologist] = useState<Psychologist | null>(null);
   const limit = 10;
 
-  const fetchPsychologists = async () => {
+  const fetchPsychologists = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -209,13 +497,35 @@ export default function ConsultationsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, specialization]);
+
+  const fetchConsultations = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/consultations?page=${page}&limit=${limit}`);
+      if (!response.ok) {
+        throw new Error('Не удалось загрузить консультации');
+      }
+
+      const data: ConsultationsResponse = await response.json();
+      setConsultations(data.consultations || []);
+      setTotal(data.total || 0);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Произошла ошибка');
+    } finally {
+      setLoading(false);
+    }
+  }, [page]);
 
   useEffect(() => {
     if (activeTab === 'find') {
       fetchPsychologists();
+    } else {
+      fetchConsultations();
     }
-  }, [activeTab, page, specialization]);
+  }, [activeTab, fetchPsychologists, fetchConsultations]);
 
   const totalPages = Math.ceil(total / limit);
 
@@ -232,7 +542,10 @@ export default function ConsultationsPage() {
         {/* Tabs */}
         <div className="flex space-x-4 mb-8">
           <button
-            onClick={() => setActiveTab('find')}
+            onClick={() => {
+              setActiveTab('find');
+              setPage(1);
+            }}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               activeTab === 'find'
                 ? 'bg-indigo-600 text-white'
@@ -242,7 +555,10 @@ export default function ConsultationsPage() {
             Найти психолога
           </button>
           <button
-            onClick={() => setActiveTab('my')}
+            onClick={() => {
+              setActiveTab('my');
+              setPage(1);
+            }}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               activeTab === 'my'
                 ? 'bg-indigo-600 text-white'
@@ -338,7 +654,11 @@ export default function ConsultationsPage() {
                 {/* Psychologist cards */}
                 <div className="space-y-4">
                   {psychologists.map((psychologist) => (
-                    <PsychologistCard key={psychologist.id} psychologist={psychologist} />
+                    <PsychologistCard
+                      key={psychologist.id}
+                      psychologist={psychologist}
+                      onBook={setBookingPsychologist}
+                    />
                   ))}
                 </div>
 
@@ -368,14 +688,87 @@ export default function ConsultationsPage() {
             )}
           </>
         ) : (
-          /* My Consultations - Coming Soon */
-          <Card>
-            <CardBody>
-              <EmptyStateNoConsultations onBook={() => setActiveTab('find')} />
-            </CardBody>
-          </Card>
+          /* My Consultations */
+          <>
+            {loading ? (
+              <div className="space-y-4">
+                {[...Array(3)].map((_, i) => (
+                  <Card key={i}>
+                    <CardBody>
+                      <div className="flex items-center gap-4">
+                        <Skeleton className="h-14 w-14 rounded-full" />
+                        <div className="flex-1 space-y-2">
+                          <Skeleton className="h-5 w-48" />
+                          <Skeleton className="h-4 w-32" />
+                        </div>
+                        <Skeleton className="h-6 w-20" />
+                      </div>
+                    </CardBody>
+                  </Card>
+                ))}
+              </div>
+            ) : error ? (
+              <Card>
+                <CardBody>
+                  <div className="text-center py-8">
+                    <p className="text-red-600 mb-4">{error}</p>
+                    <Button onClick={fetchConsultations}>Попробовать снова</Button>
+                  </div>
+                </CardBody>
+              </Card>
+            ) : consultations.length === 0 ? (
+              <Card>
+                <CardBody>
+                  <EmptyStateNoConsultations onBook={() => setActiveTab('find')} />
+                </CardBody>
+              </Card>
+            ) : (
+              <>
+                <div className="space-y-4">
+                  {consultations.map((consultation) => (
+                    <ConsultationCard key={consultation.id} consultation={consultation} />
+                  ))}
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="mt-6 flex justify-center gap-2">
+                    <Button
+                      variant="outline"
+                      disabled={page === 1}
+                      onClick={() => setPage(page - 1)}
+                    >
+                      Назад
+                    </Button>
+                    <span className="flex items-center px-4 text-sm text-gray-600">
+                      Страница {page} из {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      disabled={page === totalPages}
+                      onClick={() => setPage(page + 1)}
+                    >
+                      Вперёд
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+          </>
         )}
       </div>
+
+      {/* Booking Modal */}
+      {bookingPsychologist && (
+        <BookingModal
+          psychologist={bookingPsychologist}
+          onClose={() => setBookingPsychologist(null)}
+          onSuccess={() => {
+            setActiveTab('my');
+            fetchConsultations();
+          }}
+        />
+      )}
     </div>
   );
 }
