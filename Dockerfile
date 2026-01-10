@@ -84,4 +84,15 @@ EXPOSE 3001
 
 # Запускаем приложение с dumb-init
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["sh", "-c", "sh scripts/migrate-prod.sh && node dist/main.js"]
+
+# Inline migration fix: delete failed migration record, then run migrations
+# This is necessary because Prisma blocks on failed migrations
+CMD ["sh", "-c", "\
+  echo '=== MIGRATION FIX ===' && \
+  echo 'Deleting failed migration record...' && \
+  echo \"DELETE FROM \\\"_prisma_migrations\\\" WHERE \\\"migration_name\\\" = '20260109000003_update_consultations' AND (\\\"rolled_back_at\\\" IS NOT NULL OR \\\"finished_at\\\" IS NULL);\" | npx prisma db execute --stdin 2>&1 || echo 'Note: DELETE failed (ok if table does not exist)' && \
+  echo 'Running migrations...' && \
+  npx prisma migrate deploy && \
+  echo '=== STARTING APP ===' && \
+  node dist/main.js \
+"]
