@@ -84,4 +84,4 @@ EXPOSE 3001
 
 # Запускаем приложение с dumb-init
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "dist/main.js"]
+CMD ["sh", "-c", "sh scripts/migrate-prod.sh && node dist/main.js"]
