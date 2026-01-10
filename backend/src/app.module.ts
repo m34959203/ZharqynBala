@@ -17,6 +17,7 @@ import { CrisisModule } from './modules/crisis/crisis.module';
 import { ScheduleModule } from './modules/schedule/schedule.module';
 import { PsychologistsModule } from './modules/psychologists/psychologists.module';
 import { ConsultationsModule } from './modules/consultations/consultations.module';
+import { PatientNotesModule } from './modules/patient-notes/patient-notes.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { ConsultationsModule } from './modules/consultations/consultations.modul
     ScheduleModule,
     PsychologistsModule,
     ConsultationsModule,
+    PatientNotesModule,
   ],
 })
 export class AppModule {}
