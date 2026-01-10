@@ -631,16 +631,21 @@ export default function ConsultationsPage() {
   useEffect(() => {
     try {
       const userData = localStorage.getItem('user');
+      console.log('[ConsultationsPage] User data from localStorage:', userData);
       if (userData) {
         const user = JSON.parse(userData);
+        console.log('[ConsultationsPage] Parsed user role:', user.role);
         setUserRole(user.role);
         // Only PARENT users can search for psychologists
         if (user.role === 'PARENT') {
           setActiveTab('find');
+        } else if (user.role === 'PSYCHOLOGIST') {
+          // Psychologists should see "my" tab by default
+          setActiveTab('my');
         }
       }
-    } catch {
-      // Ignore parsing errors
+    } catch (err) {
+      console.error('[ConsultationsPage] Error parsing user data:', err);
     }
   }, []);
 
@@ -679,15 +684,24 @@ export default function ConsultationsPage() {
     try {
       // For psychologists, use the psychologist endpoint
       const psychologistParam = isPsychologist ? '&psychologist=true' : '';
-      const response = await fetch(`/api/consultations?page=${page}&limit=${limit}${psychologistParam}`);
+      const url = `/api/consultations?page=${page}&limit=${limit}${psychologistParam}`;
+      console.log('[ConsultationsPage] Fetching consultations from:', url, 'isPsychologist:', isPsychologist);
+
+      const response = await fetch(url);
+      console.log('[ConsultationsPage] Response status:', response.status);
+
       if (!response.ok) {
-        throw new Error('Не удалось загрузить консультации');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('[ConsultationsPage] Error response:', errorData);
+        throw new Error(errorData.error || 'Не удалось загрузить консультации');
       }
 
       const data: ConsultationsResponse = await response.json();
+      console.log('[ConsultationsPage] Received consultations:', data);
       setConsultations(data.consultations || []);
       setTotal(data.total || 0);
     } catch (err) {
+      console.error('[ConsultationsPage] Error fetching consultations:', err);
       setError(err instanceof Error ? err.message : 'Произошла ошибка');
     } finally {
       setLoading(false);

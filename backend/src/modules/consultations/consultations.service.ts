@@ -151,9 +151,13 @@ export class ConsultationsService {
     const { page = 1, limit = 10, status } = params;
     const skip = (page - 1) * limit;
 
+    console.log('[ConsultationsService] findAllForPsychologist - userId:', userId);
+
     const psychologist = await this.prisma.psychologist.findUnique({
       where: { userId },
     });
+
+    console.log('[ConsultationsService] Found psychologist:', psychologist?.id || 'NOT FOUND');
 
     if (!psychologist) {
       throw new NotFoundException('Профиль психолога не найден');
@@ -163,6 +167,8 @@ export class ConsultationsService {
       psychologistId: psychologist.id,
       ...(status && { status }),
     };
+
+    console.log('[ConsultationsService] Query where:', JSON.stringify(where));
 
     const [consultations, total] = await Promise.all([
       this.prisma.consultation.findMany({
@@ -180,6 +186,8 @@ export class ConsultationsService {
       }),
       this.prisma.consultation.count({ where }),
     ]);
+
+    console.log('[ConsultationsService] Found consultations:', consultations.length, 'total:', total);
 
     return {
       consultations: consultations.map((c) => this.mapToResponse(c)),
