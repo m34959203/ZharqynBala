@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { PaymentType, PaymentProvider, PaymentStatus } from '@prisma/client';
+import { PaymentType, PaymentProvider, TransactionStatus } from '@prisma/client';
 import {
   CreatePaymentDto,
   PaymentResponseDto,
@@ -76,7 +76,7 @@ export class PaymentsService {
           paymentType: dto.paymentType,
           relatedId: dto.relatedId,
           provider: dto.provider || PaymentProvider.KASPI,
-          status: PaymentStatus.COMPLETED,
+          status: TransactionStatus.COMPLETED,
           completedAt: new Date(),
         },
       });
@@ -93,7 +93,7 @@ export class PaymentsService {
         paymentType: dto.paymentType,
         relatedId: dto.relatedId,
         provider: dto.provider || PaymentProvider.KASPI,
-        status: PaymentStatus.PENDING,
+        status: TransactionStatus.PENDING,
       },
     });
 
@@ -155,7 +155,7 @@ export class PaymentsService {
       await this.prisma.payment.update({
         where: { id: payment.id },
         data: {
-          status: PaymentStatus.COMPLETED,
+          status: TransactionStatus.COMPLETED,
           externalId: dto.txn_id,
           completedAt: new Date(),
         },
@@ -180,7 +180,7 @@ export class PaymentsService {
     const updated = await this.prisma.payment.update({
       where: { id: paymentId },
       data: {
-        status: PaymentStatus.COMPLETED,
+        status: TransactionStatus.COMPLETED,
         completedAt: new Date(),
       },
     });

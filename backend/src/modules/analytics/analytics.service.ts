@@ -157,13 +157,13 @@ export class AnalyticsService {
         )
       : 100;
 
-    // Consultations metrics - schema uses SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED
+    // Consultations metrics - schema uses PENDING, CONFIRMED, IN_PROGRESS, COMPLETED, CANCELLED, etc.
     const [totalConsultations, completedConsultations, upcomingConsultations, cancelledConsultations] =
       await Promise.all([
         this.prisma.consultation.count(),
         this.prisma.consultation.count({ where: { status: 'COMPLETED' } }),
         this.prisma.consultation.count({
-          where: { status: 'SCHEDULED', scheduledAt: { gte: now } },
+          where: { status: 'CONFIRMED', scheduledAt: { gte: now } },
         }),
         this.prisma.consultation.count({ where: { status: 'CANCELLED' } }),
       ]);
