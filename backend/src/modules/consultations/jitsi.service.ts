@@ -6,15 +6,15 @@ import { randomBytes } from 'crypto';
  * Сервис для работы с Jitsi Meet
  * Jitsi Meet - бесплатное open-source решение для видеозвонков
  * Работает в браузере без установки приложений
- * Использует публичный сервер meet.jit.si
+ * Используем 8x8.vc - официальный хостинг Jitsi без требования авторизации
  */
 @Injectable()
 export class JitsiService {
   private readonly jitsiDomain: string;
 
   constructor(private readonly configService: ConfigService) {
-    // Можно использовать свой сервер или публичный meet.jit.si
-    this.jitsiDomain = this.configService.get<string>('JITSI_DOMAIN') || 'meet.jit.si';
+    // 8x8.vc - официальный бесплатный сервер от команды Jitsi без требования авторизации
+    this.jitsiDomain = this.configService.get<string>('JITSI_DOMAIN') || '8x8.vc';
   }
 
   /**
@@ -59,8 +59,12 @@ export class JitsiService {
       configOverwrite: {
         // Настройки безопасности и приватности
         disableDeepLinking: true,
-        prejoinPageEnabled: true, // Показывать страницу предварительного просмотра
+        prejoinPageEnabled: false, // Сразу заходим в комнату без предпросмотра
         enableNoisyMicDetection: true,
+
+        // Отключаем lobby для свободного входа
+        enableLobby: false,
+        hideLobbyButton: true,
 
         // Настройки интерфейса
         defaultLanguage: 'ru',
@@ -73,6 +77,10 @@ export class JitsiService {
         // Отключаем ненужные функции
         enableWelcomePage: false,
         enableClosePage: false,
+
+        // Разрешаем подключение без модератора
+        startAudioOnly: false,
+        disableModeratorIndicator: true,
       },
       interfaceConfigOverwrite: {
         // Брендинг
