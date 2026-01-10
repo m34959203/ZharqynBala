@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardBody, Button, Skeleton, EmptyStateNoConsultations } from '@/components/ui';
+import { Card, CardBody, Button, Skeleton, EmptyStateNoConsultations, EmptyState } from '@/components/ui';
+import { UserRole } from '@/types/auth';
 
 interface Psychologist {
   id: string;
@@ -463,7 +464,8 @@ function PsychologistCardSkeleton() {
 }
 
 export default function ConsultationsPage() {
-  const [activeTab, setActiveTab] = useState<'find' | 'my'>('find');
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
+  const [activeTab, setActiveTab] = useState<'find' | 'my'>('my'); // Default to 'my', will switch if PARENT
   const [psychologists, setPsychologists] = useState<Psychologist[]>([]);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -473,6 +475,26 @@ export default function ConsultationsPage() {
   const [total, setTotal] = useState(0);
   const [bookingPsychologist, setBookingPsychologist] = useState<Psychologist | null>(null);
   const limit = 10;
+
+  // Get user role from localStorage on mount
+  useEffect(() => {
+    try {
+      const userData = localStorage.getItem('user');
+      if (userData) {
+        const user = JSON.parse(userData);
+        setUserRole(user.role);
+        // Only PARENT users can search for psychologists
+        if (user.role === 'PARENT') {
+          setActiveTab('find');
+        }
+      }
+    } catch {
+      // Ignore parsing errors
+    }
+  }, []);
+
+  const isPsychologist = userRole === 'PSYCHOLOGIST';
+  const isAdmin = userRole === 'ADMIN';
 
   const fetchPsychologists = useCallback(async () => {
     setLoading(true);
@@ -535,25 +557,30 @@ export default function ConsultationsPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Консультации</h1>
           <p className="mt-2 text-gray-600">
-            Онлайн-консультации с квалифицированными психологами
+            {isPsychologist
+              ? 'Управление вашими консультациями с клиентами'
+              : 'Онлайн-консультации с квалифицированными психологами'
+            }
           </p>
         </div>
 
-        {/* Tabs */}
+        {/* Tabs - only show "Find psychologist" for parents/clients */}
         <div className="flex space-x-4 mb-8">
-          <button
-            onClick={() => {
-              setActiveTab('find');
-              setPage(1);
-            }}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              activeTab === 'find'
-                ? 'bg-indigo-600 text-white'
-                : 'bg-white text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            Найти психолога
-          </button>
+          {!isPsychologist && (
+            <button
+              onClick={() => {
+                setActiveTab('find');
+                setPage(1);
+              }}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                activeTab === 'find'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-white text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              Найти психолога
+            </button>
+          )}
           <button
             onClick={() => {
               setActiveTab('my');
@@ -565,11 +592,11 @@ export default function ConsultationsPage() {
                 : 'bg-white text-gray-600 hover:bg-gray-100'
             }`}
           >
-            Мои консультации
+            {isPsychologist ? 'Мои клиенты' : 'Мои консультации'}
           </button>
         </div>
 
-        {activeTab === 'find' ? (
+        {activeTab === 'find' && !isPsychologist ? (
           <>
             {/* Filters */}
             <div className="mb-6">
@@ -719,7 +746,19 @@ export default function ConsultationsPage() {
             ) : consultations.length === 0 ? (
               <Card>
                 <CardBody>
-                  <EmptyStateNoConsultations onBook={() => setActiveTab('find')} />
+                  {isPsychologist ? (
+                    <EmptyState
+                      icon={
+                        <svg className="w-16 h-16 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                      }
+                      title="Нет запланированных консультаций"
+                      description="Когда клиенты запишутся к вам на консультацию, они появятся здесь"
+                    />
+                  ) : (
+                    <EmptyStateNoConsultations onBook={() => setActiveTab('find')} />
+                  )}
                 </CardBody>
               </Card>
             ) : (
