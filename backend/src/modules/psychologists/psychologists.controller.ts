@@ -17,6 +17,7 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 import { UserRole } from '@prisma/client';
 
 @Controller('psychologists')
@@ -49,6 +50,7 @@ export class PsychologistsController {
   /**
    * Получить список психологов (публичный эндпоинт)
    */
+  @Public()
   @Get()
   async findAll(
     @Query('page') page?: string,
@@ -65,6 +67,7 @@ export class PsychologistsController {
   /**
    * Получить психолога по ID (публичный эндпоинт)
    */
+  @Public()
   @Get(':id')
   async findOne(@Param('id') id: string): Promise<PsychologistDetailResponseDto> {
     return this.psychologistsService.findOne(id);
@@ -73,6 +76,7 @@ export class PsychologistsController {
   /**
    * Получить доступные слоты психолога
    */
+  @Public()
   @Get(':id/slots')
   async getSlots(
     @Param('id') id: string,
