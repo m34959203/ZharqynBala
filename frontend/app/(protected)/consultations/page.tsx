@@ -526,7 +526,9 @@ export default function ConsultationsPage() {
     setError(null);
 
     try {
-      const response = await fetch(`/api/consultations?page=${page}&limit=${limit}`);
+      // For psychologists, use the psychologist endpoint
+      const psychologistParam = isPsychologist ? '&psychologist=true' : '';
+      const response = await fetch(`/api/consultations?page=${page}&limit=${limit}${psychologistParam}`);
       if (!response.ok) {
         throw new Error('Не удалось загрузить консультации');
       }
@@ -539,7 +541,7 @@ export default function ConsultationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [page, isPsychologist]);
 
   useEffect(() => {
     if (activeTab === 'find') {
