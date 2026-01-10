@@ -260,6 +260,188 @@ export class PsychologistsService {
   }
 
   /**
+   * Получить клиентов психолога (из истории консультаций)
+   */
+  async getMyClients(userId: string) {
+    const psychologist = await this.prisma.psychologist.findUnique({
+      where: { userId },
+    });
+
+    if (!psychologist) {
+      throw new NotFoundException('Профиль психолога не найден');
+    }
+
+    // Получаем уникальных клиентов из консультаций
+    const consultations = await this.prisma.consultation.findMany({
+      where: {
+        psychologistId: psychologist.id,
+        status: { in: ['COMPLETED', 'CONFIRMED', 'IN_PROGRESS'] },
+      },
+      include: {
+        client: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            children: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                birthDate: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { scheduledAt: 'desc' },
+    });
+
+    // Группируем по клиенту
+    const clientsMap = new Map<string, {
+      id: string;
+      name: string;
+      email: string;
+      phone: string;
+      children: { id: string; name: string; age: number }[];
+      lastConsultation: string;
+      totalConsultations: number;
+      status: 'ACTIVE' | 'INACTIVE';
+    }>();
+
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    consultations.forEach((c) => {
+      if (!c.client) return;
+
+      const existing = clientsMap.get(c.client.id);
+      const consultationDate = new Date(c.scheduledAt);
+
+      if (existing) {
+        existing.totalConsultations++;
+        if (new Date(existing.lastConsultation) < consultationDate) {
+          existing.lastConsultation = c.scheduledAt.toISOString();
+        }
+      } else {
+        const children = c.client.children.map((child) => ({
+          id: child.id,
+          name: `${child.firstName} ${child.lastName || ''}`.trim(),
+          age: Math.floor((now.getTime() - new Date(child.birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000)),
+        }));
+
+        clientsMap.set(c.client.id, {
+          id: c.client.id,
+          name: `${c.client.firstName} ${c.client.lastName || ''}`.trim(),
+          email: c.client.email,
+          phone: c.client.phone || '',
+          children,
+          lastConsultation: c.scheduledAt.toISOString(),
+          totalConsultations: 1,
+          status: consultationDate > thirtyDaysAgo ? 'ACTIVE' : 'INACTIVE',
+        });
+      }
+    });
+
+    return Array.from(clientsMap.values()).sort(
+      (a, b) => new Date(b.lastConsultation).getTime() - new Date(a.lastConsultation).getTime()
+    );
+  }
+
+  /**
+   * Получить статистику доходов психолога
+   */
+  async getMyEarnings(userId: string, period: 'week' | 'month' | 'year' = 'month') {
+    const psychologist = await this.prisma.psychologist.findUnique({
+      where: { userId },
+    });
+
+    if (!psychologist) {
+      throw new NotFoundException('Профиль психолога не найден');
+    }
+
+    const now = new Date();
+    let startDate: Date;
+
+    switch (period) {
+      case 'week':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'month':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
+      case 'year':
+        startDate = new Date(now.getFullYear(), 0, 1);
+        break;
+    }
+
+    // Получаем завершённые консультации за период
+    const completedConsultations = await this.prisma.consultation.findMany({
+      where: {
+        psychologistId: psychologist.id,
+        status: 'COMPLETED',
+        scheduledAt: { gte: startDate },
+      },
+      include: {
+        client: {
+          select: {
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+      orderBy: { scheduledAt: 'desc' },
+    });
+
+    // Получаем все завершённые консультации для общего баланса
+    const allCompleted = await this.prisma.consultation.findMany({
+      where: {
+        psychologistId: psychologist.id,
+        status: 'COMPLETED',
+      },
+    });
+
+    // Ожидающие подтверждения
+    const pendingConsultations = await this.prisma.consultation.findMany({
+      where: {
+        psychologistId: psychologist.id,
+        status: 'CONFIRMED',
+      },
+    });
+
+    // Рассчитываем статистику (15% комиссия платформы)
+    const commissionRate = 0.15;
+    const hourlyRate = psychologist.hourlyRate;
+
+    const periodEarnings = completedConsultations.length * hourlyRate * (1 - commissionRate);
+    const totalBalance = allCompleted.length * hourlyRate * (1 - commissionRate);
+    const pending = pendingConsultations.length * hourlyRate * (1 - commissionRate);
+
+    // Формируем историю транзакций
+    const transactions = completedConsultations.map((c) => ({
+      id: c.id,
+      date: c.scheduledAt.toISOString(),
+      clientName: `${c.client?.firstName || ''} ${c.client?.lastName || ''}`.trim() || 'Клиент',
+      type: 'CONSULTATION' as const,
+      amount: hourlyRate * (1 - commissionRate),
+      status: 'COMPLETED' as const,
+    }));
+
+    return {
+      stats: {
+        balance: Math.round(totalBalance),
+        monthEarnings: Math.round(periodEarnings),
+        consultations: completedConsultations.length,
+        avgPerConsultation: Math.round(hourlyRate * (1 - commissionRate)),
+        pending: Math.round(pending),
+      },
+      transactions,
+    };
+  }
+
+  /**
    * Маппинг в DTO ответа
    */
   private mapToResponse(psychologist: {

@@ -73,6 +73,11 @@ const STATUS_LABELS: Record<string, { text: string; color: string }> = {
   NO_SHOW: { text: 'Неявка', color: 'bg-red-100 text-red-800' },
 };
 
+interface AvailableSlot {
+  date: string;
+  hour: number;
+}
+
 interface BookingModalProps {
   psychologist: Psychologist;
   onClose: () => void;
@@ -82,11 +87,32 @@ interface BookingModalProps {
 function BookingModal({ psychologist, onClose, onSuccess }: BookingModalProps) {
   const [children, setChildren] = useState<Child[]>([]);
   const [selectedChild, setSelectedChild] = useState<string>('');
-  const [selectedDate, setSelectedDate] = useState('');
-  const [selectedTime, setSelectedTime] = useState('');
+  const [selectedSlot, setSelectedSlot] = useState<{ date: string; hour: number } | null>(null);
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
+  const [slotsLoading, setSlotsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
+  const [weekOffset, setWeekOffset] = useState(0);
+
+  // Получаем даты текущей недели
+  const getWeekDates = useCallback(() => {
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay() + 1 + weekOffset * 7); // Понедельник
+
+    const dates: Date[] = [];
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startOfWeek);
+      date.setDate(startOfWeek.getDate() + i);
+      dates.push(date);
+    }
+    return dates;
+  }, [weekOffset]);
+
+  const weekDates = getWeekDates();
+  const weekStart = weekDates[0].toISOString().split('T')[0];
+  const weekEnd = weekDates[6].toISOString().split('T')[0];
 
   useEffect(() => {
     // Загружаем список детей
@@ -100,13 +126,36 @@ function BookingModal({ psychologist, onClose, onSuccess }: BookingModalProps) {
       .catch(console.error);
   }, []);
 
+  useEffect(() => {
+    // Загружаем доступные слоты психолога
+    const fetchSlots = async () => {
+      setSlotsLoading(true);
+      try {
+        const response = await fetch(
+          `/api/psychologists/${psychologist.id}/slots?startDate=${weekStart}&endDate=${weekEnd}`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setAvailableSlots(data || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch slots:', err);
+      } finally {
+        setSlotsLoading(false);
+      }
+    };
+    fetchSlots();
+  }, [psychologist.id, weekStart, weekEnd]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedSlot) return;
+
     setLoading(true);
     setError(null);
 
     try {
-      const scheduledAt = new Date(`${selectedDate}T${selectedTime}:00`).toISOString();
+      const scheduledAt = new Date(`${selectedSlot.date}T${selectedSlot.hour.toString().padStart(2, '0')}:00:00`).toISOString();
 
       const response = await fetch('/api/consultations', {
         method: 'POST',
@@ -133,15 +182,32 @@ function BookingModal({ psychologist, onClose, onSuccess }: BookingModalProps) {
     }
   };
 
-  // Минимальная дата - завтра
-  const minDate = new Date();
-  minDate.setDate(minDate.getDate() + 1);
-  const minDateStr = minDate.toISOString().split('T')[0];
+  const isSlotAvailable = (date: string, hour: number) => {
+    return availableSlots.some((slot) => slot.date === date && slot.hour === hour);
+  };
+
+  const isSlotSelected = (date: string, hour: number) => {
+    return selectedSlot?.date === date && selectedSlot?.hour === hour;
+  };
+
+  const isPastDate = (date: Date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date < today;
+  };
+
+  const dayNames = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+  const hours = Array.from({ length: 12 }, (_, i) => 9 + i); // 9:00 - 20:00
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
-        <div className="mb-6 flex items-center justify-between">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="max-h-[95vh] w-full max-w-4xl overflow-hidden rounded-xl bg-white shadow-xl">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b p-4">
           <h2 className="text-xl font-bold text-gray-900">Запись на консультацию</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -150,109 +216,194 @@ function BookingModal({ psychologist, onClose, onSuccess }: BookingModalProps) {
           </button>
         </div>
 
-        {/* Информация о психологе */}
-        <div className="mb-6 flex items-center gap-4 rounded-lg bg-gray-50 p-4">
-          <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-full bg-indigo-100">
-            {psychologist.avatarUrl ? (
-              <img src={psychologist.avatarUrl} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-lg font-bold text-indigo-600">
-                {psychologist.firstName[0]}
+        <div className="flex flex-col lg:flex-row">
+          {/* Left sidebar - psychologist info */}
+          <div className="border-b p-4 lg:w-64 lg:border-b-0 lg:border-r">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-full bg-indigo-100">
+                {psychologist.avatarUrl ? (
+                  <img src={psychologist.avatarUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-xl font-bold text-indigo-600">
+                    {psychologist.firstName[0]}
+                  </div>
+                )}
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900">
+                  {psychologist.firstName} {psychologist.lastName}
+                </p>
+                <p className="text-lg font-bold text-indigo-600">
+                  {psychologist.hourlyRate.toLocaleString()} тг
+                </p>
+              </div>
+            </div>
+
+            {/* Child selection */}
+            {children.length > 0 && (
+              <div className="mb-4">
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Для кого консультация?
+                </label>
+                <select
+                  value={selectedChild}
+                  onChange={(e) => setSelectedChild(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 p-2 text-sm"
+                >
+                  <option value="">Для себя</option>
+                  {children.map((child) => (
+                    <option key={child.id} value={child.id}>
+                      {child.firstName} {child.lastName}
+                    </option>
+                  ))}
+                </select>
               </div>
             )}
+
+            {/* Notes */}
+            <div className="mb-4">
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Причина обращения
+              </label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+                placeholder="Опишите кратко..."
+                className="w-full rounded-lg border border-gray-300 p-2 text-sm"
+              />
+            </div>
+
+            {/* Legend */}
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-4 rounded bg-green-500"></div>
+                <span className="text-gray-600">Свободно</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-4 rounded bg-indigo-600"></div>
+                <span className="text-gray-600">Выбрано</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-4 rounded bg-gray-200"></div>
+                <span className="text-gray-600">Недоступно</span>
+              </div>
+            </div>
           </div>
-          <div>
-            <p className="font-semibold text-gray-900">
-              {psychologist.firstName} {psychologist.lastName}
-            </p>
-            <p className="text-sm text-gray-600">{psychologist.hourlyRate.toLocaleString()} тг / час</p>
+
+          {/* Calendar */}
+          <div className="flex-1 overflow-auto p-4">
+            {/* Week navigation */}
+            <div className="flex items-center justify-between mb-4">
+              <button
+                onClick={() => setWeekOffset((w) => w - 1)}
+                disabled={weekOffset <= 0}
+                className="p-2 rounded-lg hover:bg-gray-100 disabled:opacity-50"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <span className="font-medium text-gray-900">
+                {formatDate(weekDates[0])} — {formatDate(weekDates[6])}
+              </span>
+              <button
+                onClick={() => setWeekOffset((w) => w + 1)}
+                disabled={weekOffset >= 4}
+                className="p-2 rounded-lg hover:bg-gray-100 disabled:opacity-50"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+
+            {slotsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr>
+                      <th className="p-2 text-xs text-gray-500 font-medium w-16">Время</th>
+                      {weekDates.map((date, idx) => (
+                        <th key={idx} className="p-2 text-center">
+                          <div className="text-xs text-gray-500">{dayNames[idx]}</div>
+                          <div className={`text-sm font-medium ${isPastDate(date) ? 'text-gray-400' : 'text-gray-900'}`}>
+                            {date.getDate()}
+                          </div>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {hours.map((hour) => (
+                      <tr key={hour}>
+                        <td className="p-1 text-xs text-gray-500 text-right pr-2">
+                          {hour.toString().padStart(2, '0')}:00
+                        </td>
+                        {weekDates.map((date, idx) => {
+                          const dateStr = date.toISOString().split('T')[0];
+                          const isAvailable = isSlotAvailable(dateStr, hour) && !isPastDate(date);
+                          const isSelected = isSlotSelected(dateStr, hour);
+
+                          return (
+                            <td key={idx} className="p-1">
+                              <button
+                                type="button"
+                                disabled={!isAvailable}
+                                onClick={() => setSelectedSlot({ date: dateStr, hour })}
+                                className={`w-full h-8 rounded text-xs font-medium transition-colors ${
+                                  isSelected
+                                    ? 'bg-indigo-600 text-white'
+                                    : isAvailable
+                                    ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                }`}
+                              >
+                                {isAvailable ? (isSelected ? '✓' : '') : '—'}
+                              </button>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {error && (
+              <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
+            )}
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Выбор ребёнка */}
-          {children.length > 0 && (
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                Ребёнок (опционально)
-              </label>
-              <select
-                value={selectedChild}
-                onChange={(e) => setSelectedChild(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 p-2.5"
-              >
-                <option value="">Консультация для себя</option>
-                {children.map((child) => (
-                  <option key={child.id} value={child.id}>
-                    {child.firstName} {child.lastName}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Выбор даты */}
+        {/* Footer */}
+        <div className="border-t p-4 flex items-center justify-between">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Дата</label>
-            <input
-              type="date"
-              required
-              min={minDateStr}
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 p-2.5"
-            />
+            {selectedSlot && (
+              <p className="text-sm text-gray-600">
+                Выбрано: <span className="font-medium text-gray-900">
+                  {new Date(selectedSlot.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })} в {selectedSlot.hour}:00
+                </span>
+              </p>
+            )}
           </div>
-
-          {/* Выбор времени */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Время</label>
-            <select
-              required
-              value={selectedTime}
-              onChange={(e) => setSelectedTime(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 p-2.5"
-            >
-              <option value="">Выберите время</option>
-              {Array.from({ length: 12 }, (_, i) => {
-                const hour = 9 + i;
-                const time = `${hour.toString().padStart(2, '0')}:00`;
-                return (
-                  <option key={time} value={time}>
-                    {time}
-                  </option>
-                );
-              })}
-            </select>
-          </div>
-
-          {/* Заметки */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Заметки (опционально)
-            </label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-              placeholder="Опишите причину обращения..."
-              className="w-full rounded-lg border border-gray-300 p-2.5"
-            />
-          </div>
-
-          {error && (
-            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
-          )}
-
           <div className="flex gap-3">
-            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+            <Button type="button" variant="outline" onClick={onClose}>
               Отмена
             </Button>
-            <Button type="submit" disabled={loading} className="flex-1">
+            <Button
+              onClick={handleSubmit}
+              disabled={loading || !selectedSlot}
+            >
               {loading ? 'Записываем...' : 'Записаться'}
             </Button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );
@@ -526,7 +677,9 @@ export default function ConsultationsPage() {
     setError(null);
 
     try {
-      const response = await fetch(`/api/consultations?page=${page}&limit=${limit}`);
+      // For psychologists, use the psychologist endpoint
+      const psychologistParam = isPsychologist ? '&psychologist=true' : '';
+      const response = await fetch(`/api/consultations?page=${page}&limit=${limit}${psychologistParam}`);
       if (!response.ok) {
         throw new Error('Не удалось загрузить консультации');
       }
@@ -539,7 +692,7 @@ export default function ConsultationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [page, isPsychologist]);
 
   useEffect(() => {
     if (activeTab === 'find') {

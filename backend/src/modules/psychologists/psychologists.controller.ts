@@ -48,6 +48,29 @@ export class PsychologistsController {
   }
 
   /**
+   * Получить клиентов психолога (требует авторизации)
+   */
+  @Get('me/clients')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.PSYCHOLOGIST)
+  async getMyClients(@Request() req: any) {
+    return this.psychologistsService.getMyClients(req.user.id);
+  }
+
+  /**
+   * Получить статистику доходов психолога (требует авторизации)
+   */
+  @Get('me/earnings')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.PSYCHOLOGIST)
+  async getMyEarnings(
+    @Request() req: any,
+    @Query('period') period?: 'week' | 'month' | 'year',
+  ) {
+    return this.psychologistsService.getMyEarnings(req.user.id, period || 'month');
+  }
+
+  /**
    * Получить список психологов (публичный эндпоинт)
    */
   @Public()
