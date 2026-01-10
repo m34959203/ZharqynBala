@@ -47,6 +47,20 @@ interface JitsiConfig {
   };
 }
 
+interface PatientNote {
+  id: string;
+  title: string;
+  content: string;
+  chiefComplaint?: string;
+  historyOfIllness?: string;
+  mentalStatus?: string;
+  diagnosis?: string;
+  recommendations?: string;
+  treatmentPlan?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 const STATUS_LABELS: Record<string, { text: string; color: string }> = {
   PENDING: { text: 'Ожидает подтверждения', color: 'bg-yellow-100 text-yellow-800' },
   CONFIRMED: { text: 'Подтверждена', color: 'bg-green-100 text-green-800' },
@@ -69,12 +83,46 @@ export default function ConsultationPage() {
   const [showVideo, setShowVideo] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [patientNotes, setPatientNotes] = useState<PatientNote[]>([]);
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [editingNote, setEditingNote] = useState<PatientNote | null>(null);
+  const [noteFormData, setNoteFormData] = useState({
+    title: '',
+    content: '',
+    chiefComplaint: '',
+    historyOfIllness: '',
+    mentalStatus: '',
+    diagnosis: '',
+    recommendations: '',
+    treatmentPlan: '',
+  });
+  const [noteSaving, setNoteSaving] = useState(false);
 
   // Get user role from localStorage
   useEffect(() => {
     const role = localStorage.getItem('userRole');
     setUserRole(role);
   }, []);
+
+  // Fetch patient notes for psychologist
+  const fetchPatientNotes = useCallback(async () => {
+    if (userRole !== 'PSYCHOLOGIST' || !consultationId) return;
+    try {
+      const response = await fetch(`/api/patient-notes?consultationId=${consultationId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setPatientNotes(data);
+      }
+    } catch (err) {
+      console.error('Error fetching patient notes:', err);
+    }
+  }, [consultationId, userRole]);
+
+  useEffect(() => {
+    if (userRole === 'PSYCHOLOGIST' && consultationId) {
+      fetchPatientNotes();
+    }
+  }, [userRole, consultationId, fetchPatientNotes]);
 
   const fetchConsultation = useCallback(async () => {
     try {
@@ -217,6 +265,97 @@ export default function ConsultationPage() {
   const canConfirmOrReject = consultation.status === 'PENDING' && isPsychologist;
   const canMarkNoShow = consultation.status === 'IN_PROGRESS' && isPsychologist;
   const canRate = consultation.status === 'COMPLETED' && !isPsychologist;
+  const canAddNotes = isPsychologist && ['IN_PROGRESS', 'COMPLETED'].includes(consultation.status);
+
+  const openNoteModal = (note?: PatientNote) => {
+    if (note) {
+      setEditingNote(note);
+      setNoteFormData({
+        title: note.title,
+        content: note.content,
+        chiefComplaint: note.chiefComplaint || '',
+        historyOfIllness: note.historyOfIllness || '',
+        mentalStatus: note.mentalStatus || '',
+        diagnosis: note.diagnosis || '',
+        recommendations: note.recommendations || '',
+        treatmentPlan: note.treatmentPlan || '',
+      });
+    } else {
+      setEditingNote(null);
+      setNoteFormData({
+        title: `Заметка от ${formatDate(new Date().toISOString())}`,
+        content: '',
+        chiefComplaint: '',
+        historyOfIllness: '',
+        mentalStatus: '',
+        diagnosis: '',
+        recommendations: '',
+        treatmentPlan: '',
+      });
+    }
+    setShowNoteModal(true);
+  };
+
+  const handleSaveNote = async () => {
+    if (!noteFormData.title || !noteFormData.content) {
+      alert('Заполните заголовок и содержание заметки');
+      return;
+    }
+
+    setNoteSaving(true);
+    try {
+      const url = editingNote
+        ? `/api/patient-notes/${editingNote.id}`
+        : '/api/patient-notes';
+      const method = editingNote ? 'PUT' : 'POST';
+
+      const body = editingNote
+        ? { ...noteFormData }
+        : {
+            ...noteFormData,
+            clientId: consultation.clientId,
+            childId: consultation.childId || undefined,
+            consultationId: consultation.id,
+          };
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Ошибка сохранения');
+      }
+
+      setShowNoteModal(false);
+      fetchPatientNotes();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Произошла ошибка');
+    } finally {
+      setNoteSaving(false);
+    }
+  };
+
+  const handleDeleteNote = async (noteId: string) => {
+    if (!confirm('Удалить эту заметку?')) return;
+
+    try {
+      const response = await fetch(`/api/patient-notes/${noteId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Ошибка удаления');
+      }
+
+      fetchPatientNotes();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Произошла ошибка');
+    }
+  };
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
@@ -420,6 +559,249 @@ export default function ConsultationPage() {
               <p className="mt-1 text-sm text-blue-700">
                 Консультация будет завершена психологом после окончания сеанса.
               </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Patient Notes Section for Psychologists */}
+      {isPsychologist && (
+        <div className="mt-6 rounded-xl bg-white p-6 shadow-lg">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-bold text-gray-900">Психологическая анкета пациента</h2>
+            {canAddNotes && (
+              <button
+                onClick={() => openNoteModal()}
+                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Добавить заметку
+              </button>
+            )}
+          </div>
+
+          {patientNotes.length === 0 ? (
+            <div className="py-8 text-center">
+              <svg className="mx-auto h-12 w-12 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <p className="mt-2 text-gray-500">Заметок пока нет</p>
+              {canAddNotes && (
+                <p className="mt-1 text-sm text-gray-400">
+                  Добавьте заметку для документирования консультации
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {patientNotes.map((note) => (
+                <div key={note.id} className="rounded-lg border border-gray-200 p-4">
+                  <div className="mb-2 flex items-start justify-between">
+                    <div>
+                      <h3 className="font-semibold text-gray-900">{note.title}</h3>
+                      <p className="text-sm text-gray-500">
+                        {new Date(note.createdAt).toLocaleDateString('ru-RU', {
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => openNoteModal(note)}
+                        className="p-2 text-gray-400 hover:text-indigo-600"
+                        title="Редактировать"
+                      >
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteNote(note.id)}
+                        className="p-2 text-gray-400 hover:text-red-600"
+                        title="Удалить"
+                      >
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <p className="mb-3 whitespace-pre-wrap text-gray-700">{note.content}</p>
+                  {(note.chiefComplaint || note.diagnosis || note.recommendations) && (
+                    <div className="grid gap-3 border-t border-gray-100 pt-3 md:grid-cols-2">
+                      {note.chiefComplaint && (
+                        <div>
+                          <p className="text-xs font-medium text-gray-500">Жалоба</p>
+                          <p className="text-sm text-gray-700">{note.chiefComplaint}</p>
+                        </div>
+                      )}
+                      {note.diagnosis && (
+                        <div>
+                          <p className="text-xs font-medium text-gray-500">Диагноз</p>
+                          <p className="text-sm text-gray-700">{note.diagnosis}</p>
+                        </div>
+                      )}
+                      {note.recommendations && (
+                        <div className="md:col-span-2">
+                          <p className="text-xs font-medium text-gray-500">Рекомендации</p>
+                          <p className="text-sm text-gray-700">{note.recommendations}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Note Modal */}
+      {showNoteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-gray-900">
+                {editingNote ? 'Редактировать заметку' : 'Новая заметка'}
+              </h2>
+              <button
+                onClick={() => setShowNoteModal(false)}
+                className="p-2 text-gray-400 hover:text-gray-600"
+              >
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Заголовок *
+                </label>
+                <input
+                  type="text"
+                  value={noteFormData.title}
+                  onChange={(e) => setNoteFormData({ ...noteFormData, title: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 p-3 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  placeholder="Название заметки"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Основное содержание *
+                </label>
+                <textarea
+                  rows={4}
+                  value={noteFormData.content}
+                  onChange={(e) => setNoteFormData({ ...noteFormData, content: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 p-3 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  placeholder="Подробное описание консультации..."
+                />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    Основная жалоба
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={noteFormData.chiefComplaint}
+                    onChange={(e) => setNoteFormData({ ...noteFormData, chiefComplaint: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 p-3 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    placeholder="С чем обратился пациент"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    Психический статус
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={noteFormData.mentalStatus}
+                    onChange={(e) => setNoteFormData({ ...noteFormData, mentalStatus: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 p-3 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    placeholder="Оценка состояния"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  История
+                </label>
+                <textarea
+                  rows={2}
+                  value={noteFormData.historyOfIllness}
+                  onChange={(e) => setNoteFormData({ ...noteFormData, historyOfIllness: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 p-3 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  placeholder="История проблемы, предыдущие обращения"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Диагноз / Заключение
+                </label>
+                <input
+                  type="text"
+                  value={noteFormData.diagnosis}
+                  onChange={(e) => setNoteFormData({ ...noteFormData, diagnosis: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 p-3 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  placeholder="Предварительный диагноз или заключение"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Рекомендации
+                </label>
+                <textarea
+                  rows={3}
+                  value={noteFormData.recommendations}
+                  onChange={(e) => setNoteFormData({ ...noteFormData, recommendations: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 p-3 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  placeholder="Рекомендации для пациента"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  План лечения
+                </label>
+                <textarea
+                  rows={2}
+                  value={noteFormData.treatmentPlan}
+                  onChange={(e) => setNoteFormData({ ...noteFormData, treatmentPlan: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 p-3 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  placeholder="Дальнейший план работы"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => setShowNoteModal(false)}
+                className="flex-1 rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleSaveNote}
+                disabled={noteSaving}
+                className="flex-1 rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {noteSaving ? 'Сохранение...' : 'Сохранить'}
+              </button>
             </div>
           </div>
         </div>

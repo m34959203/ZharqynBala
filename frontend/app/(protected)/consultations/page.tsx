@@ -530,7 +530,7 @@ function PsychologistCard({
   );
 }
 
-function ConsultationCard({ consultation }: { consultation: Consultation }) {
+function ConsultationCard({ consultation, isPsychologist }: { consultation: Consultation; isPsychologist: boolean }) {
   const router = useRouter();
   const statusInfo = STATUS_LABELS[consultation.status] || { text: consultation.status, color: 'bg-gray-100' };
 
@@ -544,28 +544,38 @@ function ConsultationCard({ consultation }: { consultation: Consultation }) {
     });
   };
 
+  // For psychologists, show client info; for clients, show psychologist info
+  const displayName = isPsychologist ? consultation.clientName : consultation.psychologistName;
+  const displayInitial = displayName?.charAt(0) || '?';
+  const displayRole = isPsychologist ? 'Клиент' : 'Психолог';
+
   return (
     <Card className="cursor-pointer transition-shadow hover:shadow-lg" onClick={() => router.push(`/consultations/${consultation.id}`)}>
       <CardBody>
         <div className="flex items-center gap-4">
           {/* Avatar */}
-          <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-full bg-indigo-100">
-            {consultation.psychologistAvatarUrl ? (
+          <div className={`h-14 w-14 flex-shrink-0 overflow-hidden rounded-full ${isPsychologist ? 'bg-green-100' : 'bg-indigo-100'}`}>
+            {!isPsychologist && consultation.psychologistAvatarUrl ? (
               <img
                 src={consultation.psychologistAvatarUrl}
                 alt=""
                 className="h-full w-full object-cover"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center text-xl font-bold text-indigo-600">
-                {consultation.psychologistName.charAt(0)}
+              <div className={`flex h-full w-full items-center justify-center text-xl font-bold ${isPsychologist ? 'text-green-600' : 'text-indigo-600'}`}>
+                {displayInitial}
               </div>
             )}
           </div>
 
           {/* Info */}
           <div className="flex-1">
-            <h3 className="font-semibold text-gray-900">{consultation.psychologistName}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-gray-900">{displayName}</h3>
+              <span className={`text-xs px-2 py-0.5 rounded-full ${isPsychologist ? 'bg-green-100 text-green-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                {displayRole}
+              </span>
+            </div>
             <p className="text-sm text-gray-600">{formatDate(consultation.scheduledAt)}</p>
             {consultation.childName && (
               <p className="text-sm text-gray-500">Ребёнок: {consultation.childName}</p>
@@ -937,7 +947,7 @@ export default function ConsultationsPage() {
               <>
                 <div className="space-y-4">
                   {consultations.map((consultation) => (
-                    <ConsultationCard key={consultation.id} consultation={consultation} />
+                    <ConsultationCard key={consultation.id} consultation={consultation} isPsychologist={isPsychologist} />
                   ))}
                 </div>
 
