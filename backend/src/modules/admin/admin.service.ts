@@ -475,23 +475,36 @@ export class AdminService {
   }
 
   async getSettings() {
-    // Return mock settings for now
+    const settings = await this.prisma.setting.findMany();
+    const settingsMap: Record<string, string> = {};
+    for (const s of settings) {
+      settingsMap[s.key] = s.value;
+    }
+
     return {
-      siteName: 'Zharqyn Bala',
-      supportEmail: 'support@zharqynbala.kz',
-      defaultLanguage: 'ru',
-      enablePayments: true,
-      enableConsultations: true,
-      maintenanceMode: false,
-      freeTestsLimit: 3,
-      premiumPrice: 4990,
+      siteName: settingsMap['siteName'] || 'Zharqyn Bala',
+      supportEmail: settingsMap['supportEmail'] || 'support@zharqynbala.kz',
+      defaultLanguage: settingsMap['defaultLanguage'] || 'RU',
+      maintenanceMode: settingsMap['maintenanceMode'] === 'true',
+      maxTestsPerDay: parseInt(settingsMap['maxTestsPerDay'] || '10', 10),
+      consultationCommission: parseInt(settingsMap['consultationCommission'] || '20', 10),
+      freeTrialDays: parseInt(settingsMap['freeTrialDays'] || '7', 10),
     };
   }
 
-  async updateSettings(data: any) {
-    // TODO: Store settings in database or config
-    this.logger.log('Settings updated:', data);
-    return { success: true, settings: data };
+  async updateSettings(data: Record<string, any>) {
+    const entries = Object.entries(data).filter(([_, v]) => v !== undefined);
+
+    for (const [key, value] of entries) {
+      await this.prisma.setting.upsert({
+        where: { key },
+        update: { value: String(value) },
+        create: { key, value: String(value) },
+      });
+    }
+
+    this.logger.log(`Settings updated: ${entries.map(([k]) => k).join(', ')}`);
+    return this.getSettings();
   }
 
   async getRevenueReport(period: 'day' | 'week' | 'month' | 'year') {

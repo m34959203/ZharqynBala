@@ -3,16 +3,19 @@ import {
   ConflictException,
   UnauthorizedException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { RegisterDto, LoginDto, AuthResponseDto, UserResponseDto } from './dto';
+import { RegisterDto, LoginDto, AuthResponseDto, UserResponseDto, ForgotPasswordDto, ResetPasswordDto } from './dto';
 import { User } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
@@ -48,9 +51,10 @@ export class AuthService {
     // Хеширование пароля
     const passwordHash = await this.hashPassword(dto.password);
 
-    // Роль: admin@jarkinbala.kz/admin@zharqynbala.kz = ADMIN, все остальные = PARENT
+    // Роль: email из ADMIN_EMAILS = ADMIN, все остальные = PARENT
     // Роли PSYCHOLOGIST и SCHOOL назначаются только администратором
-    const adminEmails = ['admin@jarkinbala.kz', 'admin@zharqynbala.kz'];
+    const adminEmailsEnv = this.configService.get<string>('ADMIN_EMAILS') || '';
+    const adminEmails = adminEmailsEnv.split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
     const role = adminEmails.includes(dto.email.toLowerCase()) ? 'ADMIN' : 'PARENT';
 
     // Создание пользователя
@@ -83,62 +87,41 @@ export class AuthService {
    * Вход пользователя
    */
   async login(dto: LoginDto): Promise<AuthResponseDto> {
-    console.log('[AuthService:login] ========== Login attempt ==========');
-    console.log('[AuthService:login] Email:', dto.email);
+    this.logger.log('Login attempt');
 
     // Поиск пользователя
-    console.log('[AuthService:login] Looking up user in database...');
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
 
     if (!user) {
-      console.error('[AuthService:login] User NOT FOUND for email:', dto.email);
+      this.logger.log('User not found');
       throw new UnauthorizedException('Неверный email или пароль');
     }
 
-    console.log('[AuthService:login] User found:', {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      hasPasswordHash: !!user.passwordHash,
-    });
-
     // Проверка пароля
-    console.log('[AuthService:login] Comparing passwords...');
     const isPasswordValid = await this.comparePasswords(
       dto.password,
       user.passwordHash,
     );
 
-    console.log('[AuthService:login] Password valid:', isPasswordValid);
-
     if (!isPasswordValid) {
-      console.error('[AuthService:login] Password INVALID for user:', dto.email);
+      this.logger.log('Login failed');
       throw new UnauthorizedException('Неверный email или пароль');
     }
 
     // Генерация токенов
-    console.log('[AuthService:login] Generating tokens...');
     const tokens = await this.generateTokens(user.id, user.email, user.role);
-    console.log('[AuthService:login] Tokens generated successfully');
 
     // Сохранение refresh token в БД
-    console.log('[AuthService:login] Saving refresh token...');
     await this.saveRefreshToken(user.id, tokens.refreshToken);
-    console.log('[AuthService:login] Refresh token saved');
 
-    const response = {
+    this.logger.log('Login successful');
+
+    return {
       user: this.mapUserToResponse(user),
       ...tokens,
     };
-
-    console.log('[AuthService:login] ========== Login SUCCESS ==========');
-    console.log('[AuthService:login] Response user:', response.user);
-    console.log('[AuthService:login] Has accessToken:', !!response.accessToken);
-    console.log('[AuthService:login] Has refreshToken:', !!response.refreshToken);
-
-    return response;
   }
 
   /**
@@ -193,6 +176,80 @@ export class AuthService {
       where: { id: userId },
       data: { refreshToken: null },
     });
+  }
+
+  /**
+   * Request password reset — generates token and logs it (email integration pending)
+   */
+  async forgotPassword(dto: ForgotPasswordDto): Promise<{ message: string }> {
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+
+    // Always return success to prevent email enumeration
+    if (!user) {
+      return { message: 'Если аккаунт существует, инструкции отправлены на email' };
+    }
+
+    // Generate secure random token
+    const crypto = await import('crypto');
+    const token = crypto.randomBytes(32).toString('hex');
+
+    // Save token with 1-hour expiry
+    await this.prisma.passwordReset.create({
+      data: {
+        userId: user.id,
+        token,
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
+      },
+    });
+
+    // TODO: Send email with reset link containing token
+    // For now, log the token in non-production environments
+    if (this.configService.get('NODE_ENV') !== 'production') {
+      this.logger.log(`Password reset token for ${user.email}: ${token}`);
+    }
+
+    return { message: 'Если аккаунт существует, инструкции отправлены на email' };
+  }
+
+  /**
+   * Reset password using token
+   */
+  async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
+    const resetRecord = await this.prisma.passwordReset.findUnique({
+      where: { token: dto.token },
+      include: { user: true },
+    });
+
+    if (!resetRecord) {
+      throw new BadRequestException('Недействительная ссылка для сброса пароля');
+    }
+
+    if (resetRecord.usedAt) {
+      throw new BadRequestException('Ссылка для сброса пароля уже была использована');
+    }
+
+    if (resetRecord.expiresAt < new Date()) {
+      throw new BadRequestException('Срок действия ссылки истёк');
+    }
+
+    // Hash new password
+    const passwordHash = await this.hashPassword(dto.newPassword);
+
+    // Update password and mark token as used
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: resetRecord.userId },
+        data: { passwordHash },
+      }),
+      this.prisma.passwordReset.update({
+        where: { id: resetRecord.id },
+        data: { usedAt: new Date() },
+      }),
+    ]);
+
+    return { message: 'Пароль успешно изменён' };
   }
 
   /**

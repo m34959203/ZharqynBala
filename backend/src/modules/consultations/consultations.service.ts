@@ -1,11 +1,13 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { JitsiService } from './jitsi.service';
+import { EmailService } from '../notifications/email.service';
 import {
   CreateConsultationDto,
   ConfirmConsultationDto,
@@ -20,9 +22,12 @@ import { ConsultationStatus, PaymentStatus, UserRole } from '@prisma/client';
 
 @Injectable()
 export class ConsultationsService {
+  private readonly logger = new Logger(ConsultationsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jitsiService: JitsiService,
+    private readonly emailService: EmailService,
   ) {}
 
   /**
@@ -98,6 +103,21 @@ export class ConsultationsService {
       },
     });
 
+    // Send notification to psychologist
+    try {
+      const psychUser = await this.prisma.user.findUnique({ where: { id: psychologist.userId } });
+      if (psychUser?.email) {
+        await this.emailService.sendEmail({
+          to: psychUser.email,
+          subject: 'Новая заявка на консультацию',
+          html: `<p>У вас новая заявка на консультацию на <strong>${consultation.scheduledAt.toLocaleDateString('ru-RU')}</strong>. Войдите в систему для подтверждения.</p>`,
+          text: `У вас новая заявка на консультацию на ${consultation.scheduledAt.toLocaleDateString('ru-RU')}. Войдите в систему для подтверждения.`,
+        });
+      }
+    } catch (e) {
+      this.logger.warn(`Failed to send consultation notification email: ${e.message}`);
+    }
+
     return this.mapToResponse(consultation);
   }
 
@@ -151,13 +171,9 @@ export class ConsultationsService {
     const { page = 1, limit = 10, status } = params;
     const skip = (page - 1) * limit;
 
-    console.log('[ConsultationsService] findAllForPsychologist - userId:', userId);
-
     const psychologist = await this.prisma.psychologist.findUnique({
       where: { userId },
     });
-
-    console.log('[ConsultationsService] Found psychologist:', psychologist?.id || 'NOT FOUND');
 
     if (!psychologist) {
       throw new NotFoundException('Профиль психолога не найден');
@@ -167,8 +183,6 @@ export class ConsultationsService {
       psychologistId: psychologist.id,
       ...(status && { status }),
     };
-
-    console.log('[ConsultationsService] Query where:', JSON.stringify(where));
 
     const [consultations, total] = await Promise.all([
       this.prisma.consultation.findMany({
@@ -186,8 +200,6 @@ export class ConsultationsService {
       }),
       this.prisma.consultation.count({ where }),
     ]);
-
-    console.log('[ConsultationsService] Found consultations:', consultations.length, 'total:', total);
 
     return {
       consultations: consultations.map((c) => this.mapToResponse(c)),
@@ -269,6 +281,21 @@ export class ConsultationsService {
       },
     });
 
+    // Send confirmation notification to client
+    try {
+      const client = await this.prisma.user.findUnique({ where: { id: updated.clientId } });
+      if (client?.email) {
+        await this.emailService.sendEmail({
+          to: client.email,
+          subject: 'Консультация подтверждена',
+          html: `<p>Ваша консультация на <strong>${updated.scheduledAt.toLocaleDateString('ru-RU')}</strong> подтверждена психологом. Ссылка на видеозвонок будет доступна в день консультации.</p>`,
+          text: `Ваша консультация на ${updated.scheduledAt.toLocaleDateString('ru-RU')} подтверждена психологом. Ссылка на видеозвонок будет доступна в день консультации.`,
+        });
+      }
+    } catch (e) {
+      this.logger.warn(`Failed to send confirmation email: ${e.message}`);
+    }
+
     return {
       ...this.mapToResponse(updated),
       roomName: updated.roomName,
@@ -303,6 +330,21 @@ export class ConsultationsService {
         child: true,
       },
     });
+
+    // Send rejection notification to client
+    try {
+      const client = await this.prisma.user.findUnique({ where: { id: updated.clientId } });
+      if (client?.email) {
+        await this.emailService.sendEmail({
+          to: client.email,
+          subject: 'Консультация отклонена',
+          html: `<p>К сожалению, психолог не может провести консультацию на <strong>${updated.scheduledAt.toLocaleDateString('ru-RU')}</strong>. Пожалуйста, выберите другое время.</p>`,
+          text: `К сожалению, психолог не может провести консультацию на ${updated.scheduledAt.toLocaleDateString('ru-RU')}. Пожалуйста, выберите другое время.`,
+        });
+      }
+    } catch (e) {
+      this.logger.warn(`Failed to send rejection email: ${e.message}`);
+    }
 
     return this.mapToResponse(updated);
   }
@@ -355,6 +397,21 @@ export class ConsultationsService {
         child: true,
       },
     });
+
+    // Send cancellation notification to psychologist
+    try {
+      const psychUser = await this.prisma.user.findUnique({ where: { id: updated.psychologist.userId } });
+      if (psychUser?.email) {
+        await this.emailService.sendEmail({
+          to: psychUser.email,
+          subject: 'Консультация отменена',
+          html: `<p>Клиент отменил консультацию на <strong>${updated.scheduledAt.toLocaleDateString('ru-RU')}</strong>.</p>`,
+          text: `Клиент отменил консультацию на ${updated.scheduledAt.toLocaleDateString('ru-RU')}.`,
+        });
+      }
+    } catch (e) {
+      this.logger.warn(`Failed to send cancellation email: ${e.message}`);
+    }
 
     return this.mapToResponse(updated);
   }

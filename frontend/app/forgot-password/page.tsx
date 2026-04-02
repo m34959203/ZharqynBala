@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
+import api from '@/lib/api';
 
 interface ForgotPasswordForm {
   email: string;
@@ -24,15 +25,13 @@ export default function ForgotPasswordPage() {
       setIsLoading(true);
       setError('');
 
-      // TODO: Implement password reset API call
-      // await api.post('/auth/forgot-password', { email: data.email });
-
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await api.post('/auth/forgot-password', { email: data.email });
 
       setIsSubmitted(true);
-    } catch (err) {
-      setError('Ошибка отправки. Попробуйте позже.');
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.message || 'Ошибка отправки. Попробуйте позже.';
+      setError(message);
     } finally {
       setIsLoading(false);
     }

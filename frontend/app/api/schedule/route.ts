@@ -137,7 +137,7 @@ export async function GET(request: Request) {
     // If token was refreshed, update the cookie
     if (newAccessToken) {
       jsonResponse.cookies.set('accessToken', newAccessToken, {
-        httpOnly: false,
+        httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         path: '/',
@@ -182,7 +182,7 @@ export async function POST(request: Request) {
     // If token was refreshed, update the cookie
     if (newAccessToken) {
       jsonResponse.cookies.set('accessToken', newAccessToken, {
-        httpOnly: false,
+        httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         path: '/',
@@ -233,7 +233,7 @@ export async function DELETE(request: Request) {
     // If token was refreshed, update the cookie
     if (newAccessToken) {
       jsonResponse.cookies.set('accessToken', newAccessToken, {
-        httpOnly: false,
+        httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         path: '/',

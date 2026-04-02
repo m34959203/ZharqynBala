@@ -60,6 +60,9 @@ model User {
   // Заметки психолога о пациенте
   patientNotes      PatientNote[] @relation("PatientNotes")
 
+  // Password resets
+  passwordResets PasswordReset[]
+
   @@map("users")
 }
 
@@ -72,6 +75,19 @@ model RefreshToken {
 
   @@map("refresh_tokens")
   @@index([userId])
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_resets")
 }
 
 // ============================================
@@ -709,4 +725,17 @@ model Lesson {
 
   @@map("lessons")
   @@index([courseId])
+}
+
+// ============================================
+// НАСТРОЙКИ
+// ============================================
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
 }

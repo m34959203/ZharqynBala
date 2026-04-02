@@ -3,9 +3,10 @@ import { ConsultationsController } from './consultations.controller';
 import { ConsultationsService } from './consultations.service';
 import { JitsiService } from './jitsi.service';
 import { PrismaModule } from '../../common/prisma/prisma.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, NotificationsModule],
   controllers: [ConsultationsController],
   providers: [ConsultationsService, JitsiService],
   exports: [ConsultationsService, JitsiService],

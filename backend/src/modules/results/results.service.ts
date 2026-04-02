@@ -189,14 +189,7 @@ export class ResultsService {
       include: {
         session: {
           include: {
-            test: true,
             child: true,
-            answers: {
-              include: {
-                question: true,
-                answerOption: true,
-              },
-            },
           },
         },
       },
@@ -211,25 +204,7 @@ export class ResultsService {
       throw new ForbiddenException('You do not have access to this result');
     }
 
-    const childAge = this.calculateAge(result.session.child.birthDate);
-
-    // Build recommendations list from stored recommendations
-    const recommendations = result.recommendations
-      ? result.recommendations.split('\n').filter((r: string) => r.trim())
-      : [];
-
-    return this.pdfService.generateResultPdf({
-      id: result.id,
-      testName: result.session.test.titleRu,
-      childName: `${result.session.child.firstName} ${result.session.child.lastName}`,
-      childAge,
-      completedAt: result.createdAt,
-      score: result.totalScore,
-      maxScore: result.maxScore,
-      categories: [],
-      recommendations,
-      interpretation: result.interpretation,
-    });
+    return this.pdfService.generateResultPdf(id);
   }
 
   /**

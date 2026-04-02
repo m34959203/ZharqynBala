@@ -70,7 +70,7 @@ async function makeAuthenticatedRequest(
 
 function setTokenCookie(response: NextResponse, token: string) {
   response.cookies.set('accessToken', token, {
-    httpOnly: false,
+    httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',

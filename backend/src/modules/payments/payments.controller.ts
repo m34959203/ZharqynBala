@@ -6,6 +6,7 @@ import {
   Param,
   UseGuards,
   ParseUUIDPipe,
+  ForbiddenException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -79,6 +80,9 @@ export class PaymentsController {
   async simulateComplete(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<PaymentResponseDto> {
+    if (process.env.NODE_ENV === 'production') {
+      throw new ForbiddenException('This endpoint is not available in production');
+    }
     return this.paymentsService.simulatePaymentComplete(id);
   }
 }

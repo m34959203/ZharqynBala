@@ -19,6 +19,8 @@ import {
   LoginDto,
   AuthResponseDto,
   RefreshTokenDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
 } from './dto';
 import { Public } from './decorators/public.decorator';
 import { CurrentUser, CurrentUserData } from './decorators/current-user.decorator';
@@ -62,18 +64,7 @@ export class AuthController {
     description: 'Неверный email или пароль',
   })
   async login(@Body() dto: LoginDto): Promise<AuthResponseDto> {
-    console.log('[AuthController:login] ========== Login request received ==========');
-    console.log('[AuthController:login] Email:', dto.email);
-    console.log('[AuthController:login] Has password:', !!dto.password);
-
-    try {
-      const result = await this.authService.login(dto);
-      console.log('[AuthController:login] Login successful, returning response');
-      return result;
-    } catch (error) {
-      console.error('[AuthController:login] Login FAILED:', error.message);
-      throw error;
-    }
+    return this.authService.login(dto);
   }
 
   @Public()
@@ -123,5 +114,24 @@ export class AuthController {
   })
   async getMe(@CurrentUser() user: CurrentUserData) {
     return user;
+  }
+
+  @Public()
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request password reset' })
+  @ApiResponse({ status: 200, description: 'Reset instructions sent' })
+  async forgotPassword(@Body() dto: ForgotPasswordDto): Promise<{ message: string }> {
+    return this.authService.forgotPassword(dto);
+  }
+
+  @Public()
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reset password with token' })
+  @ApiResponse({ status: 200, description: 'Password successfully reset' })
+  @ApiResponse({ status: 400, description: 'Invalid or expired token' })
+  async resetPassword(@Body() dto: ResetPasswordDto): Promise<{ message: string }> {
+    return this.authService.resetPassword(dto);
   }
 }

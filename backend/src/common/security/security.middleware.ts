@@ -17,11 +17,12 @@ export class SecurityMiddleware implements NestMiddleware {
     // Content Security Policy
     const cspDirectives = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-      "style-src 'self' 'unsafe-inline'",
+      "script-src 'self'",
+      "style-src 'self' https://fonts.googleapis.com",
       "img-src 'self' data: https:",
-      "font-src 'self' data:",
-      "connect-src 'self' https://api.zharqynbala.kz wss:",
+      "font-src 'self' https://fonts.gstatic.com",
+      "connect-src 'self' https://api.zharqynbala.kz wss: https:",
+      "frame-src https://meet.jit.si https://*.jitsi.net",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
