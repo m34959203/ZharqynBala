@@ -42,6 +42,13 @@ export class AnalyticsController {
     return this.analyticsService.getChildAnalytics(userId);
   }
 
+  @Get('risk-zones')
+  @Roles('ADMIN', 'PSYCHOLOGIST')
+  @ApiOperation({ summary: 'Get risk zone distribution statistics' })
+  async getRiskZoneStats() {
+    return this.analyticsService.getRiskZoneStats();
+  }
+
   @Get('revenue')
   @Roles('ADMIN')
   @ApiOperation({ summary: 'Get revenue analytics' })

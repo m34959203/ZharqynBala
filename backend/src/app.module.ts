@@ -18,6 +18,9 @@ import { ScheduleModule } from './modules/schedule/schedule.module';
 import { PsychologistsModule } from './modules/psychologists/psychologists.module';
 import { ConsultationsModule } from './modules/consultations/consultations.module';
 import { PatientNotesModule } from './modules/patient-notes/patient-notes.module';
+import { BullyingModule } from './modules/bullying/bullying.module';
+import { CasesModule } from './modules/cases/cases.module';
+import { ExportModule } from './modules/export/export.module';
 
 @Module({
   imports: [
@@ -58,6 +61,9 @@ import { PatientNotesModule } from './modules/patient-notes/patient-notes.module
     PsychologistsModule,
     ConsultationsModule,
     PatientNotesModule,
+    BullyingModule,
+    CasesModule,
+    ExportModule,
   ],
 })
 export class AppModule {}

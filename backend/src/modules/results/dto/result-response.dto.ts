@@ -25,6 +25,9 @@ export class ResultResponseDto {
   @ApiPropertyOptional()
   pdfUrl?: string;
 
+  @ApiProperty({ enum: ['GREEN', 'YELLOW', 'RED'], description: 'Risk zone classification' })
+  riskZone: string;
+
   @ApiProperty()
   createdAt: Date;
 

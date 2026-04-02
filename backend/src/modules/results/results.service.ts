@@ -108,6 +108,7 @@ export class ResultsService {
       percentage,
       interpretation: result.interpretation,
       recommendations: result.recommendations,
+      riskZone: result.riskZone || 'GREEN',
       pdfUrl: result.pdfUrl || undefined,
       createdAt: result.createdAt,
       testTitle: result.session.test.titleRu,
@@ -263,6 +264,7 @@ export class ResultsService {
         maxScore: scoringResult.maxScore,
         interpretation: extendedInterpretation,
         recommendations: scoringResult.recommendations.join('\n'),
+        riskZone: scoringResult.riskZone as any,
       },
     });
 
@@ -312,6 +314,7 @@ export class ResultsService {
         maxScore: scoringResult.maxScore,
         interpretation: extendedInterpretation,
         recommendations: scoringResult.recommendations.join('\n'),
+        riskZone: scoringResult.riskZone as any,
       },
     });
 
@@ -342,6 +345,7 @@ export class ResultsService {
       percentage,
       interpretation: result.interpretation,
       recommendations: result.recommendations,
+      riskZone: result.riskZone || 'GREEN',
       pdfUrl: result.pdfUrl || undefined,
       createdAt: result.createdAt,
       testTitle: result.session?.test?.titleRu,

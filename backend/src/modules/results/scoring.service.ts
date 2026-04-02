@@ -32,6 +32,7 @@ export interface ScoringResult {
   level: string;
   interpretation: string;
   recommendations: string[];
+  riskZone: string;
   categoryScores?: Record<string, number>;
   topCategories?: Array<{ category: string; score: number; title: string }>;
 }
@@ -295,25 +296,27 @@ export class ScoringService {
 
     // Определить тип теста и применить соответствующий алгоритм
     const testIdLower = testId.toLowerCase();
+    const testCategory = session.test?.category || 'DEFAULT';
+
+    let result: ScoringResult;
 
     if (testIdLower.includes('motivation') || testIdLower.includes('luskanova')) {
-      return this.calculateSchoolMotivation(session);
+      result = this.calculateSchoolMotivation(session);
+    } else if (testIdLower.includes('selfesteem') || testIdLower.includes('kovalev')) {
+      result = this.calculateSelfEsteem(session);
+    } else if (testIdLower.includes('career') || testIdLower.includes('klimov')) {
+      result = this.calculateCareerOrientation(session);
+    } else if (testIdLower.includes('anxiety')) {
+      result = this.calculateAnxiety(session);
+    } else {
+      // Стандартный расчёт для остальных тестов
+      result = this.calculateGeneric(session);
     }
 
-    if (testIdLower.includes('selfesteem') || testIdLower.includes('kovalev')) {
-      return this.calculateSelfEsteem(session);
-    }
+    // Determine risk zone based on percentage and test category
+    result.riskZone = this.determineRiskZone(result.percentage, testCategory);
 
-    if (testIdLower.includes('career') || testIdLower.includes('klimov')) {
-      return this.calculateCareerOrientation(session);
-    }
-
-    if (testIdLower.includes('anxiety')) {
-      return this.calculateAnxiety(session);
-    }
-
-    // Стандартный расчёт для остальных тестов
-    return this.calculateGeneric(session);
+    return result;
   }
 
   /**
@@ -339,6 +342,7 @@ export class ScoringService {
       level: level?.level || 'unknown',
       interpretation: level?.descriptionRu || 'Интерпретация недоступна',
       recommendations: level?.recommendations || [],
+      riskZone: 'GREEN',
     };
   }
 
@@ -367,6 +371,7 @@ export class ScoringService {
       level: level?.level || 'unknown',
       interpretation: level?.descriptionRu || 'Интерпретация недоступна',
       recommendations: level?.recommendations || [],
+      riskZone: 'GREEN',
     };
   }
 
@@ -426,6 +431,7 @@ export class ScoringService {
       level: topCategory,
       interpretation,
       recommendations: catInfo?.professions.slice(0, 5) || [],
+      riskZone: 'GREEN',
       categoryScores,
       topCategories,
     };
@@ -461,6 +467,7 @@ export class ScoringService {
       level: level?.level || 'unknown',
       interpretation: level?.descriptionRu || 'Интерпретация недоступна',
       recommendations: level?.recommendations || [],
+      riskZone: 'GREEN',
     };
   }
 
@@ -487,6 +494,7 @@ export class ScoringService {
       level: this.getGenericLevel(percentage),
       interpretation: this.getGenericInterpretation(percentage),
       recommendations: this.getGenericRecommendations(percentage),
+      riskZone: 'GREEN',
     };
   }
 
@@ -571,5 +579,40 @@ export class ScoringService {
       'Обсудите результаты со школьным психологом',
       'Создайте поддерживающую среду дома',
     ];
+  }
+
+  /**
+   * Определить зону риска на основе процента и категории теста
+   * RED — критический уровень, нужна помощь психолога
+   * YELLOW — требует наблюдения
+   * GREEN — норма
+   */
+  determineRiskZone(percentage: number, category: string): string {
+    // Category-specific thresholds
+    const thresholds: Record<string, { red: number; yellow: number }> = {
+      ANXIETY: { red: 75, yellow: 50 },      // High score = high anxiety = RED
+      SELF_ESTEEM: { red: 30, yellow: 50 },   // Low score = low self-esteem = RED (inverted)
+      MOTIVATION: { red: 30, yellow: 50 },    // Low score = low motivation = RED (inverted)
+      EMOTIONS: { red: 75, yellow: 50 },      // High score = emotional issues = RED
+      ATTENTION: { red: 30, yellow: 50 },     // Low score = attention problems = RED (inverted)
+      DEFAULT: { red: 75, yellow: 50 },       // Default: high score = more issues
+    };
+
+    const t = thresholds[category] || thresholds.DEFAULT;
+
+    // For inverted scales (low = bad): SELF_ESTEEM, MOTIVATION, ATTENTION
+    const invertedCategories = ['SELF_ESTEEM', 'MOTIVATION', 'ATTENTION'];
+
+    if (invertedCategories.includes(category)) {
+      // Low percentage = risk
+      if (percentage <= t.red) return 'RED';
+      if (percentage <= t.yellow) return 'YELLOW';
+      return 'GREEN';
+    } else {
+      // High percentage = risk (anxiety, emotions)
+      if (percentage >= t.red) return 'RED';
+      if (percentage >= t.yellow) return 'YELLOW';
+      return 'GREEN';
+    }
   }
 }

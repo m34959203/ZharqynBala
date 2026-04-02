@@ -435,6 +435,54 @@ export class AnalyticsService {
     };
   }
 
+  async getRiskZoneStats(): Promise<any> {
+    // Get all results with their test categories
+    const results = await this.prisma.result.findMany({
+      select: {
+        riskZone: true,
+        session: {
+          select: {
+            test: {
+              select: { category: true },
+            },
+          },
+        },
+      },
+    });
+
+    const total = results.length;
+    let green = 0;
+    let yellow = 0;
+    let red = 0;
+
+    const byCategory: Record<string, { green: number; yellow: number; red: number }> = {};
+
+    for (const r of results) {
+      const zone = r.riskZone || 'GREEN';
+      const category = r.session?.test?.category || 'UNKNOWN';
+
+      if (zone === 'GREEN') green++;
+      else if (zone === 'YELLOW') yellow++;
+      else if (zone === 'RED') red++;
+
+      if (!byCategory[category]) {
+        byCategory[category] = { green: 0, yellow: 0, red: 0 };
+      }
+
+      if (zone === 'GREEN') byCategory[category].green++;
+      else if (zone === 'YELLOW') byCategory[category].yellow++;
+      else if (zone === 'RED') byCategory[category].red++;
+    }
+
+    return {
+      total,
+      green,
+      yellow,
+      red,
+      byCategory,
+    };
+  }
+
   async getRevenueAnalytics(months: number = 12): Promise<any> {
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - months);
