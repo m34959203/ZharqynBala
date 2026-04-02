@@ -223,6 +223,7 @@ model School {
   // Relations
   classes         SchoolClass[]
   bullyingReports BullyingReport[]
+  scheduledEvents ScheduledEvent[]
 
   @@map("schools")
 }
@@ -241,6 +242,7 @@ model SchoolClass {
   // Relations
   students      Student[]
   groupTests    GroupTest[]
+  scheduledEvents ScheduledEvent[]
 
   @@map("school_classes")
   @@unique([schoolId, grade, letter, academicYear])
@@ -318,6 +320,7 @@ model Test {
   questions       Question[]
   sessions        TestSession[]
   groupTests      GroupTest[]
+  scheduledEvents ScheduledEvent[]
 
   @@map("tests")
 }
@@ -849,4 +852,38 @@ model CaseNote {
   author User        @relation(fields: [authorId], references: [id])
 
   @@map("case_notes")
+}
+
+// ============================================
+// КАЛЕНДАРЬ СОБЫТИЙ
+// ============================================
+
+enum EventStatus {
+  PLANNED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+model ScheduledEvent {
+  id          String      @id @default(cuid())
+  schoolId    String      @map("school_id")
+  testId      String      @map("test_id")
+  classId     String?     @map("class_id")
+  title       String
+  description String?
+  quarter     Int?
+  academicYear String?    @map("academic_year")
+  startDate   DateTime    @map("start_date")
+  endDate     DateTime    @map("end_date")
+  status      EventStatus @default(PLANNED)
+  createdBy   String      @map("created_by")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  school School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  test   Test        @relation(fields: [testId], references: [id])
+  class  SchoolClass? @relation(fields: [classId], references: [id])
+
+  @@map("scheduled_events")
 }

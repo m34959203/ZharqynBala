@@ -927,6 +927,805 @@ export const careerInterpretation = {
 };
 
 // ============================================
+// ТЕСТ 4: Шкала тревоги Бека (Beck Anxiety Inventory)
+// ============================================
+
+export const beckAnxietyTest = {
+  id: 'test-beck-anxiety',
+  titleRu: 'Шкала тревоги Бека',
+  titleKz: 'Бек үрейлілік шкаласы',
+  descriptionRu: 'Шкала тревоги Бека (BAI) — клинический инструмент для оценки выраженности тревожной симптоматики. Адаптированная версия для подростков (10 вопросов).',
+  descriptionKz: 'Бек үрейлілік шкаласы (BAI) — үрейлілік белгілерінің деңгейін бағалауға арналған клиникалық құрал. Жасөспірімдерге бейімделген нұсқа (10 сұрақ).',
+  category: TestCategory.ANXIETY,
+  ageMin: 12,
+  ageMax: 17,
+  durationMinutes: 10,
+  price: 0,
+  isPremium: false,
+  order: 4,
+};
+
+export const beckAnxietyQuestions = [
+  {
+    questionTextRu: 'Ощущение онемения или покалывания',
+    questionTextKz: 'Еңсіздік немесе тіршілік сезімі',
+    questionType: QuestionType.SCALE,
+    options: [
+      { textRu: 'Совсем нет', textKz: 'Мүлдем жоқ', score: 0 },
+      { textRu: 'Незначительно', textKz: 'Шамалы', score: 1 },
+      { textRu: 'Умеренно', textKz: 'Орташа', score: 2 },
+      { textRu: 'Сильно', textKz: 'Қатты', score: 3 },
+    ],
+  },
+  {
+    questionTextRu: 'Ощущение жара',
+    questionTextKz: 'Ыстық сезімі',
+    questionType: QuestionType.SCALE,
+    options: [
+      { textRu: 'Совсем нет', textKz: 'Мүлдем жоқ', score: 0 },
+      { textRu: 'Незначительно', textKz: 'Шамалы', score: 1 },
+      { textRu: 'Умеренно', textKz: 'Орташа', score: 2 },
+      { textRu: 'Сильно', textKz: 'Қатты', score: 3 },
+    ],
+  },
+  {
+    questionTextRu: 'Дрожь в ногах',
+    questionTextKz: 'Аяқтардағы дірілдеу',
+    questionType: QuestionType.SCALE,
+    options: [
+      { textRu: 'Совсем нет', textKz: 'Мүлдем жоқ', score: 0 },
+      { textRu: 'Незначительно', textKz: 'Шамалы', score: 1 },
+      { textRu: 'Умеренно', textKz: 'Орташа', score: 2 },
+      { textRu: 'Сильно', textKz: 'Қатты', score: 3 },
+    ],
+  },
+  {
+    questionTextRu: 'Неспособность расслабиться',
+    questionTextKz: 'Босаңсу мүмкін еместігі',
+    questionType: QuestionType.SCALE,
+    options: [
+      { textRu: 'Совсем нет', textKz: 'Мүлдем жоқ', score: 0 },
+      { textRu: 'Незначительно', textKz: 'Шамалы', score: 1 },
+      { textRu: 'Умеренно', textKz: 'Орташа', score: 2 },
+      { textRu: 'Сильно', textKz: 'Қатты', score: 3 },
+    ],
+  },
+  {
+    questionTextRu: 'Страх худшего',
+    questionTextKz: 'Ең жаманнан қорқу',
+    questionType: QuestionType.SCALE,
+    options: [
+      { textRu: 'Совсем нет', textKz: 'Мүлдем жоқ', score: 0 },
+      { textRu: 'Незначительно', textKz: 'Шамалы', score: 1 },
+      { textRu: 'Умеренно', textKz: 'Орташа', score: 2 },
+      { textRu: 'Сильно', textKz: 'Қатты', score: 3 },
+    ],
+  },
+  {
+    questionTextRu: 'Головокружение',
+    questionTextKz: 'Бас айналу',
+    questionType: QuestionType.SCALE,
+    options: [
+      { textRu: 'Совсем нет', textKz: 'Мүлдем жоқ', score: 0 },
+      { textRu: 'Незначительно', textKz: 'Шамалы', score: 1 },
+      { textRu: 'Умеренно', textKz: 'Орташа', score: 2 },
+      { textRu: 'Сильно', textKz: 'Қатты', score: 3 },
+    ],
+  },
+  {
+    questionTextRu: 'Учащённое сердцебиение',
+    questionTextKz: 'Жүрек соғысының жиілеуі',
+    questionType: QuestionType.SCALE,
+    options: [
+      { textRu: 'Совсем нет', textKz: 'Мүлдем жоқ', score: 0 },
+      { textRu: 'Незначительно', textKz: 'Шамалы', score: 1 },
+      { textRu: 'Умеренно', textKz: 'Орташа', score: 2 },
+      { textRu: 'Сильно', textKz: 'Қатты', score: 3 },
+    ],
+  },
+  {
+    questionTextRu: 'Неустойчивость',
+    questionTextKz: 'Тұрақсыздық',
+    questionType: QuestionType.SCALE,
+    options: [
+      { textRu: 'Совсем нет', textKz: 'Мүлдем жоқ', score: 0 },
+      { textRu: 'Незначительно', textKz: 'Шамалы', score: 1 },
+      { textRu: 'Умеренно', textKz: 'Орташа', score: 2 },
+      { textRu: 'Сильно', textKz: 'Қатты', score: 3 },
+    ],
+  },
+  {
+    questionTextRu: 'Чувство ужаса',
+    questionTextKz: 'Қорқыныш сезімі',
+    questionType: QuestionType.SCALE,
+    options: [
+      { textRu: 'Совсем нет', textKz: 'Мүлдем жоқ', score: 0 },
+      { textRu: 'Незначительно', textKz: 'Шамалы', score: 1 },
+      { textRu: 'Умеренно', textKz: 'Орташа', score: 2 },
+      { textRu: 'Сильно', textKz: 'Қатты', score: 3 },
+    ],
+  },
+  {
+    questionTextRu: 'Нервозность',
+    questionTextKz: 'Жүйке тартылуы',
+    questionType: QuestionType.SCALE,
+    options: [
+      { textRu: 'Совсем нет', textKz: 'Мүлдем жоқ', score: 0 },
+      { textRu: 'Незначительно', textKz: 'Шамалы', score: 1 },
+      { textRu: 'Умеренно', textKz: 'Орташа', score: 2 },
+      { textRu: 'Сильно', textKz: 'Қатты', score: 3 },
+    ],
+  },
+];
+
+export const beckAnxietyInterpretation = {
+  levels: [
+    {
+      minScore: 0,
+      maxScore: 7,
+      level: 'minimal',
+      titleRu: 'Минимальная тревога',
+      titleKz: 'Ең аз үрейлілік',
+      descriptionRu: 'Уровень тревоги находится в пределах нормы. Ребёнок чувствует себя спокойно и уверенно.',
+      recommendations: [
+        'Поддерживайте позитивную атмосферу дома',
+        'Продолжайте следить за эмоциональным состоянием',
+      ],
+    },
+    {
+      minScore: 8,
+      maxScore: 15,
+      level: 'mild',
+      titleRu: 'Лёгкая тревога',
+      titleKz: 'Жеңіл үрейлілік',
+      descriptionRu: 'Выявлен лёгкий уровень тревоги. Ребёнок периодически испытывает тревожные симптомы, которые пока не нарушают повседневную жизнь.',
+      recommendations: [
+        'Обсудите с ребёнком его переживания',
+        'Обеспечьте режим дня и достаточный сон',
+        'Поддерживайте физическую активность',
+        'Научите техникам расслабления (дыхание, медитация)',
+      ],
+    },
+    {
+      minScore: 16,
+      maxScore: 25,
+      level: 'moderate',
+      titleRu: 'Умеренная тревога',
+      titleKz: 'Орташа үрейлілік',
+      descriptionRu: 'Выявлен умеренный уровень тревоги. Тревожные симптомы ощутимо влияют на повседневную жизнь и учёбу ребёнка.',
+      recommendations: [
+        'Рекомендуется консультация детского психолога',
+        'Создайте спокойную обстановку дома',
+        'Избегайте чрезмерных нагрузок',
+        'Помогайте справляться со стрессовыми ситуациями',
+        'Поддерживайте ребёнка безусловным принятием',
+      ],
+    },
+    {
+      minScore: 26,
+      maxScore: 30,
+      level: 'severe',
+      titleRu: 'Выраженная тревога',
+      titleKz: 'Айқын үрейлілік',
+      descriptionRu: 'Выявлен высокий уровень тревоги. Ребёнок испытывает выраженные тревожные симптомы, которые существенно нарушают повседневную жизнь.',
+      recommendations: [
+        'ВАЖНО: Необходима консультация детского психолога или психотерапевта',
+        'Не оставляйте ребёнка одного в сложных ситуациях',
+        'Обратите внимание на возможные источники стресса',
+        'Обеспечьте максимальную поддержку и понимание',
+        'Избегайте критики и сравнений с другими',
+        'Рассмотрите возможность психологической помощи в школе',
+      ],
+    },
+  ],
+};
+
+// ============================================
+// ТЕСТ 5: Опросник школьной тревожности Филлипса
+// ============================================
+
+export const phillipsAnxietyTest = {
+  id: 'test-phillips-anxiety',
+  titleRu: 'Опросник школьной тревожности Филлипса',
+  titleKz: 'Филлипс мектеп үрейлілігі сауалнамасы',
+  descriptionRu: 'Методика Филлипса для диагностики школьной тревожности. Выявляет различные проявления тревоги, связанные со школьной жизнью (сокращённая версия, 15 вопросов).',
+  descriptionKz: 'Мектеп үрейлілігін диагностикалауға арналған Филлипс әдістемесі. Мектеп өміріне байланысты үрейліліктің түрлі көріністерін анықтайды (қысқартылған нұсқа, 15 сұрақ).',
+  category: TestCategory.ANXIETY,
+  ageMin: 10,
+  ageMax: 16,
+  durationMinutes: 20,
+  price: 3500,
+  isPremium: true,
+  order: 5,
+};
+
+export const phillipsAnxietyQuestions = [
+  {
+    questionTextRu: 'Трудно ли тебе думать о чем-то одном?',
+    questionTextKz: 'Саған бір нәрсе туралы ойлау қиын ба?',
+    questionType: QuestionType.YES_NO,
+    options: [
+      { textRu: 'Да', textKz: 'Иә', score: 1 },
+      { textRu: 'Нет', textKz: 'Жоқ', score: 0 },
+    ],
+  },
+  {
+    questionTextRu: 'Ты волнуешься когда учитель вызывает к доске?',
+    questionTextKz: 'Мұғалім тақтаға шақырғанда толқанасың ба?',
+    questionType: QuestionType.YES_NO,
+    options: [
+      { textRu: 'Да', textKz: 'Иә', score: 1 },
+      { textRu: 'Нет', textKz: 'Жоқ', score: 0 },
+    ],
+  },
+  {
+    questionTextRu: 'Ты боишься получить плохую оценку?',
+    questionTextKz: 'Жаман баға алудан қорқасың ба?',
+    questionType: QuestionType.YES_NO,
+    options: [
+      { textRu: 'Да', textKz: 'Иә', score: 1 },
+      { textRu: 'Нет', textKz: 'Жоқ', score: 0 },
+    ],
+  },
+  {
+    questionTextRu: 'Тебе трудно начать разговор с незнакомыми?',
+    questionTextKz: 'Бейтаныстармен сөйлесуді бастау қиын ба?',
+    questionType: QuestionType.YES_NO,
+    options: [
+      { textRu: 'Да', textKz: 'Иә', score: 1 },
+      { textRu: 'Нет', textKz: 'Жоқ', score: 0 },
+    ],
+  },
+  {
+    questionTextRu: 'Ты часто чувствуешь себя усталым в школе?',
+    questionTextKz: 'Мектепте жиі шаршағанды сезінесің бе?',
+    questionType: QuestionType.YES_NO,
+    options: [
+      { textRu: 'Да', textKz: 'Иә', score: 1 },
+      { textRu: 'Нет', textKz: 'Жоқ', score: 0 },
+    ],
+  },
+  {
+    questionTextRu: 'Ты переживаешь из-за контрольных работ?',
+    questionTextKz: 'Бақылау жұмыстарына алаңдайсың ба?',
+    questionType: QuestionType.YES_NO,
+    options: [
+      { textRu: 'Да', textKz: 'Иә', score: 1 },
+      { textRu: 'Нет', textKz: 'Жоқ', score: 0 },
+    ],
+  },
+  {
+    questionTextRu: 'Тебе трудно отвечать перед классом?',
+    questionTextKz: 'Сынып алдында жауап беру қиын ба?',
+    questionType: QuestionType.YES_NO,
+    options: [
+      { textRu: 'Да', textKz: 'Иә', score: 1 },
+      { textRu: 'Нет', textKz: 'Жоқ', score: 0 },
+    ],
+  },
+  {
+    questionTextRu: 'Ты часто ссоришься с одноклассниками?',
+    questionTextKz: 'Сыныптастарыңмен жиі дауласасың ба?',
+    questionType: QuestionType.YES_NO,
+    options: [
+      { textRu: 'Да', textKz: 'Иә', score: 1 },
+      { textRu: 'Нет', textKz: 'Жоқ', score: 0 },
+    ],
+  },
+  {
+    questionTextRu: 'Ты боишься что тебя будут ругать?',
+    questionTextKz: 'Сені ұрсады деп қорқасың ба?',
+    questionType: QuestionType.YES_NO,
+    options: [
+      { textRu: 'Да', textKz: 'Иә', score: 1 },
+      { textRu: 'Нет', textKz: 'Жоқ', score: 0 },
+    ],
+  },
+  {
+    questionTextRu: 'Тебе снятся плохие сны о школе?',
+    questionTextKz: 'Мектеп туралы жаман түс көресің бе?',
+    questionType: QuestionType.YES_NO,
+    options: [
+      { textRu: 'Да', textKz: 'Иә', score: 1 },
+      { textRu: 'Нет', textKz: 'Жоқ', score: 0 },
+    ],
+  },
+  {
+    questionTextRu: 'Ты чувствуешь себя одиноким в школе?',
+    questionTextKz: 'Мектепте жалғыз сезінесің бе?',
+    questionType: QuestionType.YES_NO,
+    options: [
+      { textRu: 'Да', textKz: 'Иә', score: 1 },
+      { textRu: 'Нет', textKz: 'Жоқ', score: 0 },
+    ],
+  },
+  {
+    questionTextRu: 'Ты стесняешься говорить о своих проблемах?',
+    questionTextKz: 'Мәселелерің туралы айтуға ұяласың ба?',
+    questionType: QuestionType.YES_NO,
+    options: [
+      { textRu: 'Да', textKz: 'Иә', score: 1 },
+      { textRu: 'Нет', textKz: 'Жоқ', score: 0 },
+    ],
+  },
+  {
+    questionTextRu: 'У тебя болит живот перед школой?',
+    questionTextKz: 'Мектеп алдында ішің ауырады ма?',
+    questionType: QuestionType.YES_NO,
+    options: [
+      { textRu: 'Да', textKz: 'Иә', score: 1 },
+      { textRu: 'Нет', textKz: 'Жоқ', score: 0 },
+    ],
+  },
+  {
+    questionTextRu: 'Ты переживаешь из-за мнения одноклассников?',
+    questionTextKz: 'Сыныптастарың пікіріне алаңдайсың ба?',
+    questionType: QuestionType.YES_NO,
+    options: [
+      { textRu: 'Да', textKz: 'Иә', score: 1 },
+      { textRu: 'Нет', textKz: 'Жоқ', score: 0 },
+    ],
+  },
+  {
+    questionTextRu: 'Ты хотел бы учиться дома?',
+    questionTextKz: 'Үйде оқығың келер ме еді?',
+    questionType: QuestionType.YES_NO,
+    options: [
+      { textRu: 'Да', textKz: 'Иә', score: 1 },
+      { textRu: 'Нет', textKz: 'Жоқ', score: 0 },
+    ],
+  },
+];
+
+export const phillipsAnxietyInterpretation = {
+  levels: [
+    {
+      minScore: 0,
+      maxScore: 3,
+      level: 'low',
+      titleRu: 'Низкий уровень школьной тревожности',
+      titleKz: 'Мектеп үрейлілігінің төмен деңгейі',
+      descriptionRu: 'Ребёнок чувствует себя комфортно в школе. Уровень школьной тревожности в пределах нормы.',
+      recommendations: [
+        'Поддерживайте позитивное отношение к школе',
+        'Продолжайте интересоваться школьной жизнью ребёнка',
+      ],
+    },
+    {
+      minScore: 4,
+      maxScore: 7,
+      level: 'average',
+      titleRu: 'Средний уровень школьной тревожности',
+      titleKz: 'Мектеп үрейлілігінің орташа деңгейі',
+      descriptionRu: 'Выявлен повышенный уровень школьной тревожности. Ребёнок периодически испытывает дискомфорт в школьных ситуациях.',
+      recommendations: [
+        'Обсудите с ребёнком конкретные ситуации, вызывающие тревогу',
+        'Помогайте готовиться к контрольным и ответам у доски',
+        'Поддерживайте уверенность в себе',
+        'Учите справляться с волнением',
+      ],
+    },
+    {
+      minScore: 8,
+      maxScore: 11,
+      level: 'high',
+      titleRu: 'Высокий уровень школьной тревожности',
+      titleKz: 'Мектеп үрейлілігінің жоғары деңгейі',
+      descriptionRu: 'Высокий уровень школьной тревожности. Ребёнок испытывает значительный дискомфорт в школе, что может негативно влиять на учёбу и общение.',
+      recommendations: [
+        'Рекомендуется консультация школьного психолога',
+        'Поговорите с классным руководителем',
+        'Проверьте, нет ли конфликтов с одноклассниками или учителями',
+        'Создайте дома атмосферу безопасности',
+        'Не давите на ребёнка из-за оценок',
+      ],
+    },
+    {
+      minScore: 12,
+      maxScore: 15,
+      level: 'very_high',
+      titleRu: 'Очень высокий уровень школьной тревожности',
+      titleKz: 'Мектеп үрейлілігінің өте жоғары деңгейі',
+      descriptionRu: 'Крайне высокий уровень школьной тревожности. Ребёнок находится в состоянии постоянного стресса, связанного со школой. Требуется срочная помощь специалиста.',
+      recommendations: [
+        'ВАЖНО: Необходима срочная консультация психолога',
+        'Проверьте на наличие буллинга',
+        'Рассмотрите вопрос временного снижения нагрузки',
+        'Обратитесь к школьной администрации',
+        'Обеспечьте ребёнку чувство безопасности и принятия',
+        'При психосоматических симптомах (боли в животе) обратитесь к врачу',
+      ],
+    },
+  ],
+};
+
+// ============================================
+// ТЕСТ 6: Шкала депрессии CES-DC
+// ============================================
+
+export const cesDcTest = {
+  id: 'test-ces-dc',
+  titleRu: 'Шкала депрессии CES-DC',
+  titleKz: 'CES-DC депрессия шкаласы',
+  descriptionRu: 'Шкала депрессии Центра эпидемиологических исследований для детей (CES-DC). Выявляет признаки депрессивного состояния у детей и подростков (адаптированная версия, 10 вопросов).',
+  descriptionKz: 'Балаларға арналған эпидемиологиялық зерттеулер орталығының депрессия шкаласы (CES-DC). Балалар мен жасөспірімдердегі депрессиялық жағдай белгілерін анықтайды (бейімделген нұсқа, 10 сұрақ).',
+  category: TestCategory.EMOTIONS,
+  ageMin: 10,
+  ageMax: 17,
+  durationMinutes: 10,
+  price: 0,
+  isPremium: false,
+  order: 6,
+};
+
+export const cesDcQuestions = [
+  {
+    questionTextRu: 'Меня беспокоили вещи которые обычно не беспокоят',
+    questionTextKz: 'Мені әдетте мазаламайтын нәрселер мазалады',
+    questionType: QuestionType.SCALE,
+    options: [
+      { textRu: 'Никогда', textKz: 'Ешқашан', score: 0 },
+      { textRu: 'Иногда', textKz: 'Кейде', score: 1 },
+      { textRu: 'Часто', textKz: 'Жиі', score: 2 },
+      { textRu: 'Всё время', textKz: 'Үнемі', score: 3 },
+    ],
+  },
+  {
+    questionTextRu: 'Мне не хотелось есть',
+    questionTextKz: 'Тамақ ішкім келмеді',
+    questionType: QuestionType.SCALE,
+    options: [
+      { textRu: 'Никогда', textKz: 'Ешқашан', score: 0 },
+      { textRu: 'Иногда', textKz: 'Кейде', score: 1 },
+      { textRu: 'Часто', textKz: 'Жиі', score: 2 },
+      { textRu: 'Всё время', textKz: 'Үнемі', score: 3 },
+    ],
+  },
+  {
+    questionTextRu: 'Мне было грустно',
+    questionTextKz: 'Маған қайғылы болды',
+    questionType: QuestionType.SCALE,
+    options: [
+      { textRu: 'Никогда', textKz: 'Ешқашан', score: 0 },
+      { textRu: 'Иногда', textKz: 'Кейде', score: 1 },
+      { textRu: 'Часто', textKz: 'Жиі', score: 2 },
+      { textRu: 'Всё время', textKz: 'Үнемі', score: 3 },
+    ],
+  },
+  {
+    questionTextRu: 'Мне казалось что я хуже других',
+    questionTextKz: 'Мен басқалардан нашарырақпын деп сездім',
+    questionType: QuestionType.SCALE,
+    options: [
+      { textRu: 'Никогда', textKz: 'Ешқашан', score: 0 },
+      { textRu: 'Иногда', textKz: 'Кейде', score: 1 },
+      { textRu: 'Часто', textKz: 'Жиі', score: 2 },
+      { textRu: 'Всё время', textKz: 'Үнемі', score: 3 },
+    ],
+  },
+  {
+    questionTextRu: 'Мне было трудно сосредоточиться',
+    questionTextKz: 'Назар аудару қиын болды',
+    questionType: QuestionType.SCALE,
+    options: [
+      { textRu: 'Никогда', textKz: 'Ешқашан', score: 0 },
+      { textRu: 'Иногда', textKz: 'Кейде', score: 1 },
+      { textRu: 'Часто', textKz: 'Жиі', score: 2 },
+      { textRu: 'Всё время', textKz: 'Үнемі', score: 3 },
+    ],
+  },
+  {
+    questionTextRu: 'Я чувствовал себя подавленным',
+    questionTextKz: 'Мен өзімді қысылған сездім',
+    questionType: QuestionType.SCALE,
+    options: [
+      { textRu: 'Никогда', textKz: 'Ешқашан', score: 0 },
+      { textRu: 'Иногда', textKz: 'Кейде', score: 1 },
+      { textRu: 'Часто', textKz: 'Жиі', score: 2 },
+      { textRu: 'Всё время', textKz: 'Үнемі', score: 3 },
+    ],
+  },
+  {
+    questionTextRu: 'Мне было лень что-либо делать',
+    questionTextKz: 'Бірдеңе жасауға жалқау болдым',
+    questionType: QuestionType.SCALE,
+    options: [
+      { textRu: 'Никогда', textKz: 'Ешқашан', score: 0 },
+      { textRu: 'Иногда', textKz: 'Кейде', score: 1 },
+      { textRu: 'Часто', textKz: 'Жиі', score: 2 },
+      { textRu: 'Всё время', textKz: 'Үнемі', score: 3 },
+    ],
+  },
+  {
+    questionTextRu: 'Я не мог чувствовать себя счастливым',
+    questionTextKz: 'Мен бақытты сезіне алмадым',
+    questionType: QuestionType.SCALE,
+    options: [
+      { textRu: 'Никогда', textKz: 'Ешқашан', score: 0 },
+      { textRu: 'Иногда', textKz: 'Кейде', score: 1 },
+      { textRu: 'Часто', textKz: 'Жиі', score: 2 },
+      { textRu: 'Всё время', textKz: 'Үнемі', score: 3 },
+    ],
+  },
+  {
+    questionTextRu: 'Мне казалось что жизнь плохая',
+    questionTextKz: 'Маған өмір жаман көрінді',
+    questionType: QuestionType.SCALE,
+    options: [
+      { textRu: 'Никогда', textKz: 'Ешқашан', score: 0 },
+      { textRu: 'Иногда', textKz: 'Кейде', score: 1 },
+      { textRu: 'Часто', textKz: 'Жиі', score: 2 },
+      { textRu: 'Всё время', textKz: 'Үнемі', score: 3 },
+    ],
+  },
+  {
+    questionTextRu: 'Я чувствовал что меня не любят',
+    questionTextKz: 'Мені жақсы көрмейді деп сездім',
+    questionType: QuestionType.SCALE,
+    options: [
+      { textRu: 'Никогда', textKz: 'Ешқашан', score: 0 },
+      { textRu: 'Иногда', textKz: 'Кейде', score: 1 },
+      { textRu: 'Часто', textKz: 'Жиі', score: 2 },
+      { textRu: 'Всё время', textKz: 'Үнемі', score: 3 },
+    ],
+  },
+];
+
+export const cesDcInterpretation = {
+  levels: [
+    {
+      minScore: 0,
+      maxScore: 9,
+      level: 'normal',
+      titleRu: 'Нормальное эмоциональное состояние',
+      titleKz: 'Қалыпты эмоционалдық жағдай',
+      descriptionRu: 'Депрессивные симптомы не выявлены. Ребёнок находится в нормальном эмоциональном состоянии.',
+      recommendations: [
+        'Поддерживайте тёплые отношения с ребёнком',
+        'Продолжайте наблюдать за эмоциональным состоянием',
+      ],
+    },
+    {
+      minScore: 10,
+      maxScore: 14,
+      level: 'mild',
+      titleRu: 'Лёгкие депрессивные симптомы',
+      titleKz: 'Жеңіл депрессиялық белгілер',
+      descriptionRu: 'Выявлены лёгкие признаки депрессивного состояния. Ребёнок периодически испытывает подавленность и грусть.',
+      recommendations: [
+        'Больше общайтесь с ребёнком',
+        'Обеспечьте разнообразный досуг',
+        'Следите за режимом сна и питания',
+        'Поощряйте физическую активность и хобби',
+      ],
+    },
+    {
+      minScore: 15,
+      maxScore: 20,
+      level: 'moderate',
+      titleRu: 'Умеренные депрессивные симптомы',
+      titleKz: 'Орташа депрессиялық белгілер',
+      descriptionRu: 'Выявлены умеренные депрессивные симптомы. Ребёнок часто чувствует грусть, подавленность, снижение интереса к обычным занятиям.',
+      recommendations: [
+        'Рекомендуется консультация детского психолога',
+        'Создайте дома поддерживающую атмосферу',
+        'Не обесценивайте чувства ребёнка',
+        'Ограничьте время у экранов',
+        'Поддерживайте социальные контакты ребёнка',
+      ],
+    },
+    {
+      minScore: 21,
+      maxScore: 30,
+      level: 'severe',
+      titleRu: 'Выраженные депрессивные симптомы',
+      titleKz: 'Айқын депрессиялық белгілер',
+      descriptionRu: 'Выявлены выраженные депрессивные симптомы. Ребёнок находится в тяжёлом эмоциональном состоянии, которое требует профессиональной помощи.',
+      recommendations: [
+        'ВАЖНО: Необходима срочная консультация детского психолога или психиатра',
+        'Не оставляйте ребёнка без внимания и поддержки',
+        'Обратитесь к школьному психологу',
+        'Обеспечьте безопасную среду дома',
+        'Будьте внимательны к высказываниям ребёнка о жизни',
+        'При необходимости звоните на телефон доверия: 150 (бесплатно по РК)',
+      ],
+    },
+  ],
+};
+
+// ============================================
+// ТЕСТ 7: Методика Басса-Дарки (агрессия)
+// ============================================
+
+export const bussDarkiTest = {
+  id: 'test-buss-darki',
+  titleRu: 'Методика Басса-Дарки (агрессия)',
+  titleKz: 'Басс-Дарки әдістемесі (агрессия)',
+  descriptionRu: 'Опросник Басса-Дарки для диагностики агрессивных и враждебных реакций у подростков. Помогает определить уровень агрессивности и её формы (сокращённая версия, 12 вопросов).',
+  descriptionKz: 'Жасөспірімдердегі агрессиялық және дұшпандық реакцияларды диагностикалауға арналған Басс-Дарки сауалнамасы. Агрессияның деңгейі мен формаларын анықтауға көмектеседі (қысқартылған нұсқа, 12 сұрақ).',
+  category: TestCategory.EMOTIONS,
+  ageMin: 12,
+  ageMax: 17,
+  durationMinutes: 15,
+  price: 3500,
+  isPremium: true,
+  order: 7,
+};
+
+export const bussDarkiQuestions = [
+  {
+    questionTextRu: 'Иногда я не могу сдержать желание ударить другого',
+    questionTextKz: 'Кейде біреуді ұруға тілегімді тоқтата алмаймын',
+    questionType: QuestionType.YES_NO,
+    options: [
+      { textRu: 'Да', textKz: 'Иә', score: 1 },
+      { textRu: 'Нет', textKz: 'Жоқ', score: 0 },
+    ],
+  },
+  {
+    questionTextRu: 'Я легко раздражаюсь',
+    questionTextKz: 'Мен оңай ашуланамын',
+    questionType: QuestionType.YES_NO,
+    options: [
+      { textRu: 'Да', textKz: 'Иә', score: 1 },
+      { textRu: 'Нет', textKz: 'Жоқ', score: 0 },
+    ],
+  },
+  {
+    questionTextRu: 'Если меня разозлить я могу ударить',
+    questionTextKz: 'Мені ашуландырса соғуым мүмкін',
+    questionType: QuestionType.YES_NO,
+    options: [
+      { textRu: 'Да', textKz: 'Иә', score: 1 },
+      { textRu: 'Нет', textKz: 'Жоқ', score: 0 },
+    ],
+  },
+  {
+    questionTextRu: 'Я часто бываю не согласен с людьми',
+    questionTextKz: 'Мен жиі адамдармен келіспеймін',
+    questionType: QuestionType.YES_NO,
+    options: [
+      { textRu: 'Да', textKz: 'Иә', score: 1 },
+      { textRu: 'Нет', textKz: 'Жоқ', score: 0 },
+    ],
+  },
+  {
+    questionTextRu: 'Иногда я чувствую что готов первым начать драку',
+    questionTextKz: 'Кейде төбелесті бірінші бастауға дайынмын деп сеземін',
+    questionType: QuestionType.YES_NO,
+    options: [
+      { textRu: 'Да', textKz: 'Иә', score: 1 },
+      { textRu: 'Нет', textKz: 'Жоқ', score: 0 },
+    ],
+  },
+  {
+    questionTextRu: 'Я знаю что люди говорят обо мне за спиной',
+    questionTextKz: 'Адамдар менің артымнан сөйлейтінін білемін',
+    questionType: QuestionType.YES_NO,
+    options: [
+      { textRu: 'Да', textKz: 'Иә', score: 1 },
+      { textRu: 'Нет', textKz: 'Жоқ', score: 0 },
+    ],
+  },
+  {
+    questionTextRu: 'Когда я злюсь я хлопаю дверьми',
+    questionTextKz: 'Ашуланған кезде есікті тарс жабамын',
+    questionType: QuestionType.YES_NO,
+    options: [
+      { textRu: 'Да', textKz: 'Иә', score: 1 },
+      { textRu: 'Нет', textKz: 'Жоқ', score: 0 },
+    ],
+  },
+  {
+    questionTextRu: 'Я завидую другим людям',
+    questionTextKz: 'Мен басқа адамдарға қызғанамын',
+    questionType: QuestionType.YES_NO,
+    options: [
+      { textRu: 'Да', textKz: 'Иә', score: 1 },
+      { textRu: 'Нет', textKz: 'Жоқ', score: 0 },
+    ],
+  },
+  {
+    questionTextRu: 'Если кто-то меня обидит я отвечу тем же',
+    questionTextKz: 'Біреу мені ренжітсе дәл солай жауап беремін',
+    questionType: QuestionType.YES_NO,
+    options: [
+      { textRu: 'Да', textKz: 'Иә', score: 1 },
+      { textRu: 'Нет', textKz: 'Жоқ', score: 0 },
+    ],
+  },
+  {
+    questionTextRu: 'Иногда мне хочется сломать что-нибудь',
+    questionTextKz: 'Кейде бірдеңені сындырғым келеді',
+    questionType: QuestionType.YES_NO,
+    options: [
+      { textRu: 'Да', textKz: 'Иә', score: 1 },
+      { textRu: 'Нет', textKz: 'Жоқ', score: 0 },
+    ],
+  },
+  {
+    questionTextRu: 'Я часто спорю с окружающими',
+    questionTextKz: 'Мен жиі айналамдағылармен дауласамын',
+    questionType: QuestionType.YES_NO,
+    options: [
+      { textRu: 'Да', textKz: 'Иә', score: 1 },
+      { textRu: 'Нет', textKz: 'Жоқ', score: 0 },
+    ],
+  },
+  {
+    questionTextRu: 'Меня легко обидеть',
+    questionTextKz: 'Мені оңай ренжітуге болады',
+    questionType: QuestionType.YES_NO,
+    options: [
+      { textRu: 'Да', textKz: 'Иә', score: 1 },
+      { textRu: 'Нет', textKz: 'Жоқ', score: 0 },
+    ],
+  },
+];
+
+export const bussDarkiInterpretation = {
+  levels: [
+    {
+      minScore: 0,
+      maxScore: 3,
+      level: 'low',
+      titleRu: 'Низкий уровень агрессивности',
+      titleKz: 'Агрессияның төмен деңгейі',
+      descriptionRu: 'Уровень агрессивности в пределах нормы. Ребёнок умеет контролировать свои эмоции и адекватно реагирует на конфликтные ситуации.',
+      recommendations: [
+        'Поддерживайте навыки конструктивного общения',
+        'Поощряйте эмпатию и уважение к другим',
+      ],
+    },
+    {
+      minScore: 4,
+      maxScore: 6,
+      level: 'moderate',
+      titleRu: 'Умеренный уровень агрессивности',
+      titleKz: 'Орташа агрессия деңгейі',
+      descriptionRu: 'Выявлен умеренный уровень агрессивности. Ребёнок иногда испытывает трудности с управлением гневом и может реагировать импульсивно.',
+      recommendations: [
+        'Научите ребёнка техникам управления гневом',
+        'Обсуждайте конфликтные ситуации и альтернативные способы реагирования',
+        'Поощряйте спорт и физическую активность для выхода энергии',
+        'Следите за контентом (игры, фильмы, соцсети)',
+      ],
+    },
+    {
+      minScore: 7,
+      maxScore: 9,
+      level: 'high',
+      titleRu: 'Высокий уровень агрессивности',
+      titleKz: 'Агрессияның жоғары деңгейі',
+      descriptionRu: 'Выявлен высокий уровень агрессивности. Ребёнок склонен к агрессивным реакциям, что может создавать проблемы в общении и учёбе.',
+      recommendations: [
+        'Рекомендуется консультация детского психолога',
+        'Важно установить чёткие границы поведения',
+        'Исключите физические наказания',
+        'Разберитесь в причинах агрессии (буллинг, проблемы в семье, неуверенность)',
+        'Направьте энергию в спорт или творчество',
+      ],
+    },
+    {
+      minScore: 10,
+      maxScore: 12,
+      level: 'very_high',
+      titleRu: 'Очень высокий уровень агрессивности',
+      titleKz: 'Агрессияның өте жоғары деңгейі',
+      descriptionRu: 'Выявлен крайне высокий уровень агрессивности. Ребёнок проявляет выраженную склонность к агрессии, враждебности и импульсивности. Необходима профессиональная помощь.',
+      recommendations: [
+        'ВАЖНО: Необходима консультация детского психолога или психотерапевта',
+        'Проверьте на наличие буллинга или жестокого обращения',
+        'Обратите внимание на семейную обстановку',
+        'Поговорите со школьным психологом',
+        'Обеспечьте безопасную среду для выражения эмоций',
+        'При необходимости обратитесь к детскому психиатру',
+      ],
+    },
+  ],
+};
+
+// ============================================
 // ФУНКЦИЯ SEED ДЛЯ ДОБАВЛЕНИЯ ТЕСТОВ В БД
 // ============================================
 
@@ -1132,6 +1931,306 @@ export async function seedValidatedTests(prisma: PrismaClient): Promise<void> {
   }
   console.log('  ✅ Профориентация (ДДО Климова) - 20 вопросов');
 
+  // ============================================
+  // ТЕСТ 4: Шкала тревоги Бека (BAI)
+  // ============================================
+
+  const beckInterpretationConfig = {
+    ranges: beckAnxietyInterpretation.levels.map(level => ({
+      min: level.minScore,
+      max: level.maxScore,
+      level: level.level,
+      title: level.titleRu,
+      description: level.descriptionRu,
+      recommendations: level.recommendations.join('\n• '),
+    })),
+  };
+
+  const beckTestRecord = await prisma.test.upsert({
+    where: { id: beckAnxietyTest.id },
+    update: {
+      scoringType: 'absolute',
+      interpretationConfig: beckInterpretationConfig,
+    },
+    create: {
+      id: beckAnxietyTest.id,
+      titleRu: beckAnxietyTest.titleRu,
+      titleKz: beckAnxietyTest.titleKz,
+      descriptionRu: beckAnxietyTest.descriptionRu,
+      descriptionKz: beckAnxietyTest.descriptionKz,
+      category: beckAnxietyTest.category,
+      ageMin: beckAnxietyTest.ageMin,
+      ageMax: beckAnxietyTest.ageMax,
+      durationMinutes: beckAnxietyTest.durationMinutes,
+      price: beckAnxietyTest.price,
+      isPremium: beckAnxietyTest.isPremium,
+      order: beckAnxietyTest.order,
+      scoringType: 'absolute',
+      interpretationConfig: beckInterpretationConfig,
+    },
+  });
+
+  for (let i = 0; i < beckAnxietyQuestions.length; i++) {
+    const q = beckAnxietyQuestions[i];
+    const questionId = `beck-q-${i + 1}`;
+
+    const question = await prisma.question.upsert({
+      where: { id: questionId },
+      update: {},
+      create: {
+        id: questionId,
+        testId: beckTestRecord.id,
+        questionTextRu: q.questionTextRu,
+        questionTextKz: q.questionTextKz,
+        questionType: q.questionType,
+        order: i + 1,
+        isRequired: true,
+      },
+    });
+
+    for (let j = 0; j < q.options.length; j++) {
+      const opt = q.options[j];
+      await prisma.answerOption.upsert({
+        where: { id: `beck-q${i + 1}-opt${j + 1}` },
+        update: {},
+        create: {
+          id: `beck-q${i + 1}-opt${j + 1}`,
+          questionId: question.id,
+          optionTextRu: opt.textRu,
+          optionTextKz: opt.textKz,
+          score: opt.score,
+          order: j + 1,
+        },
+      });
+    }
+  }
+  console.log('  ✅ Шкала тревоги Бека (BAI) - 10 вопросов');
+
+  // ============================================
+  // ТЕСТ 5: Школьная тревожность Филлипса
+  // ============================================
+
+  const phillipsInterpretationConfig = {
+    ranges: phillipsAnxietyInterpretation.levels.map(level => ({
+      min: level.minScore,
+      max: level.maxScore,
+      level: level.level,
+      title: level.titleRu,
+      description: level.descriptionRu,
+      recommendations: level.recommendations.join('\n• '),
+    })),
+  };
+
+  const phillipsTestRecord = await prisma.test.upsert({
+    where: { id: phillipsAnxietyTest.id },
+    update: {
+      scoringType: 'percentage',
+      interpretationConfig: phillipsInterpretationConfig,
+    },
+    create: {
+      id: phillipsAnxietyTest.id,
+      titleRu: phillipsAnxietyTest.titleRu,
+      titleKz: phillipsAnxietyTest.titleKz,
+      descriptionRu: phillipsAnxietyTest.descriptionRu,
+      descriptionKz: phillipsAnxietyTest.descriptionKz,
+      category: phillipsAnxietyTest.category,
+      ageMin: phillipsAnxietyTest.ageMin,
+      ageMax: phillipsAnxietyTest.ageMax,
+      durationMinutes: phillipsAnxietyTest.durationMinutes,
+      price: phillipsAnxietyTest.price,
+      isPremium: phillipsAnxietyTest.isPremium,
+      order: phillipsAnxietyTest.order,
+      scoringType: 'percentage',
+      interpretationConfig: phillipsInterpretationConfig,
+    },
+  });
+
+  for (let i = 0; i < phillipsAnxietyQuestions.length; i++) {
+    const q = phillipsAnxietyQuestions[i];
+    const questionId = `phillips-q-${i + 1}`;
+
+    const question = await prisma.question.upsert({
+      where: { id: questionId },
+      update: {},
+      create: {
+        id: questionId,
+        testId: phillipsTestRecord.id,
+        questionTextRu: q.questionTextRu,
+        questionTextKz: q.questionTextKz,
+        questionType: q.questionType,
+        order: i + 1,
+        isRequired: true,
+      },
+    });
+
+    for (let j = 0; j < q.options.length; j++) {
+      const opt = q.options[j];
+      await prisma.answerOption.upsert({
+        where: { id: `phillips-q${i + 1}-opt${j + 1}` },
+        update: {},
+        create: {
+          id: `phillips-q${i + 1}-opt${j + 1}`,
+          questionId: question.id,
+          optionTextRu: opt.textRu,
+          optionTextKz: opt.textKz,
+          score: opt.score,
+          order: j + 1,
+        },
+      });
+    }
+  }
+  console.log('  ✅ Школьная тревожность Филлипса - 15 вопросов');
+
+  // ============================================
+  // ТЕСТ 6: Шкала депрессии CES-DC
+  // ============================================
+
+  const cesDcInterpretationConfig = {
+    ranges: cesDcInterpretation.levels.map(level => ({
+      min: level.minScore,
+      max: level.maxScore,
+      level: level.level,
+      title: level.titleRu,
+      description: level.descriptionRu,
+      recommendations: level.recommendations.join('\n• '),
+    })),
+  };
+
+  const cesDcTestRecord = await prisma.test.upsert({
+    where: { id: cesDcTest.id },
+    update: {
+      scoringType: 'absolute',
+      interpretationConfig: cesDcInterpretationConfig,
+    },
+    create: {
+      id: cesDcTest.id,
+      titleRu: cesDcTest.titleRu,
+      titleKz: cesDcTest.titleKz,
+      descriptionRu: cesDcTest.descriptionRu,
+      descriptionKz: cesDcTest.descriptionKz,
+      category: cesDcTest.category,
+      ageMin: cesDcTest.ageMin,
+      ageMax: cesDcTest.ageMax,
+      durationMinutes: cesDcTest.durationMinutes,
+      price: cesDcTest.price,
+      isPremium: cesDcTest.isPremium,
+      order: cesDcTest.order,
+      scoringType: 'absolute',
+      interpretationConfig: cesDcInterpretationConfig,
+    },
+  });
+
+  for (let i = 0; i < cesDcQuestions.length; i++) {
+    const q = cesDcQuestions[i];
+    const questionId = `cesdc-q-${i + 1}`;
+
+    const question = await prisma.question.upsert({
+      where: { id: questionId },
+      update: {},
+      create: {
+        id: questionId,
+        testId: cesDcTestRecord.id,
+        questionTextRu: q.questionTextRu,
+        questionTextKz: q.questionTextKz,
+        questionType: q.questionType,
+        order: i + 1,
+        isRequired: true,
+      },
+    });
+
+    for (let j = 0; j < q.options.length; j++) {
+      const opt = q.options[j];
+      await prisma.answerOption.upsert({
+        where: { id: `cesdc-q${i + 1}-opt${j + 1}` },
+        update: {},
+        create: {
+          id: `cesdc-q${i + 1}-opt${j + 1}`,
+          questionId: question.id,
+          optionTextRu: opt.textRu,
+          optionTextKz: opt.textKz,
+          score: opt.score,
+          order: j + 1,
+        },
+      });
+    }
+  }
+  console.log('  ✅ Шкала депрессии CES-DC - 10 вопросов');
+
+  // ============================================
+  // ТЕСТ 7: Методика Басса-Дарки (агрессия)
+  // ============================================
+
+  const bussDarkiInterpretationConfig = {
+    ranges: bussDarkiInterpretation.levels.map(level => ({
+      min: level.minScore,
+      max: level.maxScore,
+      level: level.level,
+      title: level.titleRu,
+      description: level.descriptionRu,
+      recommendations: level.recommendations.join('\n• '),
+    })),
+  };
+
+  const bussDarkiTestRecord = await prisma.test.upsert({
+    where: { id: bussDarkiTest.id },
+    update: {
+      scoringType: 'absolute',
+      interpretationConfig: bussDarkiInterpretationConfig,
+    },
+    create: {
+      id: bussDarkiTest.id,
+      titleRu: bussDarkiTest.titleRu,
+      titleKz: bussDarkiTest.titleKz,
+      descriptionRu: bussDarkiTest.descriptionRu,
+      descriptionKz: bussDarkiTest.descriptionKz,
+      category: bussDarkiTest.category,
+      ageMin: bussDarkiTest.ageMin,
+      ageMax: bussDarkiTest.ageMax,
+      durationMinutes: bussDarkiTest.durationMinutes,
+      price: bussDarkiTest.price,
+      isPremium: bussDarkiTest.isPremium,
+      order: bussDarkiTest.order,
+      scoringType: 'absolute',
+      interpretationConfig: bussDarkiInterpretationConfig,
+    },
+  });
+
+  for (let i = 0; i < bussDarkiQuestions.length; i++) {
+    const q = bussDarkiQuestions[i];
+    const questionId = `bussdarki-q-${i + 1}`;
+
+    const question = await prisma.question.upsert({
+      where: { id: questionId },
+      update: {},
+      create: {
+        id: questionId,
+        testId: bussDarkiTestRecord.id,
+        questionTextRu: q.questionTextRu,
+        questionTextKz: q.questionTextKz,
+        questionType: q.questionType,
+        order: i + 1,
+        isRequired: true,
+      },
+    });
+
+    for (let j = 0; j < q.options.length; j++) {
+      const opt = q.options[j];
+      await prisma.answerOption.upsert({
+        where: { id: `bussdarki-q${i + 1}-opt${j + 1}` },
+        update: {},
+        create: {
+          id: `bussdarki-q${i + 1}-opt${j + 1}`,
+          questionId: question.id,
+          optionTextRu: opt.textRu,
+          optionTextKz: opt.textKz,
+          score: opt.score,
+          order: j + 1,
+        },
+      });
+    }
+  }
+  console.log('  ✅ Методика Басса-Дарки (агрессия) - 12 вопросов');
+
   console.log('✅ Validated psychological tests seeded successfully!');
-  console.log('   Total: 3 tests, 62 questions');
+  console.log('   Total: 7 tests, 109 questions');
 }

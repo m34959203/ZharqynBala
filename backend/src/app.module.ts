@@ -21,6 +21,7 @@ import { PatientNotesModule } from './modules/patient-notes/patient-notes.module
 import { BullyingModule } from './modules/bullying/bullying.module';
 import { CasesModule } from './modules/cases/cases.module';
 import { ExportModule } from './modules/export/export.module';
+import { CalendarModule } from './modules/calendar/calendar.module';
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { ExportModule } from './modules/export/export.module';
     BullyingModule,
     CasesModule,
     ExportModule,
+    CalendarModule,
   ],
 })
 export class AppModule {}
