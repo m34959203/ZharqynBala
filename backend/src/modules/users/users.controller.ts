@@ -8,6 +8,7 @@ import {
   Post,
   HttpCode,
   HttpStatus,
+  Req,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -15,6 +16,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { Request } from 'express';
 import { UsersService } from './users.service';
 import {
   UpdateUserDto,
@@ -176,5 +178,52 @@ export class UsersController {
     @CurrentUser('id') userId: string,
   ): Promise<void> {
     return this.usersService.removeChild(childId, userId);
+  }
+
+  // ========== CONSENT MANAGEMENT (PDPL) ==========
+
+  @Post('me/children/:childId/consent')
+  @ApiOperation({ summary: 'Предоставить согласие на обработку данных ребёнка' })
+  @ApiResponse({ status: 201, description: 'Согласие предоставлено' })
+  @ApiResponse({ status: 404, description: 'Ребенок не найден' })
+  @ApiResponse({ status: 403, description: 'Нет доступа к этому профилю' })
+  async grantConsent(
+    @CurrentUser('id') userId: string,
+    @Param('childId') childId: string,
+    @Body() body: { consentType: string },
+    @Req() req: Request,
+  ) {
+    return this.usersService.grantConsent(
+      userId,
+      childId,
+      body.consentType,
+      req.ip,
+      req.headers['user-agent'],
+    );
+  }
+
+  @Delete('me/children/:childId/consent/:type')
+  @ApiOperation({ summary: 'Отозвать согласие на обработку данных ребёнка' })
+  @ApiResponse({ status: 200, description: 'Согласие отозвано' })
+  @ApiResponse({ status: 404, description: 'Ребенок или согласие не найдены' })
+  @ApiResponse({ status: 403, description: 'Нет доступа к этому профилю' })
+  async revokeConsent(
+    @CurrentUser('id') userId: string,
+    @Param('childId') childId: string,
+    @Param('type') consentType: string,
+  ) {
+    return this.usersService.revokeConsent(userId, childId, consentType);
+  }
+
+  @Get('me/children/:childId/consent')
+  @ApiOperation({ summary: 'Получить статус согласий для ребёнка' })
+  @ApiResponse({ status: 200, description: 'Список активных согласий' })
+  @ApiResponse({ status: 404, description: 'Ребенок не найден' })
+  @ApiResponse({ status: 403, description: 'Нет доступа к этому профилю' })
+  async getConsents(
+    @CurrentUser('id') userId: string,
+    @Param('childId') childId: string,
+  ) {
+    return this.usersService.getConsents(userId, childId);
   }
 }

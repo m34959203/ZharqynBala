@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { adminApi } from '@/lib/api';
+import api, { adminApi } from '@/lib/api';
 
 interface RecentUser {
   id: string;
@@ -31,6 +31,14 @@ interface DashboardStats {
   testsToday: number;
 }
 
+interface RiskZoneStats {
+  total: number;
+  green: number;
+  yellow: number;
+  red: number;
+  byCategory?: Record<string, { green: number; yellow: number; red: number }>;
+}
+
 interface AdminDashboardProps {
   userName: string;
 }
@@ -38,6 +46,7 @@ interface AdminDashboardProps {
 export default function AdminDashboard({ userName }: AdminDashboardProps) {
   const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
   const [recentPayments, setRecentPayments] = useState<RecentPayment[]>([]);
+  const [riskStats, setRiskStats] = useState<RiskZoneStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats>({
     totalUsers: 0,
@@ -74,6 +83,14 @@ export default function AdminDashboard({ userName }: AdminDashboardProps) {
           setRecentPayments(payments.slice(0, 4));
         } catch {
           setRecentPayments([]);
+        }
+
+        // Fetch risk zone stats
+        try {
+          const riskData = await api.get('/analytics/risk-zones');
+          setRiskStats(riskData.data);
+        } catch {
+          // Risk zone stats are optional
         }
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -220,6 +237,43 @@ export default function AdminDashboard({ userName }: AdminDashboardProps) {
           </div>
         </div>
       </div>
+
+      {/* Risk Zones Card */}
+      {riskStats && riskStats.total > 0 && (
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Зоны риска</h3>
+          <div className="flex flex-wrap gap-6">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-green-500" />
+              <span className="text-sm text-gray-700">Норма: <span className="font-semibold">{riskStats.green}</span></span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-yellow-500" />
+              <span className="text-sm text-gray-700">Внимание: <span className="font-semibold">{riskStats.yellow}</span></span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-red-500" />
+              <span className="text-sm text-gray-700">Риск: <span className="font-semibold">{riskStats.red}</span></span>
+            </div>
+          </div>
+          {riskStats.total > 0 && (
+            <div className="mt-4 w-full bg-gray-200 rounded-full h-3 flex overflow-hidden">
+              <div
+                className="bg-green-500 h-3"
+                style={{ width: `${(riskStats.green / riskStats.total) * 100}%` }}
+              />
+              <div
+                className="bg-yellow-500 h-3"
+                style={{ width: `${(riskStats.yellow / riskStats.total) * 100}%` }}
+              />
+              <div
+                className="bg-red-500 h-3"
+                style={{ width: `${(riskStats.red / riskStats.total) * 100}%` }}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Recent Users */}

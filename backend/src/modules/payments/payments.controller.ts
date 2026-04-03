@@ -4,6 +4,8 @@ import {
   Post,
   Body,
   Param,
+  Query,
+  Res,
   UseGuards,
   ParseUUIDPipe,
   ForbiddenException,
@@ -14,6 +16,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { Response } from 'express';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -51,6 +54,97 @@ export class PaymentsController {
     @CurrentUser('id') userId: string,
   ): Promise<PaymentHistoryDto> {
     return this.paymentsService.getPaymentHistory(userId);
+  }
+
+  @Get('status/:id')
+  @Public()
+  @ApiOperation({ summary: 'Get payment status (public, for return URL)' })
+  @ApiResponse({ status: 200, type: PaymentResponseDto })
+  async getPaymentStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<PaymentResponseDto> {
+    return this.paymentsService.getPaymentPublic(id);
+  }
+
+  @Get('sandbox/pay')
+  @Public()
+  @ApiOperation({ summary: 'Sandbox payment page (dev only)' })
+  async sandboxPay(
+    @Query('orderId') orderId: string,
+    @Query('amount') amount: string,
+    @Res() res: Response,
+  ) {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(404).json({ message: 'Not found' });
+    }
+
+    const html = `<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kaspi Pay Sandbox</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f0f0f0; }
+    .card { background: white; padding: 2.5rem; border-radius: 1rem; box-shadow: 0 4px 24px rgba(0,0,0,0.1); text-align: center; max-width: 420px; width: 90%; }
+    .logo { font-size: 2rem; font-weight: 700; color: #FF6900; margin-bottom: 0.5rem; }
+    .badge { display: inline-block; background: #fff3e0; color: #e65100; padding: 2px 10px; border-radius: 4px; font-size: 12px; margin-bottom: 1.5rem; }
+    .info { color: #666; margin-bottom: 0.5rem; font-size: 14px; }
+    .amount { font-size: 2rem; font-weight: 700; color: #1a1a1a; margin: 1rem 0 1.5rem; }
+    .amount span { font-size: 1rem; color: #888; }
+    .btn { display: inline-block; width: 100%; background: #FF6900; color: white; border: none; padding: 14px 32px; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+    .btn:hover { background: #e55f00; }
+    .btn-cancel { background: #eee; color: #666; margin-top: 10px; }
+    .btn-cancel:hover { background: #ddd; }
+    .divider { border-top: 1px solid #eee; margin: 1.5rem 0; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">Kaspi Pay</div>
+    <div class="badge">SANDBOX MODE</div>
+    <p class="info">Заказ: ${orderId}</p>
+    <div class="amount">${Number(amount).toLocaleString('ru-RU')} <span>KZT</span></div>
+    <form method="POST" action="/api/v1/payments/sandbox/webhook">
+      <input type="hidden" name="orderId" value="${orderId}" />
+      <input type="hidden" name="status" value="completed" />
+      <input type="hidden" name="amount" value="${amount}" />
+      <button type="submit" class="btn">Оплатить</button>
+    </form>
+    <div class="divider"></div>
+    <form method="POST" action="/api/v1/payments/sandbox/webhook">
+      <input type="hidden" name="orderId" value="${orderId}" />
+      <input type="hidden" name="status" value="failed" />
+      <input type="hidden" name="amount" value="${amount}" />
+      <button type="submit" class="btn btn-cancel">Отменить</button>
+    </form>
+  </div>
+</body>
+</html>`;
+
+    res.set('Content-Type', 'text/html');
+    return res.send(html);
+  }
+
+  @Post('sandbox/webhook')
+  @Public()
+  @ApiOperation({ summary: 'Sandbox webhook handler (dev only)' })
+  async sandboxWebhook(
+    @Body() body: { orderId: string; status: string; amount: string },
+    @Res() res: Response,
+  ) {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(404).json({ message: 'Not found' });
+    }
+
+    const redirectUrl = await this.paymentsService.handleSandboxWebhook(
+      body.orderId,
+      body.status,
+      body.amount,
+    );
+
+    return res.redirect(302, redirectUrl);
   }
 
   @Get(':id')

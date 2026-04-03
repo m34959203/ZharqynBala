@@ -20,3 +20,5 @@ export {
 } from './EmptyState';
 export { Spinner, LoadingOverlay, PageLoading, ButtonSpinner } from './Spinner';
 export { Alert, Disclaimer, CrisisWarning } from './Alert';
+export { RiskBadge } from './RiskBadge';
+export { ExportButton } from './ExportButton';

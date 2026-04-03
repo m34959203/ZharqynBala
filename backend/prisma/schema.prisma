@@ -50,6 +50,7 @@ model User {
   children      Child[]
   psychologist  Psychologist?
   school        School?
+  consentRecords ConsentRecord[]
 
   // Audit
   securityLogs  SecurityLog[]
@@ -123,6 +124,7 @@ model Child {
   consultations Consultation[]
   patientNotes  PatientNote[]
   cases         StudentCase[]
+  consentRecords ConsentRecord[]
 
   @@map("children")
   @@index([parentId])
@@ -886,4 +888,26 @@ model ScheduledEvent {
   class  SchoolClass? @relation(fields: [classId], references: [id])
 
   @@map("scheduled_events")
+}
+
+// ============================================
+// СОГЛАСИЕ НА ОБРАБОТКУ ДАННЫХ (PDPL)
+// ============================================
+
+model ConsentRecord {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  childId     String   @map("child_id")
+  consentType String   @map("consent_type") // "data_processing", "test_results", "psychologist_access"
+  granted     Boolean  @default(true)
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  grantedAt   DateTime @default(now()) @map("granted_at")
+  revokedAt   DateTime? @map("revoked_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  child Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, childId, consentType])
+  @@map("consent_records")
 }

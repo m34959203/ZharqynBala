@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { adminApi } from '@/lib/api';
+import { ExportButton } from '@/components/ui';
 
 interface User {
   id: string;
@@ -148,8 +149,13 @@ export default function AdminUsersPage() {
           </svg>
           Назад к дашборду
         </Link>
-        <h1 className="text-3xl font-bold text-gray-900">Пользователи</h1>
-        <p className="mt-2 text-gray-600">Управление пользователями платформы</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Пользователи</h1>
+            <p className="mt-2 text-gray-600">Управление пользователями платформы</p>
+          </div>
+          <ExportButton url="/export/users" filename="users.xlsx" label="Экспорт" />
+        </div>
       </div>
 
       {/* Stats */}

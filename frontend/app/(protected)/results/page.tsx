@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Result, categoryLabels, categoryColors, TestCategory } from '@/lib/types';
 import api from '@/lib/api';
+import { RiskBadge, ExportButton } from '@/components/ui';
 
 export default function ResultsPage() {
   const [results, setResults] = useState<Result[]>([]);
@@ -45,10 +46,17 @@ export default function ResultsPage() {
       {/* Header */}
       <div className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <h1 className="text-3xl font-bold text-gray-900">История результатов</h1>
-          <p className="mt-2 text-gray-600">
-            Просмотрите результаты пройденных тестов
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">История результатов</h1>
+              <p className="mt-2 text-gray-600">
+                Просмотрите результаты пройденных тестов
+              </p>
+            </div>
+            {results.length > 0 && (
+              <ExportButton url="/export/results" filename="results.xlsx" label="Скачать Excel" />
+            )}
+          </div>
         </div>
       </div>
 
@@ -108,6 +116,7 @@ export default function ResultsPage() {
                             result.testCategory}
                         </span>
                       )}
+                      {result.riskZone && <RiskBadge zone={result.riskZone} size="sm" />}
                       <span className="text-sm text-gray-500">
                         {new Date(result.createdAt).toLocaleDateString('ru-RU', {
                           day: 'numeric',

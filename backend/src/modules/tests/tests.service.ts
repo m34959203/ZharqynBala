@@ -154,6 +154,22 @@ export class TestsService {
       throw new ForbiddenException('Child not found or does not belong to you');
     }
 
+    // Check if parent has consented to data processing for this child (PDPL)
+    const consent = await this.prisma.consentRecord.findUnique({
+      where: {
+        userId_childId_consentType: {
+          userId,
+          childId: dto.childId,
+          consentType: 'data_processing',
+        },
+      },
+    });
+    if (!consent?.granted) {
+      throw new BadRequestException(
+        'Необходимо согласие на обработку данных ребёнка',
+      );
+    }
+
     // Check if there's an existing in-progress session
     const existingSession = await this.prisma.testSession.findFirst({
       where: {

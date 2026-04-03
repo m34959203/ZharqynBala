@@ -239,6 +239,87 @@ export class UsersService {
     });
   }
 
+  // ========== CONSENT MANAGEMENT (PDPL) ==========
+
+  /**
+   * Предоставить согласие на обработку данных ребёнка
+   */
+  async grantConsent(userId: string, childId: string, consentType: string, ip?: string, ua?: string) {
+    // Verify child belongs to user
+    const child = await this.prisma.child.findUnique({
+      where: { id: childId },
+    });
+
+    if (!child) {
+      throw new NotFoundException('Ребенок не найден');
+    }
+
+    if (child.parentId !== userId) {
+      throw new ForbiddenException('У вас нет доступа к этому профилю');
+    }
+
+    return this.prisma.consentRecord.upsert({
+      where: { userId_childId_consentType: { userId, childId, consentType } },
+      update: { granted: true, revokedAt: null, ipAddress: ip, userAgent: ua, grantedAt: new Date() },
+      create: { userId, childId, consentType, granted: true, ipAddress: ip, userAgent: ua },
+    });
+  }
+
+  /**
+   * Отозвать согласие на обработку данных ребёнка
+   */
+  async revokeConsent(userId: string, childId: string, consentType: string) {
+    // Verify child belongs to user
+    const child = await this.prisma.child.findUnique({
+      where: { id: childId },
+    });
+
+    if (!child) {
+      throw new NotFoundException('Ребенок не найден');
+    }
+
+    if (child.parentId !== userId) {
+      throw new ForbiddenException('У вас нет доступа к этому профилю');
+    }
+
+    return this.prisma.consentRecord.update({
+      where: { userId_childId_consentType: { userId, childId, consentType } },
+      data: { granted: false, revokedAt: new Date() },
+    });
+  }
+
+  /**
+   * Получить все активные согласия для ребёнка
+   */
+  async getConsents(userId: string, childId: string) {
+    // Verify child belongs to user
+    const child = await this.prisma.child.findUnique({
+      where: { id: childId },
+    });
+
+    if (!child) {
+      throw new NotFoundException('Ребенок не найден');
+    }
+
+    if (child.parentId !== userId) {
+      throw new ForbiddenException('У вас нет доступа к этому профилю');
+    }
+
+    return this.prisma.consentRecord.findMany({
+      where: { userId, childId, granted: true },
+    });
+  }
+
+  /**
+   * Проверить наличие согласия на обработку данных ребёнка
+   */
+  async hasConsent(userId: string, childId: string, consentType: string): Promise<boolean> {
+    const record = await this.prisma.consentRecord.findUnique({
+      where: { userId_childId_consentType: { userId, childId, consentType } },
+    });
+    return record?.granted === true;
+  }
+
   // ========== HELPERS ==========
 
   /**

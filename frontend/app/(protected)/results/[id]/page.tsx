@@ -11,7 +11,8 @@ import {
   SkeletonCard,
   Disclaimer,
   CrisisWarning,
-  EmptyStateError
+  EmptyStateError,
+  RiskBadge
 } from '@/components/ui';
 
 export default function ResultDetailPage() {
@@ -152,9 +153,12 @@ export default function ResultDetailPage() {
                     result.testCategory}
                 </span>
               )}
-              <h1 className="text-3xl font-bold text-gray-900">
-                {result.testTitle || 'Результат теста'}
-              </h1>
+              <div className="flex items-center gap-3">
+                <h1 className="text-3xl font-bold text-gray-900">
+                  {result.testTitle || 'Результат теста'}
+                </h1>
+                {result.riskZone && <RiskBadge zone={result.riskZone} size="lg" />}
+              </div>
               {result.childName && (
                 <p className="mt-2 text-gray-600">Ребёнок: {result.childName}</p>
               )}
@@ -189,6 +193,20 @@ export default function ResultDetailPage() {
         {result.aiInterpretation?.needSpecialist && (
           <div className="mb-6">
             <CrisisWarning onContactCrisis={handleContactPsychologist} />
+          </div>
+        )}
+
+        {/* Risk zone alerts */}
+        {result.riskZone === 'RED' && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <p className="text-red-800 font-medium">Требуется внимание специалиста</p>
+            <p className="text-red-600 text-sm mt-1">Результаты указывают на повышенный уровень риска. Рекомендуем обратиться к психологу.</p>
+          </div>
+        )}
+        {result.riskZone === 'YELLOW' && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+            <p className="text-yellow-800 font-medium">Рекомендуется наблюдение</p>
+            <p className="text-yellow-600 text-sm mt-1">Результаты находятся в пограничной зоне. Рекомендуем повторить тест через 2-4 недели.</p>
           </div>
         )}
 

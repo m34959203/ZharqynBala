@@ -24,12 +24,24 @@ const ALLOWED_PAYMENT_DOMAINS = [
 
 /**
  * Validates payment URL to prevent XSS attacks
- * Only allows redirects to known payment provider domains
+ * Only allows redirects to known payment provider domains or sandbox URLs
  */
 function isValidPaymentUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
-    // Only allow HTTPS for payment URLs
+
+    // In development, allow sandbox URLs (same origin or localhost)
+    if (process.env.NODE_ENV !== 'production') {
+      if (
+        parsed.hostname === 'localhost' ||
+        parsed.hostname === '127.0.0.1' ||
+        parsed.pathname.includes('/sandbox/pay')
+      ) {
+        return true;
+      }
+    }
+
+    // Only allow HTTPS for payment URLs in production
     if (parsed.protocol !== 'https:') {
       return false;
     }

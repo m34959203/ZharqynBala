@@ -18,6 +18,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
     { name: 'Главная', href: '/dashboard', icon: 'home' },
     { name: 'Расписание', href: '/schedule', icon: 'calendar' },
     { name: 'Клиенты', href: '/clients', icon: 'users' },
+    { name: 'Кейсы', href: '/cases', icon: 'document' },
     { name: 'Консультации', href: '/consultations', icon: 'video' },
     { name: 'Доход', href: '/earnings', icon: 'wallet' },
   ],
@@ -26,7 +27,9 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
     { name: 'Классы', href: '/classes', icon: 'building' },
     { name: 'Ученики', href: '/students', icon: 'users' },
     { name: 'Тестирование', href: '/testing', icon: 'clipboard' },
+    { name: 'Календарь', href: '/calendar', icon: 'calendar' },
     { name: 'Отчёты', href: '/reports', icon: 'document' },
+    { name: 'Буллинг', href: '/admin/bullying', icon: 'shield' },
   ],
   ADMIN: [
     { name: 'Dashboard', href: '/dashboard', icon: 'home' },
@@ -35,6 +38,8 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
     { name: 'Тесты', href: '/admin/tests', icon: 'clipboard' },
     { name: 'Платежи', href: '/admin/payments', icon: 'wallet' },
     { name: 'Аналитика', href: '/admin/analytics', icon: 'chart' },
+    { name: 'Кейсы', href: '/cases', icon: 'document' },
+    { name: 'Буллинг', href: '/admin/bullying', icon: 'shield' },
     { name: 'Настройки', href: '/admin/settings', icon: 'cog' },
   ],
 };

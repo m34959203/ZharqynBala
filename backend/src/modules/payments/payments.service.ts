@@ -13,6 +13,7 @@ import {
   PaymentHistoryDto,
   KaspiWebhookDto,
 } from './dto/payment.dto';
+import { KaspiService } from './kaspi.service';
 
 @Injectable()
 export class PaymentsService {
@@ -21,6 +22,7 @@ export class PaymentsService {
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
+    private kaspiService: KaspiService,
   ) {}
 
   async createPayment(
@@ -97,12 +99,21 @@ export class PaymentsService {
       },
     });
 
-    // Generate payment URL (mock for now)
-    const paymentUrl = this.generatePaymentUrl(payment.id, amount);
+    // Generate payment URL via Kaspi service
+    const frontendUrl = this.configService.get('FRONTEND_URL') || 'http://localhost:3400';
+    const backendUrl = this.configService.get('BACKEND_URL') || 'http://localhost:3500';
+
+    const kaspiResult = await this.kaspiService.createPayment({
+      orderId: payment.id,
+      amount: payment.amount,
+      description: `ZharqynBala - ${dto.paymentType}`,
+      returnUrl: `${frontendUrl}/payment/status?id=${payment.id}`,
+      callbackUrl: `${backendUrl}/api/v1/payments/webhook/kaspi`,
+    });
 
     return {
       ...this.mapToDto(payment),
-      paymentUrl,
+      paymentUrl: kaspiResult.paymentUrl,
     };
   }
 
@@ -121,6 +132,18 @@ export class PaymentsService {
   async getPayment(id: string, userId: string): Promise<PaymentResponseDto> {
     const payment = await this.prisma.payment.findFirst({
       where: { id, userId },
+    });
+
+    if (!payment) {
+      throw new NotFoundException('Payment not found');
+    }
+
+    return this.mapToDto(payment);
+  }
+
+  async getPaymentPublic(id: string): Promise<PaymentResponseDto> {
+    const payment = await this.prisma.payment.findUnique({
+      where: { id },
     });
 
     if (!payment) {
@@ -161,10 +184,52 @@ export class PaymentsService {
         },
       });
 
+      // Activate subscription if this is a subscription payment
+      if (payment.paymentType === PaymentType.SUBSCRIPTION) {
+        await this.kaspiService.activateSubscription(payment.userId, payment.relatedId ?? undefined);
+      }
+
       return { result: 0 };
     }
 
     return { result: 0 };
+  }
+
+  async handleSandboxWebhook(orderId: string, status: string, amount: string): Promise<string> {
+    this.logger.log(`[SANDBOX] Webhook: orderId=${orderId}, status=${status}, amount=${amount}`);
+
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!payment) {
+      throw new NotFoundException('Payment not found');
+    }
+
+    if (status === 'completed') {
+      await this.prisma.payment.update({
+        where: { id: payment.id },
+        data: {
+          status: TransactionStatus.COMPLETED,
+          completedAt: new Date(),
+        },
+      });
+
+      // Activate subscription if applicable
+      if (payment.paymentType === PaymentType.SUBSCRIPTION) {
+        await this.kaspiService.activateSubscription(payment.userId, payment.relatedId ?? undefined);
+      }
+    } else {
+      await this.prisma.payment.update({
+        where: { id: payment.id },
+        data: {
+          status: TransactionStatus.FAILED,
+        },
+      });
+    }
+
+    const frontendUrl = this.configService.get('FRONTEND_URL') || 'http://localhost:3400';
+    return `${frontendUrl}/payment/status?id=${payment.id}`;
   }
 
   // Simulate payment completion for development
@@ -186,15 +251,6 @@ export class PaymentsService {
     });
 
     return this.mapToDto(updated);
-  }
-
-  private generatePaymentUrl(paymentId: string, amount: number): string {
-    // In production, this would generate a real Kaspi Pay URL
-    // For now, return a mock URL
-    const baseUrl = this.configService.get('KASPI_PAYMENT_URL') ||
-      'https://pay.kaspi.kz/pay';
-
-    return `${baseUrl}?merchant=${this.configService.get('KASPI_MERCHANT_ID') || 'demo'}&order=${paymentId}&amount=${amount}`;
   }
 
   private mapToDto(payment: any): PaymentResponseDto {

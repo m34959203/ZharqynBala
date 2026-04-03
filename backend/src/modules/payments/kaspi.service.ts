@@ -1,199 +1,102 @@
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import * as crypto from 'crypto';
 
-interface KaspiPaymentRequest {
-  amount: number;
+export interface KaspiPaymentRequest {
   orderId: string;
+  amount: number;
   description: string;
   returnUrl: string;
   callbackUrl: string;
-  userId: string;
-  subscriptionType: 'MONTHLY' | 'YEARLY';
 }
 
-interface KaspiPaymentResponse {
-  paymentId: string;
-  redirectUrl: string;
-  status: 'PENDING' | 'SUCCESS' | 'FAILED';
+export interface KaspiPaymentResponse {
+  paymentUrl: string;
+  transactionId: string;
 }
 
-interface KaspiWebhookPayload {
-  paymentId: string;
+export interface KaspiWebhookPayload {
   orderId: string;
-  status: 'PAID' | 'CANCELLED' | 'EXPIRED' | 'FAILED';
-  amount: number;
-  paidAt?: string;
+  status: 'completed' | 'cancelled' | 'expired' | 'failed';
+  amount: string;
   signature: string;
-}
-
-// In-memory storage for payment metadata (would be in database in production)
-interface PaymentMetadata {
-  orderId: string;
-  externalId?: string;
-  subscriptionType: string;
-  description: string;
-  paidAt?: Date;
 }
 
 @Injectable()
 export class KaspiService {
   private readonly logger = new Logger(KaspiService.name);
-  private readonly apiUrl: string;
   private readonly merchantId: string;
-  private readonly secretKey: string;
-  private readonly isProduction: boolean;
-
-  // In-memory storage for payment metadata
-  private paymentMetadata: Map<string, PaymentMetadata> = new Map();
+  private readonly apiKey: string;
+  private readonly webhookSecret: string;
+  private readonly baseUrl: string;
+  private readonly isConfigured: boolean;
 
   constructor(
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
   ) {
-    this.isProduction = this.configService.get('NODE_ENV') === 'production';
-    this.apiUrl = this.isProduction
-      ? 'https://pay.kaspi.kz/api/v1'
-      : 'https://pay-test.kaspi.kz/api/v1';
-    this.merchantId = this.configService.get('KASPI_MERCHANT_ID') || '';
-    this.secretKey = this.configService.get('KASPI_SECRET_KEY') || '';
+    this.merchantId = this.configService.get<string>('KASPI_MERCHANT_ID') || '';
+    this.apiKey = this.configService.get<string>('KASPI_API_KEY') || '';
+    this.webhookSecret = this.configService.get<string>('KASPI_WEBHOOK_SECRET') || '';
+    this.baseUrl = this.configService.get<string>('KASPI_BASE_URL') || 'https://kaspi.kz/pay';
+    this.isConfigured = !!(this.merchantId && this.apiKey);
+
+    if (!this.isConfigured) {
+      this.logger.warn('Kaspi Pay is not configured. Using sandbox mode.');
+    }
   }
 
   async createPayment(request: KaspiPaymentRequest): Promise<KaspiPaymentResponse> {
-    this.logger.log(`Creating Kaspi payment for order: ${request.orderId}`);
-
-    try {
-      // Create payment record in database
-      const payment = await this.prisma.payment.create({
-        data: {
-          amount: request.amount,
-          status: 'PENDING' as const,
-          userId: request.userId,
-          paymentType: 'SUBSCRIPTION' as const,
-          provider: 'KASPI' as const,
-        },
-      });
-
-      // Store metadata separately
-      this.paymentMetadata.set(payment.id, {
-        orderId: request.orderId,
-        subscriptionType: request.subscriptionType,
-        description: request.description,
-      });
-
-      // Prepare request to Kaspi API
-      const payload = {
-        merchantId: this.merchantId,
-        orderId: request.orderId,
-        amount: request.amount,
-        description: request.description,
-        returnUrl: request.returnUrl,
-        callbackUrl: request.callbackUrl,
-        currency: 'KZT',
-        timestamp: new Date().toISOString(),
-      };
-
-      const signature = this.generateSignature(payload);
-
-      // In production, make actual API call
-      if (this.isProduction && this.merchantId && this.secretKey) {
-        const response = await fetch(`${this.apiUrl}/payments/create`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Merchant-Id': this.merchantId,
-            'X-Signature': signature,
-          },
-          body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-          throw new HttpException(
-            'Kaspi payment creation failed',
-            HttpStatus.BAD_GATEWAY,
-          );
-        }
-
-        const data = await response.json();
-
-        // Store external ID
-        const metadata = this.paymentMetadata.get(payment.id);
-        if (metadata) {
-          metadata.externalId = data.paymentId;
-        }
-
-        return {
-          paymentId: data.paymentId,
-          redirectUrl: data.redirectUrl,
-          status: 'PENDING',
-        };
-      }
-
-      // Test mode response
-      return {
-        paymentId: `test_${payment.id}`,
-        redirectUrl: `${this.apiUrl}/test-payment/${payment.id}`,
-        status: 'PENDING',
-      };
-    } catch (error) {
-      this.logger.error(`Failed to create Kaspi payment: ${error.message}`);
-      throw new HttpException(
-        'Payment creation failed',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+    if (!this.isConfigured) {
+      return this.createSandboxPayment(request);
     }
+
+    // Real Kaspi Pay integration
+    // Kaspi Pay uses a redirect-based flow:
+    // 1. Generate signed payment URL with merchant params
+    // 2. Redirect user to Kaspi Pay page
+    // 3. Kaspi sends webhook on payment completion
+    const params = new URLSearchParams({
+      merchant_id: this.merchantId,
+      order_id: request.orderId,
+      amount: request.amount.toString(),
+      currency: 'KZT',
+      description: request.description,
+      return_url: request.returnUrl,
+      callback_url: request.callbackUrl,
+    });
+
+    const signature = this.generateSignature(params.toString());
+    params.append('signature', signature);
+
+    this.logger.log(`Payment created: orderId=${request.orderId}, amount=${request.amount} KZT`);
+
+    return {
+      paymentUrl: `${this.baseUrl}/create?${params.toString()}`,
+      transactionId: request.orderId,
+    };
   }
 
-  async handleWebhook(payload: KaspiWebhookPayload): Promise<void> {
-    this.logger.log(`Received Kaspi webhook for order: ${payload.orderId}`);
-
-    // Verify signature
-    if (this.isProduction && !this.verifySignature(payload)) {
-      this.logger.warn('Invalid webhook signature');
-      throw new HttpException('Invalid signature', HttpStatus.UNAUTHORIZED);
+  verifyWebhookSignature(payload: string, signature: string): boolean {
+    if (!this.webhookSecret) {
+      this.logger.warn('Webhook secret not configured, skipping verification');
+      return this.configService.get('NODE_ENV') !== 'production';
     }
 
-    // Find payment by order ID from metadata
-    let paymentId: string | undefined;
-    for (const [id, meta] of this.paymentMetadata.entries()) {
-      if (meta.orderId === payload.orderId) {
-        paymentId = id;
-        break;
-      }
+    const expectedSignature = crypto
+      .createHmac('sha256', this.webhookSecret)
+      .update(payload)
+      .digest('hex');
+
+    try {
+      return crypto.timingSafeEqual(
+        Buffer.from(signature),
+        Buffer.from(expectedSignature),
+      );
+    } catch {
+      return false;
     }
-
-    if (!paymentId) {
-      this.logger.warn(`Payment not found for order: ${payload.orderId}`);
-      throw new HttpException('Payment not found', HttpStatus.NOT_FOUND);
-    }
-
-    const payment = await this.prisma.payment.findUnique({
-      where: { id: paymentId },
-    });
-
-    if (!payment) {
-      throw new HttpException('Payment not found', HttpStatus.NOT_FOUND);
-    }
-
-    // Update payment status
-    const status = this.mapKaspiStatus(payload.status) as any;
-    await this.prisma.payment.update({
-      where: { id: payment.id },
-      data: { status },
-    });
-
-    // Update metadata
-    const metadata = this.paymentMetadata.get(payment.id);
-    if (metadata && payload.paidAt) {
-      metadata.paidAt = new Date(payload.paidAt);
-    }
-
-    // If payment successful, activate subscription
-    if (status === 'COMPLETED') {
-      await this.activateSubscription(payment.userId, metadata?.subscriptionType);
-    }
-
-    this.logger.log(`Payment ${payment.id} updated to status: ${status}`);
   }
 
   async getPaymentStatus(paymentId: string): Promise<string> {
@@ -205,95 +108,15 @@ export class KaspiService {
       throw new HttpException('Payment not found', HttpStatus.NOT_FOUND);
     }
 
-    const metadata = this.paymentMetadata.get(paymentId);
-
-    // In production, also check with Kaspi API
-    if (this.isProduction && metadata?.externalId) {
-      try {
-        const signature = this.generateSignature({ paymentId: metadata.externalId });
-        const response = await fetch(
-          `${this.apiUrl}/payments/${metadata.externalId}/status`,
-          {
-            headers: {
-              'X-Merchant-Id': this.merchantId,
-              'X-Signature': signature,
-            },
-          },
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          return data.status;
-        }
-      } catch (error) {
-        this.logger.error(`Failed to check payment status: ${error.message}`);
-      }
-    }
-
     return payment.status;
   }
 
-  async refundPayment(paymentId: string, amount?: number): Promise<boolean> {
-    const payment = await this.prisma.payment.findUnique({
-      where: { id: paymentId },
-    });
-
-    if (!payment) {
-      throw new HttpException('Payment not found', HttpStatus.NOT_FOUND);
-    }
-
-    if (payment.status !== 'COMPLETED') {
-      throw new HttpException(
-        'Only completed payments can be refunded',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    const refundAmount = amount || payment.amount;
-    const metadata = this.paymentMetadata.get(paymentId);
-
-    if (this.isProduction && metadata?.externalId) {
-      const payload = {
-        paymentId: metadata.externalId,
-        amount: refundAmount,
-        timestamp: new Date().toISOString(),
-      };
-
-      const signature = this.generateSignature(payload);
-
-      const response = await fetch(`${this.apiUrl}/payments/refund`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Merchant-Id': this.merchantId,
-          'X-Signature': signature,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        throw new HttpException('Refund failed', HttpStatus.BAD_GATEWAY);
-      }
-    }
-
-    await this.prisma.payment.update({
-      where: { id: payment.id },
-      data: { status: 'REFUNDED' },
-    });
-
-    // Deactivate subscription
-    await this.deactivateSubscription(payment.userId);
-
-    return true;
-  }
-
-  private async activateSubscription(userId: string, subscriptionType?: string): Promise<void> {
+  async activateSubscription(userId: string, subscriptionType?: string): Promise<void> {
     const duration = subscriptionType === 'YEARLY' ? 365 : 30;
 
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + duration);
 
-    // Find existing subscription
     const existing = await this.prisma.subscription.findFirst({
       where: { userId },
     });
@@ -321,39 +144,24 @@ export class KaspiService {
     this.logger.log(`Subscription activated for user: ${userId}`);
   }
 
-  private async deactivateSubscription(userId: string): Promise<void> {
-    await this.prisma.subscription.updateMany({
-      where: { userId },
-      data: { isActive: false },
-    });
-  }
-
-  private generateSignature(data: any): string {
-    const crypto = require('crypto');
-    const sortedData = Object.keys(data)
-      .sort()
-      .map((key) => `${key}=${data[key]}`)
-      .join('&');
-
+  private generateSignature(data: string): string {
     return crypto
-      .createHmac('sha256', this.secretKey)
-      .update(sortedData)
+      .createHmac('sha256', this.apiKey)
+      .update(data)
       .digest('hex');
   }
 
-  private verifySignature(payload: KaspiWebhookPayload): boolean {
-    const { signature, ...data } = payload;
-    const expectedSignature = this.generateSignature(data);
-    return signature === expectedSignature;
-  }
+  private createSandboxPayment(request: KaspiPaymentRequest): KaspiPaymentResponse {
+    this.logger.log(`[SANDBOX] Payment created: orderId=${request.orderId}, amount=${request.amount} KZT`);
 
-  private mapKaspiStatus(kaspiStatus: string): string {
-    const statusMap: Record<string, string> = {
-      PAID: 'COMPLETED',
-      CANCELLED: 'CANCELLED',
-      EXPIRED: 'EXPIRED',
-      FAILED: 'FAILED',
+    // In sandbox mode, return a URL that points to our own sandbox endpoint
+    // This simulates the Kaspi redirect flow for development
+    const backendUrl = this.configService.get('BACKEND_URL') || 'http://localhost:3500';
+    const sandboxUrl = `${backendUrl}/api/v1/payments/sandbox/pay?orderId=${request.orderId}&amount=${request.amount}`;
+
+    return {
+      paymentUrl: sandboxUrl,
+      transactionId: `sandbox-${request.orderId}`,
     };
-    return statusMap[kaspiStatus] || 'PENDING';
   }
 }

@@ -70,6 +70,7 @@ export interface Result {
   testCategory?: string;
   scoringType?: 'percentage' | 'absolute';
   childName?: string;
+  riskZone?: 'RED' | 'YELLOW' | 'GREEN';
 }
 
 export interface ResultDetail extends Result {
