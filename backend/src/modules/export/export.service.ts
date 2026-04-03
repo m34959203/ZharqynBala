@@ -8,6 +8,60 @@ export class ExportService {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  async exportUserResults(userId: string): Promise<Buffer> {
+    const children = await this.prisma.child.findMany({
+      where: { parentId: userId },
+      include: {
+        testSessions: {
+          where: { status: 'COMPLETED' },
+          include: { test: true, result: true },
+          orderBy: { completedAt: 'desc' },
+        },
+      },
+    });
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'ZharqynBala';
+    wb.created = new Date();
+    const ws = wb.addWorksheet('Результаты');
+
+    ws.columns = [
+      { header: 'Ребёнок', key: 'child', width: 20 },
+      { header: 'Тест', key: 'test', width: 35 },
+      { header: 'Категория', key: 'category', width: 18 },
+      { header: 'Балл', key: 'score', width: 10 },
+      { header: 'Макс', key: 'maxScore', width: 10 },
+      { header: 'Процент', key: 'percentage', width: 12 },
+      { header: 'Интерпретация', key: 'interpretation', width: 40 },
+      { header: 'Дата', key: 'date', width: 15 },
+    ];
+
+    ws.getRow(1).font = { bold: true };
+    ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3B82F6' } };
+    ws.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+
+    for (const child of children) {
+      for (const session of child.testSessions) {
+        if (!session.result) continue;
+        const pct = session.result.maxScore > 0
+          ? Math.round((session.result.totalScore / session.result.maxScore) * 100)
+          : 0;
+        ws.addRow({
+          child: `${child.firstName} ${child.lastName}`,
+          test: session.test.titleRu,
+          category: session.test.category,
+          score: session.result.totalScore,
+          maxScore: session.result.maxScore,
+          percentage: `${pct}%`,
+          interpretation: session.result.interpretation,
+          date: session.completedAt?.toLocaleDateString('ru-RU') || '',
+        });
+      }
+    }
+
+    return Buffer.from(await wb.xlsx.writeBuffer());
+  }
+
   async exportChildResults(childId: string): Promise<Buffer> {
     const child = await this.prisma.child.findUnique({
       where: { id: childId },

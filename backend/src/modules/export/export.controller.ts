@@ -5,6 +5,7 @@ import { ExportService } from './export.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @ApiTags('Export')
 @Controller('export')
@@ -12,6 +13,19 @@ import { Roles } from '../auth/decorators/roles.decorator';
 @ApiBearerAuth()
 export class ExportController {
   constructor(private readonly exportService: ExportService) {}
+
+  @Get('results')
+  @Roles('PARENT', 'PSYCHOLOGIST', 'ADMIN')
+  @ApiOperation({ summary: 'Export all results for current user as Excel' })
+  async exportMyResults(@CurrentUser('id') userId: string, @Res() res: Response) {
+    const buffer = await this.exportService.exportUserResults(userId);
+    res.set({
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="results-${new Date().toISOString().split('T')[0]}.xlsx"`,
+      'Content-Length': buffer.length,
+    });
+    res.end(buffer);
+  }
 
   @Get('child/:childId/results')
   @Roles('PARENT', 'PSYCHOLOGIST', 'ADMIN')
