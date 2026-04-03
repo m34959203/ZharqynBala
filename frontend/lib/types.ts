@@ -113,7 +113,9 @@ export type TestCategory =
   | 'ATTENTION'
   | 'EMOTIONS'
   | 'CAREER'
-  | 'SELF_ESTEEM';
+  | 'SELF_ESTEEM'
+  | 'SOCIAL'
+  | 'COGNITIVE';
 
 export type QuestionType =
   | 'MULTIPLE_CHOICE'
@@ -129,6 +131,8 @@ export const categoryLabels: Record<TestCategory, { ru: string; kz: string }> = 
   EMOTIONS: { ru: 'Эмоции', kz: 'Эмоциялар' },
   CAREER: { ru: 'Профориентация', kz: 'Мамандық таңдау' },
   SELF_ESTEEM: { ru: 'Самооценка', kz: 'Өзін-өзі бағалау' },
+  SOCIAL: { ru: 'Социальные навыки', kz: 'Әлеуметтік дағдылар' },
+  COGNITIVE: { ru: 'Когнитивное развитие', kz: 'Когнитивті даму' },
 };
 
 // Category colors
@@ -139,4 +143,6 @@ export const categoryColors: Record<TestCategory, string> = {
   EMOTIONS: 'bg-purple-100 text-purple-700',
   CAREER: 'bg-blue-100 text-blue-700',
   SELF_ESTEEM: 'bg-indigo-100 text-indigo-700',
+  SOCIAL: 'bg-teal-100 text-teal-700',
+  COGNITIVE: 'bg-cyan-100 text-cyan-700',
 };
