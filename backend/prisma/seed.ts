@@ -562,6 +562,511 @@ async function main() {
   }
 
   // ============================================
+  // ВОПРОСЫ ДЛЯ ТЕСТА ВНИМАНИЕ И КОНЦЕНТРАЦИЯ
+  // ============================================
+
+  const attentionQuestions = [
+    {
+      questionTextRu: 'Мне трудно сосредоточиться на уроке',
+      questionTextKz: 'Маған сабақта назар аудару қиын',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Никогда', textKz: 'Ешқашан', score: 1 },
+        { textRu: 'Редко', textKz: 'Сирек', score: 2 },
+        { textRu: 'Иногда', textKz: 'Кейде', score: 3 },
+        { textRu: 'Часто', textKz: 'Жиі', score: 4 },
+        { textRu: 'Всегда', textKz: 'Әрқашан', score: 5 },
+      ],
+    },
+    {
+      questionTextRu: 'Я отвлекаюсь на посторонние звуки',
+      questionTextKz: 'Мен бөтен дыбыстарға алаңдаймын',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Никогда', textKz: 'Ешқашан', score: 1 },
+        { textRu: 'Редко', textKz: 'Сирек', score: 2 },
+        { textRu: 'Иногда', textKz: 'Кейде', score: 3 },
+        { textRu: 'Часто', textKz: 'Жиі', score: 4 },
+        { textRu: 'Всегда', textKz: 'Әрқашан', score: 5 },
+      ],
+    },
+    {
+      questionTextRu: 'Я забываю что мне задали',
+      questionTextKz: 'Маған не тапсырғанын ұмытамын',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Никогда', textKz: 'Ешқашан', score: 1 },
+        { textRu: 'Редко', textKz: 'Сирек', score: 2 },
+        { textRu: 'Иногда', textKz: 'Кейде', score: 3 },
+        { textRu: 'Часто', textKz: 'Жиі', score: 4 },
+        { textRu: 'Всегда', textKz: 'Әрқашан', score: 5 },
+      ],
+    },
+    {
+      questionTextRu: 'Мне трудно дослушать учителя до конца',
+      questionTextKz: 'Мұғалімді соңына дейін тыңдау қиын',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Никогда', textKz: 'Ешқашан', score: 1 },
+        { textRu: 'Редко', textKz: 'Сирек', score: 2 },
+        { textRu: 'Иногда', textKz: 'Кейде', score: 3 },
+        { textRu: 'Часто', textKz: 'Жиі', score: 4 },
+        { textRu: 'Всегда', textKz: 'Әрқашан', score: 5 },
+      ],
+    },
+    {
+      questionTextRu: 'Я теряю вещи (ручки, тетради)',
+      questionTextKz: 'Мен заттарымды жоғалтамын',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Никогда', textKz: 'Ешқашан', score: 1 },
+        { textRu: 'Редко', textKz: 'Сирек', score: 2 },
+        { textRu: 'Иногда', textKz: 'Кейде', score: 3 },
+        { textRu: 'Часто', textKz: 'Жиі', score: 4 },
+        { textRu: 'Всегда', textKz: 'Әрқашан', score: 5 },
+      ],
+    },
+  ];
+
+  const attentionTest = await prisma.test.findUnique({ where: { id: 'test-attention-1' } });
+  if (attentionTest) {
+    for (let i = 0; i < attentionQuestions.length; i++) {
+      const q = attentionQuestions[i];
+      const question = await prisma.question.upsert({
+        where: { id: `attention-q-${i + 1}` },
+        update: {},
+        create: {
+          id: `attention-q-${i + 1}`,
+          testId: attentionTest.id,
+          questionTextRu: q.questionTextRu,
+          questionTextKz: q.questionTextKz,
+          questionType: q.questionType,
+          order: i + 1,
+          isRequired: true,
+        },
+      });
+
+      for (let j = 0; j < q.options.length; j++) {
+        const opt = q.options[j];
+        await prisma.answerOption.upsert({
+          where: { id: `attention-q${i + 1}-opt${j + 1}` },
+          update: {},
+          create: {
+            id: `attention-q${i + 1}-opt${j + 1}`,
+            questionId: question.id,
+            optionTextRu: opt.textRu,
+            optionTextKz: opt.textKz,
+            score: opt.score,
+            order: j + 1,
+          },
+        });
+      }
+    }
+    console.log('✅ Attention test questions created');
+  }
+
+  // ============================================
+  // ВОПРОСЫ ДЛЯ ТЕСТА ЭМОЦИОНАЛЬНОГО ИНТЕЛЛЕКТА
+  // ============================================
+
+  const emotionsQuestions = [
+    {
+      questionTextRu: 'Я понимаю свои чувства',
+      questionTextKz: 'Мен өз сезімдерімді түсінемін',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Никогда', textKz: 'Ешқашан', score: 1 },
+        { textRu: 'Редко', textKz: 'Сирек', score: 2 },
+        { textRu: 'Иногда', textKz: 'Кейде', score: 3 },
+        { textRu: 'Часто', textKz: 'Жиі', score: 4 },
+        { textRu: 'Всегда', textKz: 'Әрқашан', score: 5 },
+      ],
+    },
+    {
+      questionTextRu: 'Я могу управлять своим гневом',
+      questionTextKz: 'Мен ашуымды бақылай аламын',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Никогда', textKz: 'Ешқашан', score: 1 },
+        { textRu: 'Редко', textKz: 'Сирек', score: 2 },
+        { textRu: 'Иногда', textKz: 'Кейде', score: 3 },
+        { textRu: 'Часто', textKz: 'Жиі', score: 4 },
+        { textRu: 'Всегда', textKz: 'Әрқашан', score: 5 },
+      ],
+    },
+    {
+      questionTextRu: 'Я понимаю когда друг расстроен',
+      questionTextKz: 'Досым ренжігенін түсінемін',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Никогда', textKz: 'Ешқашан', score: 1 },
+        { textRu: 'Редко', textKz: 'Сирек', score: 2 },
+        { textRu: 'Иногда', textKz: 'Кейде', score: 3 },
+        { textRu: 'Часто', textKz: 'Жиі', score: 4 },
+        { textRu: 'Всегда', textKz: 'Әрқашан', score: 5 },
+      ],
+    },
+    {
+      questionTextRu: 'Я умею мирно решать конфликты',
+      questionTextKz: 'Мен дауды бейбіт жолмен шеше аламын',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Никогда', textKz: 'Ешқашан', score: 1 },
+        { textRu: 'Редко', textKz: 'Сирек', score: 2 },
+        { textRu: 'Иногда', textKz: 'Кейде', score: 3 },
+        { textRu: 'Часто', textKz: 'Жиі', score: 4 },
+        { textRu: 'Всегда', textKz: 'Әрқашан', score: 5 },
+      ],
+    },
+    {
+      questionTextRu: 'Я могу выразить свои эмоции словами',
+      questionTextKz: 'Мен эмоцияларымды сөзбен жеткізе аламын',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Никогда', textKz: 'Ешқашан', score: 1 },
+        { textRu: 'Редко', textKz: 'Сирек', score: 2 },
+        { textRu: 'Иногда', textKz: 'Кейде', score: 3 },
+        { textRu: 'Часто', textKz: 'Жиі', score: 4 },
+        { textRu: 'Всегда', textKz: 'Әрқашан', score: 5 },
+      ],
+    },
+  ];
+
+  const emotionsTest = await prisma.test.findUnique({ where: { id: 'test-emotions-1' } });
+  if (emotionsTest) {
+    for (let i = 0; i < emotionsQuestions.length; i++) {
+      const q = emotionsQuestions[i];
+      const question = await prisma.question.upsert({
+        where: { id: `emotions-q-${i + 1}` },
+        update: {},
+        create: {
+          id: `emotions-q-${i + 1}`,
+          testId: emotionsTest.id,
+          questionTextRu: q.questionTextRu,
+          questionTextKz: q.questionTextKz,
+          questionType: q.questionType,
+          order: i + 1,
+          isRequired: true,
+        },
+      });
+
+      for (let j = 0; j < q.options.length; j++) {
+        const opt = q.options[j];
+        await prisma.answerOption.upsert({
+          where: { id: `emotions-q${i + 1}-opt${j + 1}` },
+          update: {},
+          create: {
+            id: `emotions-q${i + 1}-opt${j + 1}`,
+            questionId: question.id,
+            optionTextRu: opt.textRu,
+            optionTextKz: opt.textKz,
+            score: opt.score,
+            order: j + 1,
+          },
+        });
+      }
+    }
+    console.log('✅ Emotions test questions created');
+  }
+
+  // ============================================
+  // ВОПРОСЫ ДЛЯ ТЕСТА СОЦИАЛЬНЫХ НАВЫКОВ
+  // ============================================
+
+  const socialQuestions = [
+    {
+      questionTextRu: 'Мне легко знакомиться с новыми людьми',
+      questionTextKz: 'Маған жаңа адамдармен танысу оңай',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Никогда', textKz: 'Ешқашан', score: 1 },
+        { textRu: 'Редко', textKz: 'Сирек', score: 2 },
+        { textRu: 'Иногда', textKz: 'Кейде', score: 3 },
+        { textRu: 'Часто', textKz: 'Жиі', score: 4 },
+        { textRu: 'Всегда', textKz: 'Әрқашан', score: 5 },
+      ],
+    },
+    {
+      questionTextRu: 'Я умею работать в команде',
+      questionTextKz: 'Мен командада жұмыс істей аламын',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Никогда', textKz: 'Ешқашан', score: 1 },
+        { textRu: 'Редко', textKz: 'Сирек', score: 2 },
+        { textRu: 'Иногда', textKz: 'Кейде', score: 3 },
+        { textRu: 'Часто', textKz: 'Жиі', score: 4 },
+        { textRu: 'Всегда', textKz: 'Әрқашан', score: 5 },
+      ],
+    },
+    {
+      questionTextRu: 'Я помогаю одноклассникам',
+      questionTextKz: 'Мен сыныптастарыма көмектесемін',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Никогда', textKz: 'Ешқашан', score: 1 },
+        { textRu: 'Редко', textKz: 'Сирек', score: 2 },
+        { textRu: 'Иногда', textKz: 'Кейде', score: 3 },
+        { textRu: 'Часто', textKz: 'Жиі', score: 4 },
+        { textRu: 'Всегда', textKz: 'Әрқашан', score: 5 },
+      ],
+    },
+    {
+      questionTextRu: 'Мне легко попросить о помощи',
+      questionTextKz: 'Маған көмек сұрау оңай',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Никогда', textKz: 'Ешқашан', score: 1 },
+        { textRu: 'Редко', textKz: 'Сирек', score: 2 },
+        { textRu: 'Иногда', textKz: 'Кейде', score: 3 },
+        { textRu: 'Часто', textKz: 'Жиі', score: 4 },
+        { textRu: 'Всегда', textKz: 'Әрқашан', score: 5 },
+      ],
+    },
+    {
+      questionTextRu: 'Я уважаю мнение других',
+      questionTextKz: 'Мен басқалардың пікірін құрметтеймін',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Никогда', textKz: 'Ешқашан', score: 1 },
+        { textRu: 'Редко', textKz: 'Сирек', score: 2 },
+        { textRu: 'Иногда', textKz: 'Кейде', score: 3 },
+        { textRu: 'Часто', textKz: 'Жиі', score: 4 },
+        { textRu: 'Всегда', textKz: 'Әрқашан', score: 5 },
+      ],
+    },
+  ];
+
+  const socialTest = await prisma.test.findUnique({ where: { id: 'test-social-1' } });
+  if (socialTest) {
+    for (let i = 0; i < socialQuestions.length; i++) {
+      const q = socialQuestions[i];
+      const question = await prisma.question.upsert({
+        where: { id: `social-q-${i + 1}` },
+        update: {},
+        create: {
+          id: `social-q-${i + 1}`,
+          testId: socialTest.id,
+          questionTextRu: q.questionTextRu,
+          questionTextKz: q.questionTextKz,
+          questionType: q.questionType,
+          order: i + 1,
+          isRequired: true,
+        },
+      });
+
+      for (let j = 0; j < q.options.length; j++) {
+        const opt = q.options[j];
+        await prisma.answerOption.upsert({
+          where: { id: `social-q${i + 1}-opt${j + 1}` },
+          update: {},
+          create: {
+            id: `social-q${i + 1}-opt${j + 1}`,
+            questionId: question.id,
+            optionTextRu: opt.textRu,
+            optionTextKz: opt.textKz,
+            score: opt.score,
+            order: j + 1,
+          },
+        });
+      }
+    }
+    console.log('✅ Social test questions created');
+  }
+
+  // ============================================
+  // ВОПРОСЫ ДЛЯ ТЕСТА СТРЕССОУСТОЙЧИВОСТИ
+  // ============================================
+
+  const stressQuestions = [
+    {
+      questionTextRu: 'Я чувствую напряжение перед контрольными',
+      questionTextKz: 'Бақылау алдында шиеленісті сеземін',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Никогда', textKz: 'Ешқашан', score: 0 },
+        { textRu: 'Иногда', textKz: 'Кейде', score: 1 },
+        { textRu: 'Часто', textKz: 'Жиі', score: 2 },
+        { textRu: 'Постоянно', textKz: 'Үнемі', score: 3 },
+      ],
+    },
+    {
+      questionTextRu: 'Мне трудно расслабиться после школы',
+      questionTextKz: 'Мектептен кейін демалу қиын',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Никогда', textKz: 'Ешқашан', score: 0 },
+        { textRu: 'Иногда', textKz: 'Кейде', score: 1 },
+        { textRu: 'Часто', textKz: 'Жиі', score: 2 },
+        { textRu: 'Постоянно', textKz: 'Үнемі', score: 3 },
+      ],
+    },
+    {
+      questionTextRu: 'У меня болит голова или живот от переживаний',
+      questionTextKz: 'Уайымнан басым немесе ішім ауырады',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Никогда', textKz: 'Ешқашан', score: 0 },
+        { textRu: 'Иногда', textKz: 'Кейде', score: 1 },
+        { textRu: 'Часто', textKz: 'Жиі', score: 2 },
+        { textRu: 'Постоянно', textKz: 'Үнемі', score: 3 },
+      ],
+    },
+    {
+      questionTextRu: 'Я плохо сплю из-за тревоги',
+      questionTextKz: 'Уайымнан жаман ұйықтаймын',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Никогда', textKz: 'Ешқашан', score: 0 },
+        { textRu: 'Иногда', textKz: 'Кейде', score: 1 },
+        { textRu: 'Часто', textKz: 'Жиі', score: 2 },
+        { textRu: 'Постоянно', textKz: 'Үнемі', score: 3 },
+      ],
+    },
+    {
+      questionTextRu: 'Мне трудно справляться с проблемами',
+      questionTextKz: 'Мәселелерді шешу маған қиын',
+      questionType: QuestionType.SCALE,
+      options: [
+        { textRu: 'Никогда', textKz: 'Ешқашан', score: 0 },
+        { textRu: 'Иногда', textKz: 'Кейде', score: 1 },
+        { textRu: 'Часто', textKz: 'Жиі', score: 2 },
+        { textRu: 'Постоянно', textKz: 'Үнемі', score: 3 },
+      ],
+    },
+  ];
+
+  const stressTest = await prisma.test.findUnique({ where: { id: 'test-stress-1' } });
+  if (stressTest) {
+    for (let i = 0; i < stressQuestions.length; i++) {
+      const q = stressQuestions[i];
+      const question = await prisma.question.upsert({
+        where: { id: `stress-q-${i + 1}` },
+        update: {},
+        create: {
+          id: `stress-q-${i + 1}`,
+          testId: stressTest.id,
+          questionTextRu: q.questionTextRu,
+          questionTextKz: q.questionTextKz,
+          questionType: q.questionType,
+          order: i + 1,
+          isRequired: true,
+        },
+      });
+
+      for (let j = 0; j < q.options.length; j++) {
+        const opt = q.options[j];
+        await prisma.answerOption.upsert({
+          where: { id: `stress-q${i + 1}-opt${j + 1}` },
+          update: {},
+          create: {
+            id: `stress-q${i + 1}-opt${j + 1}`,
+            questionId: question.id,
+            optionTextRu: opt.textRu,
+            optionTextKz: opt.textKz,
+            score: opt.score,
+            order: j + 1,
+          },
+        });
+      }
+    }
+    console.log('✅ Stress test questions created');
+  }
+
+  // ============================================
+  // ВОПРОСЫ ДЛЯ ТЕСТА СТИЛЯ ОБУЧЕНИЯ
+  // ============================================
+
+  const learningStyleQuestions = [
+    {
+      questionTextRu: 'Как тебе легче запоминать?',
+      questionTextKz: 'Саған қалай есте сақтау оңай?',
+      questionType: QuestionType.MULTIPLE_CHOICE,
+      options: [
+        { textRu: 'Прочитать', textKz: 'Оқу', score: 1 },
+        { textRu: 'Послушать', textKz: 'Тыңдау', score: 2 },
+        { textRu: 'Попробовать сделать', textKz: 'Істеп көру', score: 3 },
+      ],
+    },
+    {
+      questionTextRu: 'На уроке тебе помогает',
+      questionTextKz: 'Сабақта саған не көмектеседі?',
+      questionType: QuestionType.MULTIPLE_CHOICE,
+      options: [
+        { textRu: 'Таблицы и схемы', textKz: 'Кестелер мен сызбалар', score: 1 },
+        { textRu: 'Объяснения учителя', textKz: 'Мұғалімнің түсіндіруі', score: 2 },
+        { textRu: 'Практические задания', textKz: 'Тәжірибелік тапсырмалар', score: 3 },
+      ],
+    },
+    {
+      questionTextRu: 'В свободное время ты предпочитаешь',
+      questionTextKz: 'Бос уақытыңда нені таңдайсың?',
+      questionType: QuestionType.MULTIPLE_CHOICE,
+      options: [
+        { textRu: 'Читать/смотреть видео', textKz: 'Оқу/бейне көру', score: 1 },
+        { textRu: 'Слушать музыку/подкасты', textKz: 'Музыка/подкаст тыңдау', score: 2 },
+        { textRu: 'Спорт/рукоделие', textKz: 'Спорт/қолөнер', score: 3 },
+      ],
+    },
+    {
+      questionTextRu: 'Когда учишь новое слово ты',
+      questionTextKz: 'Жаңа сөзді үйренгенде',
+      questionType: QuestionType.MULTIPLE_CHOICE,
+      options: [
+        { textRu: 'Записываешь', textKz: 'Жазасың', score: 1 },
+        { textRu: 'Повторяешь вслух', textKz: 'Дауыстап қайталайсың', score: 2 },
+        { textRu: 'Используешь в предложении', textKz: 'Сөйлемде қолданасың', score: 3 },
+      ],
+    },
+    {
+      questionTextRu: 'Лучше всего ты понимаешь когда',
+      questionTextKz: 'Саған түсіну оңай, қашан',
+      questionType: QuestionType.MULTIPLE_CHOICE,
+      options: [
+        { textRu: 'Видишь картинку', textKz: 'Суретті көресің', score: 1 },
+        { textRu: 'Слышишь объяснение', textKz: 'Түсіндірмені естисің', score: 2 },
+        { textRu: 'Делаешь сам', textKz: 'Өзің жасайсың', score: 3 },
+      ],
+    },
+  ];
+
+  const learningStyleTest = await prisma.test.findUnique({ where: { id: 'test-learning-style-1' } });
+  if (learningStyleTest) {
+    for (let i = 0; i < learningStyleQuestions.length; i++) {
+      const q = learningStyleQuestions[i];
+      const question = await prisma.question.upsert({
+        where: { id: `learnstyle-q-${i + 1}` },
+        update: {},
+        create: {
+          id: `learnstyle-q-${i + 1}`,
+          testId: learningStyleTest.id,
+          questionTextRu: q.questionTextRu,
+          questionTextKz: q.questionTextKz,
+          questionType: q.questionType,
+          order: i + 1,
+          isRequired: true,
+        },
+      });
+
+      for (let j = 0; j < q.options.length; j++) {
+        const opt = q.options[j];
+        await prisma.answerOption.upsert({
+          where: { id: `learnstyle-q${i + 1}-opt${j + 1}` },
+          update: {},
+          create: {
+            id: `learnstyle-q${i + 1}-opt${j + 1}`,
+            questionId: question.id,
+            optionTextRu: opt.textRu,
+            optionTextKz: opt.textKz,
+            score: opt.score,
+            order: j + 1,
+          },
+        });
+      }
+    }
+    console.log('✅ Learning style test questions created');
+  }
+
+  // ============================================
   // ВАЛИДИРОВАННЫЕ ПСИХОЛОГИЧЕСКИЕ ТЕСТЫ
   // ============================================
   await seedValidatedTests(prisma);
