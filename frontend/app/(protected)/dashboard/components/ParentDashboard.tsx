@@ -126,83 +126,76 @@ export default function ParentDashboard({ userName }: ParentDashboardProps) {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
       {/* Welcome Header */}
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">
           Добро пожаловать, {userName}!
         </h1>
-        <p className="mt-1 text-gray-500">
+        <p className="mt-0.5 text-sm text-gray-400">
           Вот обзор активности ваших детей.
         </p>
       </div>
 
-      {/* 4 Stat Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white rounded-xl p-5 shadow-sm border">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
-              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Детей</p>
-              <p className="text-2xl font-bold text-gray-900">{children.length}</p>
-            </div>
+      {/* 4 Stat Cards — pill style like Stitch */}
+      <div className="flex flex-wrap gap-3 mb-8">
+        <div className="flex items-center gap-2.5 bg-white/80 backdrop-blur rounded-2xl px-5 py-3 shadow-sm">
+          <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center">
+            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-[11px] text-gray-400 leading-tight">Детей</p>
+            <p className="text-lg font-bold text-gray-900 leading-tight">{children.length}</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-5 shadow-sm border">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
-              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Пройдено тестов</p>
-              <p className="text-2xl font-bold text-gray-900">{totalTests}</p>
-            </div>
+        <div className="flex items-center gap-2.5 bg-white/80 backdrop-blur rounded-2xl px-5 py-3 shadow-sm">
+          <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center">
+            <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-[11px] text-gray-400 leading-tight">Пройдено тестов</p>
+            <p className="text-lg font-bold text-gray-900 leading-tight">{totalTests}</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-5 shadow-sm border">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
-              <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Средний балл</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {recentResults.length > 0 ? `${avgScore}%` : '\u2014'}
-              </p>
-            </div>
+        <div className="flex items-center gap-2.5 bg-white/80 backdrop-blur rounded-2xl px-5 py-3 shadow-sm">
+          <div className="w-9 h-9 rounded-full bg-purple-100 flex items-center justify-center">
+            <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-[11px] text-gray-400 leading-tight">Средний балл</p>
+            <p className="text-lg font-bold text-gray-900 leading-tight">
+              {recentResults.length > 0 ? `${avgScore}%` : '\u2014'}
+            </p>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-5 shadow-sm border">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
-              <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Консультации</p>
-              <p className="text-2xl font-bold text-gray-900">0</p>
-            </div>
+        <div className="flex items-center gap-2.5 bg-white/80 backdrop-blur rounded-2xl px-5 py-3 shadow-sm">
+          <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center">
+            <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-[11px] text-gray-400 leading-tight">Консультации</p>
+            <p className="text-lg font-bold text-gray-900 leading-tight">0</p>
           </div>
         </div>
       </div>
 
       {/* Two-column: Children + Recent Results */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-8">
         {/* Child Cards */}
         {loading ? (
-          <div className="bg-white rounded-xl p-6 shadow-sm border flex justify-center items-center min-h-[200px]">
+          <div className="bg-white/80 backdrop-blur rounded-2xl p-6 shadow-sm flex justify-center items-center min-h-[200px]">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600"></div>
           </div>
         ) : children.length > 0 ? (
@@ -211,9 +204,9 @@ export default function ParentDashboard({ userName }: ParentDashboardProps) {
               const childScore = child.averageScore !== undefined ? child.averageScore : 0;
               const age = getAge(child.birthDate);
               return (
-                <div key={child.id} className="bg-white rounded-xl p-6 shadow-sm border">
+                <div key={child.id} className="bg-white/80 backdrop-blur rounded-2xl p-6 shadow-sm">
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-full bg-pink-100 flex items-center justify-center text-2xl">
+                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-pink-200 to-purple-200 flex items-center justify-center text-2xl shadow-inner">
                       {child.gender === 'FEMALE' ? '\uD83D\uDC67' : '\uD83D\uDC66'}
                     </div>
                     <div>
@@ -227,7 +220,7 @@ export default function ParentDashboard({ userName }: ParentDashboardProps) {
                       <p className="text-sm font-medium text-gray-700">{childScore}%</p>
                     </div>
                     <div className="w-full h-2 bg-gray-100 rounded-full">
-                      <div className="h-2 bg-purple-600 rounded-full transition-all" style={{ width: `${childScore}%` }} />
+                      <div className="h-2 bg-gradient-to-r from-purple-500 to-violet-400 rounded-full transition-all" style={{ width: `${childScore}%` }} />
                     </div>
                   </div>
                   <div className="flex gap-3 mt-4">
@@ -249,7 +242,7 @@ export default function ParentDashboard({ userName }: ParentDashboardProps) {
             })}
           </>
         ) : (
-          <div className="bg-white rounded-xl p-6 shadow-sm border text-center">
+          <div className="bg-white/80 backdrop-blur rounded-2xl p-6 shadow-sm text-center">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -267,7 +260,7 @@ export default function ParentDashboard({ userName }: ParentDashboardProps) {
         )}
 
         {/* Recent Results */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border">
+        <div className="bg-white/80 backdrop-blur rounded-2xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900">Последние результаты</h3>
             <Link href="/results" className="text-sm text-purple-600 hover:text-purple-500 font-medium">
@@ -288,7 +281,7 @@ export default function ParentDashboard({ userName }: ParentDashboardProps) {
                     <span className="text-sm text-gray-700 truncate flex-1">{result.testTitle || 'Тест'}</span>
                     <div className="flex items-center gap-3 ml-4">
                       <div className="w-24 h-2 bg-gray-100 rounded-full">
-                        <div className="h-2 bg-purple-600 rounded-full" style={{ width: `${pct}%` }} />
+                        <div className="h-2 bg-gradient-to-r from-purple-500 to-violet-400 rounded-full" style={{ width: `${pct}%` }} />
                       </div>
                       <span className="text-sm font-medium text-gray-900 w-10 text-right">{pct}%</span>
                     </div>
@@ -305,7 +298,7 @@ export default function ParentDashboard({ userName }: ParentDashboardProps) {
       </div>
 
       {/* AI Recommendation */}
-      <div className="bg-gradient-to-r from-purple-600 to-purple-500 rounded-xl p-6 text-white">
+      <div className="bg-gradient-to-r from-purple-600 via-violet-500 to-purple-500 rounded-2xl p-6 text-white shadow-lg shadow-purple-200">
         <div className="flex items-start gap-4">
           <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
             <span className="text-lg">{'\uD83E\uDD16'}</span>
@@ -328,6 +321,7 @@ export default function ParentDashboard({ userName }: ParentDashboardProps) {
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 }
