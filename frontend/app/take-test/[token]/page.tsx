@@ -249,52 +249,73 @@ export default function TakeTestPage() {
             </div>
           ) : (
             <>
-              {/* Student Selection */}
-              <div className="bg-white rounded-xl shadow-sm p-5 mb-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Выберите своё имя</h2>
-                {availableStudents.length === 0 ? (
-                  <p className="text-gray-500 text-center py-4">Все ученики уже прошли тест</p>
-                ) : (
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {availableStudents.map((student) => (
-                      <button
-                        key={student.id}
-                        onClick={() => setSelectedStudent(student.id)}
-                        className={`w-full text-left px-4 py-3 rounded-lg border-2 transition-all ${
-                          selectedStudent === student.id
-                            ? 'border-indigo-600 bg-indigo-50'
-                            : 'border-gray-100 hover:border-gray-200'
-                        }`}
-                      >
-                        <span className="font-medium text-gray-900">
-                          {student.lastName} {student.firstName}
-                        </span>
-                      </button>
-                    ))}
+              {groupTest.anonymous ? (
+                /* Anonymous Mode */
+                <div className="bg-white rounded-xl shadow-sm p-6 mb-6 text-center">
+                  <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
                   </div>
-                )}
-
-                {completedStudents.length > 0 && (
-                  <div className="mt-4 pt-4 border-t">
-                    <p className="text-xs text-gray-400 mb-2">Уже прошли тест:</p>
-                    <div className="flex flex-wrap gap-1">
-                      {completedStudents.map((s) => (
-                        <span key={s.id} className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded">
-                          {s.lastName} {s.firstName}
-                        </span>
+                  <h2 className="text-lg font-semibold text-gray-900 mb-2">Анонимное тестирование</h2>
+                  <p className="text-gray-500 text-sm mb-1">Ваши ответы полностью анонимны.</p>
+                  <p className="text-gray-500 text-sm">Результаты видны только психологу школы в обобщённом виде.</p>
+                </div>
+              ) : (
+                /* Named Mode — Student Selection */
+                <div className="bg-white rounded-xl shadow-sm p-5 mb-6">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Выберите своё имя</h2>
+                  {availableStudents.length === 0 ? (
+                    <p className="text-gray-500 text-center py-4">Все ученики уже прошли тест</p>
+                  ) : (
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {availableStudents.map((student) => (
+                        <button
+                          key={student.id}
+                          onClick={() => setSelectedStudent(student.id)}
+                          className={`w-full text-left px-4 py-3 rounded-lg border-2 transition-all ${
+                            selectedStudent === student.id
+                              ? 'border-indigo-600 bg-indigo-50'
+                              : 'border-gray-100 hover:border-gray-200'
+                          }`}
+                        >
+                          <span className="font-medium text-gray-900">
+                            {student.lastName} {student.firstName}
+                          </span>
+                        </button>
                       ))}
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+
+                  {completedStudents.length > 0 && (
+                    <div className="mt-4 pt-4 border-t">
+                      <p className="text-xs text-gray-400 mb-2">Уже прошли тест:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {completedStudents.map((s) => (
+                          <span key={s.id} className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded">
+                            {s.lastName} {s.firstName}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Start Button */}
               <button
-                onClick={handleStartTest}
-                disabled={!selectedStudent}
+                onClick={() => {
+                  if (groupTest.anonymous) {
+                    setSelectedStudent(`anon-${Date.now()}`);
+                    handleStartTest();
+                  } else {
+                    handleStartTest();
+                  }
+                }}
+                disabled={!groupTest.anonymous && !selectedStudent}
                 className="w-full py-4 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-lg transition-colors"
               >
-                Начать тест
+                {groupTest.anonymous ? 'Начать анонимный тест' : 'Начать тест'}
               </button>
             </>
           )}

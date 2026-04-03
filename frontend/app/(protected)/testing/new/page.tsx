@@ -55,6 +55,7 @@ function NewTestingContent() {
     preselectedClassId ? [preselectedClassId] : []
   );
   const [deadline, setDeadline] = useState('');
+  const [anonymous, setAnonymous] = useState(false);
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -112,6 +113,7 @@ function NewTestingContent() {
               testId,
               classId,
               deadline: deadline || undefined,
+              anonymous,
             })
           );
         }
@@ -227,6 +229,21 @@ function NewTestingContent() {
               onChange={(e) => setDeadline(e.target.value)}
               className="w-full md:w-64 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
             />
+          </div>
+
+          <div className="mt-4">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={anonymous}
+                onChange={(e) => setAnonymous(e.target.checked)}
+                className="w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+              />
+              <div>
+                <span className="font-medium text-gray-900">Анонимное тестирование</span>
+                <p className="text-sm text-gray-500">Ученики не указывают своё имя. Результаты обезличены — видна только общая картина класса.</p>
+              </div>
+            </label>
           </div>
 
           <div className="mt-6 flex justify-end">

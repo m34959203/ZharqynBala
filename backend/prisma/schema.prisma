@@ -608,6 +608,7 @@ model GroupTest {
   testId          String      @map("test_id")
   test            Test        @relation(fields: [testId], references: [id])
 
+  anonymous       Boolean     @default(false)
   assignedAt      DateTime    @default(now()) @map("assigned_at")
   deadline        DateTime?
 

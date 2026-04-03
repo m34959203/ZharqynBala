@@ -367,6 +367,7 @@ export class SchoolsService {
     testId: string;
     classId: string;
     deadline?: string;
+    anonymous?: boolean;
   }): Promise<any> {
     const schoolClass = await this.prisma.schoolClass.findFirst({
       where: { id: data.classId, schoolId },
@@ -382,8 +383,9 @@ export class SchoolsService {
         schoolId,
         classId: data.classId,
         testId: data.testId,
+        anonymous: data.anonymous || false,
         deadline: data.deadline ? new Date(data.deadline) : null,
-        totalCount: schoolClass._count.students,
+        totalCount: data.anonymous ? 0 : schoolClass._count.students,
       },
       include: {
         test: true,

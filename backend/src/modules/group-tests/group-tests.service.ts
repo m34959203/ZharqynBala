@@ -89,14 +89,18 @@ export class GroupTestsService {
       className: `${groupTest.class.grade}-${groupTest.class.letter}`,
       deadline: groupTest.deadline,
       isExpired,
+      anonymous: groupTest.anonymous,
       completedCount: groupTest.completedCount,
       totalCount: groupTest.totalCount,
-      students: groupTest.class.students.map((s) => ({
-        id: s.id,
-        firstName: s.firstName,
-        lastName: s.lastName,
-        completed: completedStudentIds.includes(s.id),
-      })),
+      // In anonymous mode, don't send student list — anyone can take the test
+      students: groupTest.anonymous
+        ? []
+        : groupTest.class.students.map((s) => ({
+            id: s.id,
+            firstName: s.firstName,
+            lastName: s.lastName,
+            completed: completedStudentIds.includes(s.id),
+          })),
     };
   }
 
@@ -138,22 +142,25 @@ export class GroupTestsService {
       throw new BadRequestException('Срок тестирования истёк');
     }
 
-    // Check if student already completed
-    const results = ((groupTest.results as unknown) as StudentResult[]) || [];
-    if (results.some((r) => r.studentId === studentId)) {
-      throw new BadRequestException('Вы уже прошли этот тест');
-    }
+    // In anonymous mode, skip student validation
+    if (!groupTest.anonymous) {
+      // Check if student already completed
+      const results = ((groupTest.results as unknown) as StudentResult[]) || [];
+      if (results.some((r) => r.studentId === studentId)) {
+        throw new BadRequestException('Вы уже прошли этот тест');
+      }
 
-    // Verify student exists in this class
-    const student = await this.prisma.student.findFirst({
-      where: {
-        id: studentId,
-        classId: groupTest.classId,
-      },
-    });
+      // Verify student exists in this class
+      const student = await this.prisma.student.findFirst({
+        where: {
+          id: studentId,
+          classId: groupTest.classId,
+        },
+      });
 
-    if (!student) {
-      throw new NotFoundException('Ученик не найден в этом классе');
+      if (!student) {
+        throw new NotFoundException('Ученик не найден в этом классе');
+      }
     }
 
     return {
@@ -207,22 +214,25 @@ export class GroupTestsService {
       throw new BadRequestException('Срок тестирования истёк');
     }
 
-    // Check if already completed
     const existingResults = ((groupTest.results as unknown) as StudentResult[]) || [];
-    if (existingResults.some((r) => r.studentId === body.studentId)) {
-      throw new BadRequestException('Вы уже прошли этот тест');
-    }
 
-    // Verify student
-    const student = await this.prisma.student.findFirst({
-      where: {
-        id: body.studentId,
-        classId: groupTest.classId,
-      },
-    });
+    let studentName = 'Аноним';
+    if (!groupTest.anonymous) {
+      // Check if already completed
+      if (existingResults.some((r) => r.studentId === body.studentId)) {
+        throw new BadRequestException('Вы уже прошли этот тест');
+      }
 
-    if (!student) {
-      throw new NotFoundException('Ученик не найден в этом классе');
+      // Verify student
+      const student = await this.prisma.student.findFirst({
+        where: { id: body.studentId, classId: groupTest.classId },
+      });
+      if (!student) {
+        throw new NotFoundException('Ученик не найден в этом классе');
+      }
+      studentName = `${student.lastName} ${student.firstName}`;
+    } else {
+      studentName = `Аноним #${existingResults.length + 1}`;
     }
 
     // Calculate score
@@ -250,8 +260,8 @@ export class GroupTestsService {
 
     // Build result entry
     const newResult: StudentResult = {
-      studentId: body.studentId,
-      studentName: `${student.lastName} ${student.firstName}`,
+      studentId: groupTest.anonymous ? `anon-${existingResults.length + 1}` : body.studentId,
+      studentName,
       score: totalScore,
       maxScore,
       percentage,
