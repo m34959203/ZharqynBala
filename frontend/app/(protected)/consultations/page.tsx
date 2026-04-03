@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import api from '@/lib/api';
 import { Card, CardBody, Button, Skeleton, EmptyStateNoConsultations, EmptyState } from '@/components/ui';
 import { UserRole } from '@/types/auth';
 
@@ -157,26 +158,17 @@ function BookingModal({ psychologist, onClose, onSuccess }: BookingModalProps) {
     try {
       const scheduledAt = new Date(`${selectedSlot.date}T${selectedSlot.hour.toString().padStart(2, '0')}:00:00`).toISOString();
 
-      const response = await fetch('/api/consultations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const response = await api.post('/consultations', {
           psychologistId: psychologist.id,
           childId: selectedChild || undefined,
           scheduledAt,
           notes: notes || undefined,
-        }),
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Ошибка записи');
-      }
 
       onSuccess();
       onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Произошла ошибка');
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || 'Произошла ошибка');
     } finally {
       setLoading(false);
     }
@@ -693,20 +685,9 @@ export default function ConsultationsPage() {
 
     try {
       // For psychologists, use the psychologist endpoint
-      const psychologistParam = isPsychologist ? '&psychologist=true' : '';
-      const url = `/api/consultations?page=${page}&limit=${limit}${psychologistParam}`;
-      console.log('[ConsultationsPage] Fetching consultations from:', url, 'isPsychologist:', isPsychologist);
-
-      const response = await fetch(url);
-      console.log('[ConsultationsPage] Response status:', response.status);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('[ConsultationsPage] Error response:', errorData);
-        throw new Error(errorData.error || 'Не удалось загрузить консультации');
-      }
-
-      const data: ConsultationsResponse = await response.json();
+      const endpoint = isPsychologist ? '/consultations/psychologist' : '/consultations/my';
+      const response = await api.get(`${endpoint}?page=${page}&limit=${limit}`);
+      const data: ConsultationsResponse = response.data;
       console.log('[ConsultationsPage] Received consultations:', data);
       setConsultations(data.consultations || []);
       setTotal(data.total || 0);
