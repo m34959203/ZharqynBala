@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { useSchool } from '@/lib/useSchool';
+import { categoryLabels } from '@/lib/types';
 
 interface TestOption {
   id: string;
@@ -193,7 +194,7 @@ function NewTestingContent() {
                         {test.category && (
                           <>
                             <span>-</span>
-                            <span>{test.category}</span>
+                            <span>{categoryLabels[test.category as keyof typeof categoryLabels]?.ru || test.category}</span>
                           </>
                         )}
                         {test.ageMin && test.ageMax && (
