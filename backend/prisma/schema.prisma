@@ -163,6 +163,7 @@ model Psychologist {
   scheduleSlots     ScheduleSlot[]
   patientNotes      PatientNote[]
   cases             StudentCase[]
+  activityLogs      ActivityLog[]
 
   @@map("psychologists")
 }
@@ -888,6 +889,40 @@ model ScheduledEvent {
   class  SchoolClass? @relation(fields: [classId], references: [id])
 
   @@map("scheduled_events")
+}
+
+// ============================================
+// ЖУРНАЛ МЕРОПРИЯТИЙ ПСИХОЛОГА
+// ============================================
+
+enum ActivityType {
+  DIAGNOSTIC
+  CONSULTATION
+  CORRECTION
+  EDUCATION
+  METHODOLOGY
+  OTHER
+}
+
+model ActivityLog {
+  id             String       @id @default(cuid())
+  psychologistId String       @map("psychologist_id")
+  schoolId       String?      @map("school_id")
+  type           ActivityType
+  title          String
+  description    String?      @db.Text
+  date           DateTime
+  classGrade     Int?         @map("class_grade")
+  classLetter    String?      @map("class_letter")
+  studentsCount  Int?         @map("students_count")
+  duration       Int?         // minutes
+  result         String?      @db.Text
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  psychologist Psychologist @relation(fields: [psychologistId], references: [id], onDelete: Cascade)
+
+  @@map("activity_logs")
 }
 
 // ============================================

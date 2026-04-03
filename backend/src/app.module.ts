@@ -23,6 +23,7 @@ import { BullyingModule } from './modules/bullying/bullying.module';
 import { CasesModule } from './modules/cases/cases.module';
 import { ExportModule } from './modules/export/export.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
+import { JournalModule } from './modules/journal/journal.module';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { CalendarModule } from './modules/calendar/calendar.module';
     CasesModule,
     ExportModule,
     CalendarModule,
+    JournalModule,
   ],
 })
 export class AppModule {}

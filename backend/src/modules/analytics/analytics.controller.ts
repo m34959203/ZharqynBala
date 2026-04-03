@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AnalyticsService } from './analytics.service';
 
 @ApiTags('Analytics')
@@ -42,6 +43,17 @@ export class AnalyticsController {
     return this.analyticsService.getChildAnalytics(userId);
   }
 
+  @Get('risk-students')
+  @Roles('SCHOOL', 'PSYCHOLOGIST', 'ADMIN')
+  @ApiOperation({ summary: 'Get students in risk zones (RED/YELLOW)' })
+  async getRiskStudents(
+    @Query('schoolId') schoolId?: string,
+    @Query('riskZone') riskZone?: string,
+    @Query('category') category?: string,
+  ) {
+    return this.analyticsService.getRiskStudents({ schoolId, riskZone, category });
+  }
+
   @Get('risk-zones')
   @Roles('ADMIN', 'PSYCHOLOGIST')
   @ApiOperation({ summary: 'Get risk zone distribution statistics' })
@@ -56,6 +68,29 @@ export class AnalyticsController {
     return this.analyticsService.getRevenueAnalytics(
       months ? parseInt(months, 10) : 12,
     );
+  }
+
+  @Get('group')
+  @Roles('SCHOOL', 'ADMIN')
+  @ApiOperation({ summary: 'Get group analytics by class/grade for school (PEPU)' })
+  async getGroupAnalytics(
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') userRole: string,
+    @Query('schoolId') schoolId?: string,
+    @Query('classId') classId?: string,
+    @Query('grade') grade?: string,
+    @Query('quarter') quarter?: string,
+    @Query('category') category?: string,
+  ) {
+    return this.analyticsService.getGroupAnalytics({
+      userId,
+      userRole,
+      schoolId,
+      classId,
+      grade: grade ? parseInt(grade, 10) : undefined,
+      quarter: quarter ? parseInt(quarter, 10) : undefined,
+      category,
+    });
   }
 
   @Get('export')

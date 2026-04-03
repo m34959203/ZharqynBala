@@ -435,6 +435,82 @@ export class AnalyticsService {
     };
   }
 
+  async getRiskStudents(filters?: {
+    schoolId?: string;
+    riskZone?: string;
+    category?: string;
+  }): Promise<any[]> {
+    const riskZoneFilter: any = {};
+    if (filters?.riskZone === 'RED' || filters?.riskZone === 'YELLOW') {
+      riskZoneFilter.riskZone = filters.riskZone;
+    } else {
+      riskZoneFilter.riskZone = { in: ['RED', 'YELLOW'] };
+    }
+
+    const results = await this.prisma.result.findMany({
+      where: {
+        ...riskZoneFilter,
+        ...(filters?.category
+          ? { session: { test: { category: filters.category as any } } }
+          : {}),
+      },
+      include: {
+        session: {
+          include: {
+            test: {
+              select: {
+                titleRu: true,
+                category: true,
+              },
+            },
+            child: {
+              include: {
+                parent: {
+                  select: {
+                    email: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: [
+        { riskZone: 'asc' }, // RED comes before YELLOW alphabetically
+        { createdAt: 'desc' },
+      ],
+    });
+
+    // If schoolId filter is provided, filter by child's schoolName or parent's school association
+    let filtered = results;
+    if (filters?.schoolId) {
+      filtered = results.filter(
+        (r) => r.session.child.schoolName === filters.schoolId,
+      );
+    }
+
+    return filtered.map((r) => {
+      const child = r.session.child;
+      const age = this.calculateAge(child.birthDate);
+      const percentage = r.maxScore > 0 ? Math.round((r.totalScore / r.maxScore) * 100) : 0;
+
+      return {
+        childId: child.id,
+        childName: `${child.firstName} ${child.lastName}`,
+        age,
+        riskZone: r.riskZone,
+        testTitle: r.session.test.titleRu,
+        category: r.session.test.category,
+        score: r.totalScore,
+        maxScore: r.maxScore,
+        percentage,
+        date: r.createdAt.toISOString().slice(0, 10),
+        parentEmail: child.parent.email,
+        recommendation: r.recommendations || 'Рекомендуется консультация специалиста',
+      };
+    });
+  }
+
   async getRiskZoneStats(): Promise<any> {
     // Get all results with their test categories
     const results = await this.prisma.result.findMany({
@@ -480,6 +556,205 @@ export class AnalyticsService {
       yellow,
       red,
       byCategory,
+    };
+  }
+
+  async getGroupAnalytics(params: {
+    userId: string;
+    userRole: string;
+    schoolId?: string;
+    classId?: string;
+    grade?: number;
+    quarter?: number;
+    category?: string;
+  }): Promise<any> {
+    const { userId, userRole, schoolId, classId, grade, quarter, category } = params;
+    const emptyResult = {
+      totalStudents: 0,
+      testedStudents: 0,
+      participationRate: 0,
+      riskDistribution: { GREEN: 0, YELLOW: 0, RED: 0 },
+      byCategory: [],
+      byClass: [],
+    };
+
+    // Determine the school: SCHOOL role uses their own school, ADMIN can specify
+    let resolvedSchoolId = schoolId;
+    if (userRole === 'SCHOOL' && !resolvedSchoolId) {
+      const school = await this.prisma.school.findUnique({
+        where: { userId },
+        select: { id: true },
+      });
+      if (!school) return emptyResult;
+      resolvedSchoolId = school.id;
+    }
+
+    if (!resolvedSchoolId) return emptyResult;
+
+    // Build class filter
+    const classWhere: any = { schoolId: resolvedSchoolId };
+    if (classId) classWhere.id = classId;
+    if (grade) classWhere.grade = grade;
+
+    // Get all classes for the school (with students)
+    const classes = await this.prisma.schoolClass.findMany({
+      where: classWhere,
+      include: {
+        students: true,
+      },
+      orderBy: [{ grade: 'asc' }, { letter: 'asc' }],
+    });
+
+    // Quarter date ranges (Kazakhstan academic year)
+    let dateFrom: Date | undefined;
+    let dateTo: Date | undefined;
+    if (quarter) {
+      const now = new Date();
+      const year = now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1;
+      const quarterRanges: Record<number, [Date, Date]> = {
+        1: [new Date(year, 8, 1), new Date(year, 9, 25)],
+        2: [new Date(year, 10, 1), new Date(year, 11, 25)],
+        3: [new Date(year + 1, 0, 10), new Date(year + 1, 2, 15)],
+        4: [new Date(year + 1, 2, 25), new Date(year + 1, 4, 25)],
+      };
+      if (quarterRanges[quarter]) {
+        [dateFrom, dateTo] = quarterRanges[quarter];
+      }
+    }
+
+    // Collect all students
+    const allStudents: { id: string; firstName: string; lastName: string; birthDate: Date; classId: string }[] = [];
+    for (const cls of classes) {
+      for (const student of cls.students) {
+        allStudents.push(student);
+      }
+    }
+
+    if (allStudents.length === 0) return emptyResult;
+
+    // Find Children that match Students by name+birthdate (Students and Children are separate models)
+    const childrenMatches = await this.prisma.child.findMany({
+      where: {
+        OR: allStudents.map(s => ({
+          firstName: s.firstName,
+          lastName: s.lastName,
+          birthDate: s.birthDate,
+        })),
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        birthDate: true,
+        testSessions: {
+          where: {
+            status: 'COMPLETED',
+            ...(dateFrom && dateTo ? { completedAt: { gte: dateFrom, lte: dateTo } } : {}),
+            ...(category ? { test: { category: category as any } } : {}),
+          },
+          include: {
+            result: true,
+            test: { select: { category: true, titleRu: true } },
+          },
+        },
+      },
+    });
+
+    // Create lookup: "firstName|lastName|birthDate" -> child
+    const childLookup = new Map<string, typeof childrenMatches[0]>();
+    for (const child of childrenMatches) {
+      const key = `${child.firstName}|${child.lastName}|${child.birthDate.toISOString().slice(0, 10)}`;
+      childLookup.set(key, child);
+    }
+
+    // Aggregate data
+    let totalStudents = 0;
+    let testedStudents = 0;
+    const riskDistribution = { GREEN: 0, YELLOW: 0, RED: 0 };
+    const categoryStats = new Map<string, { category: string; totalScore: number; count: number; redCount: number }>();
+    const byClass: any[] = [];
+
+    for (const cls of classes) {
+      let classTested = 0;
+      let classScoreSum = 0;
+      let classScoreCount = 0;
+      let classRedCount = 0;
+
+      for (const student of cls.students) {
+        totalStudents++;
+        const key = `${student.firstName}|${student.lastName}|${student.birthDate.toISOString().slice(0, 10)}`;
+        const child = childLookup.get(key);
+
+        if (child && child.testSessions.length > 0) {
+          testedStudents++;
+          classTested++;
+
+          const sessionsWithResults = child.testSessions.filter(s => s.result);
+          let worstZone: 'GREEN' | 'YELLOW' | 'RED' = 'GREEN';
+
+          for (const session of sessionsWithResults) {
+            if (!session.result) continue;
+            const result = session.result;
+            const score = result.maxScore > 0 ? Math.round((result.totalScore / result.maxScore) * 100) : 0;
+            const zone = result.riskZone || 'GREEN';
+
+            classScoreSum += score;
+            classScoreCount++;
+
+            // Per-category stats
+            const cat = session.test.category;
+            const existing = categoryStats.get(cat) || { category: cat, totalScore: 0, count: 0, redCount: 0 };
+            existing.totalScore += score;
+            existing.count++;
+            if (zone === 'RED') existing.redCount++;
+            categoryStats.set(cat, existing);
+
+            if (zone === 'RED') worstZone = 'RED';
+            else if (zone === 'YELLOW' && worstZone !== 'RED') worstZone = 'YELLOW';
+          }
+
+          riskDistribution[worstZone]++;
+          if (worstZone === 'RED') classRedCount++;
+        }
+      }
+
+      byClass.push({
+        classId: cls.id,
+        grade: cls.grade,
+        letter: cls.letter,
+        students: cls.students.length,
+        tested: classTested,
+        avgScore: classScoreCount > 0 ? Math.round(classScoreSum / classScoreCount) : 0,
+        redCount: classRedCount,
+      });
+    }
+
+    const categoryNames: Record<string, string> = {
+      ANXIETY: 'Тревожность',
+      MOTIVATION: 'Мотивация',
+      ATTENTION: 'Внимание',
+      EMOTIONS: 'Эмоции',
+      CAREER: 'Профориентация',
+      SELF_ESTEEM: 'Самооценка',
+      SOCIAL: 'Социальные навыки',
+      COGNITIVE: 'Когнитивные навыки',
+    };
+
+    const byCategory = Array.from(categoryStats.values()).map(cat => ({
+      category: cat.category,
+      categoryName: categoryNames[cat.category] || cat.category,
+      avgScore: cat.count > 0 ? Math.round(cat.totalScore / cat.count) : 0,
+      tested: cat.count,
+      redCount: cat.redCount,
+    }));
+
+    return {
+      totalStudents,
+      testedStudents,
+      participationRate: totalStudents > 0 ? Math.round((testedStudents / totalStudents) * 100) : 0,
+      riskDistribution,
+      byCategory,
+      byClass,
     };
   }
 
