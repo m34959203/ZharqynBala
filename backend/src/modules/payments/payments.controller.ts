@@ -78,6 +78,12 @@ export class PaymentsController {
       return res.status(404).json({ message: 'Not found' });
     }
 
+    // Remove restrictive headers for sandbox page
+    res.removeHeader('Content-Security-Policy');
+    res.removeHeader('Cross-Origin-Opener-Policy');
+    res.removeHeader('Origin-Agent-Cluster');
+
+    const frontendUrl = process.env.FRONTEND_URL || 'http://100.118.110.5:3400';
     const html = `<!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -106,22 +112,28 @@ export class PaymentsController {
     <div class="badge">SANDBOX MODE</div>
     <p class="info">Заказ: ${orderId}</p>
     <div class="amount">${Number(amount).toLocaleString('ru-RU')} <span>KZT</span></div>
-    <button class="btn" onclick="pay('completed')">Оплатить</button>
+    <button class="btn" id="payBtn">Оплатить</button>
     <div class="divider"></div>
-    <button class="btn btn-cancel" onclick="pay('failed')">Отменить</button>
+    <button class="btn btn-cancel" id="cancelBtn">Отменить</button>
     <script>
-      function pay(status) {
-        fetch(window.location.origin + '/api/v1/payments/sandbox/webhook', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({orderId:'${orderId}',status:status,amount:'${amount}',signature:'sandbox'})
-        }).then(r => r.json()).then(d => {
-          if(d.redirectUrl) window.location.href = d.redirectUrl;
-          else window.location.href = '${process.env.FRONTEND_URL || 'http://100.118.110.5:3400'}/payment/status?id=${orderId}';
-        }).catch(() => {
-          window.location.href = '${process.env.FRONTEND_URL || 'http://100.118.110.5:3400'}/payment/status?id=${orderId}';
-        });
+      var webhookUrl = '/api/v1/payments/sandbox/webhook';
+      var statusUrl = '${frontendUrl}/payment/status?id=${orderId}';
+      function doPay(s) {
+        document.getElementById('payBtn').disabled = true;
+        document.getElementById('payBtn').textContent = 'Обработка...';
+        document.getElementById('cancelBtn').disabled = true;
+        var x = new XMLHttpRequest();
+        x.open('POST', webhookUrl, true);
+        x.setRequestHeader('Content-Type', 'application/json');
+        x.onload = function() {
+          try { var d = JSON.parse(x.responseText); window.location.href = d.redirectUrl || statusUrl; }
+          catch(e) { window.location.href = statusUrl; }
+        };
+        x.onerror = function() { window.location.href = statusUrl; };
+        x.send(JSON.stringify({orderId:'${orderId}',status:s,amount:'${amount}',signature:'sandbox'}));
       }
+      document.getElementById('payBtn').addEventListener('click', function(){ doPay('completed'); });
+      document.getElementById('cancelBtn').addEventListener('click', function(){ doPay('failed'); });
     </script>
   </div>
 </body>

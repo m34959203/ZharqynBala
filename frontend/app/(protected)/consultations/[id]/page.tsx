@@ -480,8 +480,9 @@ export default function ConsultationPage() {
           {/* Payment button for unpaid consultations */}
           {canPay && (
             <button
-              onClick={() => router.push(`/payment?consultationId=${consultation.id}`)}
-              className="inline-flex items-center gap-2 rounded-full bg-purple-600 px-6 py-3 font-medium text-white hover:bg-purple-700 shadow-lg shadow-purple-200 transition-all"
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`/payment?consultationId=${consultation.id}`); }}
+              className="inline-flex items-center gap-2 rounded-full bg-purple-600 px-6 py-3 font-medium text-white hover:bg-purple-700 shadow-lg shadow-purple-200 transition-all cursor-pointer z-10"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />

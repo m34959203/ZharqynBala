@@ -29,6 +29,8 @@ function PaymentStatusContent() {
   const [payment, setPayment] = useState<PaymentStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pollCount, setPollCount] = useState(0);
+  const [timedOut, setTimedOut] = useState(false);
 
   const fetchStatus = useCallback(async () => {
     if (!paymentId) {
@@ -41,9 +43,16 @@ function PaymentStatusContent() {
       const response = await api.get(`/payments/status/${paymentId}`);
       setPayment(response.data);
 
-      // If still pending, poll again in 3 seconds
+      // If still pending, poll again (max 20 attempts = 60 sec)
       if (response.data.status === 'PENDING') {
-        setTimeout(() => fetchStatus(), 3000);
+        setPollCount(prev => {
+          if (prev >= 20) {
+            setTimedOut(true);
+            return prev;
+          }
+          setTimeout(() => fetchStatus(), 3000);
+          return prev + 1;
+        });
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Платёж не найден');
@@ -114,20 +123,42 @@ function PaymentStatusContent() {
 
             {payment?.status === 'PENDING' && (
               <>
-                <Spinner size="xl" className="mx-auto mb-4" />
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Ожидание оплаты</h2>
-                <p className="text-gray-500 text-sm mb-1">
-                  {paymentTypeLabels[payment.paymentType] || payment.paymentType}
-                </p>
-                <p className="text-2xl font-bold text-gray-900 mb-4">
-                  {payment.amount.toLocaleString('ru-RU')} ₸
-                </p>
-                <p className="text-sm text-gray-500 mb-6">
-                  Если вы уже оплатили, подождите несколько секунд. Страница обновится автоматически.
-                </p>
-                <Button variant="outline" onClick={() => router.push('/payment')} className="w-full">
-                  Вернуться
-                </Button>
+                {timedOut ? (
+                  <>
+                    <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Оплата не подтверждена</h2>
+                    <p className="text-sm text-gray-500 mb-6">
+                      Статус платежа не обновился. Возможно, оплата ещё обрабатывается. Попробуйте обновить или повторить.
+                    </p>
+                    <div className="flex flex-col gap-3 w-full">
+                      <Button onClick={() => { setTimedOut(false); setPollCount(0); fetchStatus(); }} className="w-full">
+                        Проверить снова
+                      </Button>
+                      <Button variant="outline" onClick={() => router.back()} className="w-full">
+                        Вернуться
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Spinner size="xl" className="mx-auto mb-4" />
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Ожидание оплаты</h2>
+                    <p className="text-gray-500 text-sm mb-1">
+                      {paymentTypeLabels[payment.paymentType] || payment.paymentType}
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900 mb-4">
+                      {payment.amount.toLocaleString('ru-RU')} ₸
+                    </p>
+                    <p className="text-sm text-gray-500 mb-6">
+                      Если вы уже оплатили, подождите несколько секунд. Страница обновится автоматически.
+                    </p>
+                    <Button variant="outline" onClick={() => router.push('/payment')} className="w-full">
+                      Вернуться
+                    </Button>
+                  </>
+                )}
               </>
             )}
 
