@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import api from '@/lib/api';
 import dynamic from 'next/dynamic';
 
 // Динамический импорт компонента Jitsi (только на клиенте)
@@ -139,10 +140,8 @@ export default function ConsultationPage() {
 
   const fetchConsultation = useCallback(async () => {
     try {
-      const response = await fetch(`/api/consultations/${consultationId}`);
-      if (!response.ok) throw new Error('Ошибка загрузки');
-      const data = await response.json();
-      setConsultation(data);
+      const response = await api.get(`/consultations/${consultationId}`);
+      setConsultation(response.data);
     } catch (err) {
       setError('Не удалось загрузить консультацию');
       console.error(err);
@@ -153,13 +152,8 @@ export default function ConsultationPage() {
 
   const fetchJitsiConfig = useCallback(async () => {
     try {
-      const response = await fetch(`/api/consultations/${consultationId}/jitsi-config`);
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Ошибка загрузки конфигурации');
-      }
-      const data = await response.json();
-      setJitsiConfig(data);
+      const response = await api.get(`/consultations/${consultationId}/jitsi-config`);
+      setJitsiConfig(response.data);
     } catch (err) {
       console.error('Error fetching Jitsi config:', err);
     }
@@ -174,17 +168,21 @@ export default function ConsultationPage() {
   const handleAction = async (action: string, data?: object) => {
     setActionLoading(true);
     try {
-      const response = await fetch(`/api/consultations/${consultationId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, ...data }),
-      });
+      // Map actions to correct backend endpoints
+      const actionEndpoints: Record<string, { method: string; path: string }> = {
+        confirm: { method: 'put', path: `/consultations/${consultationId}/confirm` },
+        reject: { method: 'put', path: `/consultations/${consultationId}/reject` },
+        cancel: { method: 'put', path: `/consultations/${consultationId}/cancel` },
+        complete: { method: 'put', path: `/consultations/${consultationId}/complete` },
+        start: { method: 'put', path: `/consultations/${consultationId}/start` },
+        'no-show': { method: 'put', path: `/consultations/${consultationId}/no-show` },
+        rate: { method: 'put', path: `/consultations/${consultationId}/rate` },
+      };
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Ошибка операции');
-      }
+      const endpoint = actionEndpoints[action];
+      if (!endpoint) throw new Error(`Unknown action: ${action}`);
 
+      await api.put(endpoint.path, data || {});
       await fetchConsultation();
 
       // Если консультация начата, загружаем конфигурацию Jitsi
