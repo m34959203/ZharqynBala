@@ -1,24 +1,23 @@
-import { Catch, ArgumentsHost, HttpException, HttpStatus, Logger } from '@nestjs/common';
-import { BaseExceptionFilter } from '@nestjs/core';
+import { Catch, ArgumentsHost, HttpException, HttpStatus, ExceptionFilter, Logger } from '@nestjs/common';
 import { SentryService } from './sentry.service';
 
 @Catch()
-export class SentryExceptionFilter extends BaseExceptionFilter {
+export class SentryExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(SentryExceptionFilter.name);
 
-  constructor(private readonly sentryService: SentryService) {
-    super();
-  }
+  constructor(private readonly sentryService: SentryService) {}
 
   catch(exception: unknown, host: ArgumentsHost) {
+    const ctx = host.switchToHttp();
+    const response = ctx.getResponse();
+    const request = ctx.getRequest();
+
     const status = exception instanceof HttpException
       ? exception.getStatus()
       : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    // Only report server errors to Sentry (5xx), not client errors (4xx)
+    // Report 5xx errors to Sentry
     if (status >= 500 && exception instanceof Error) {
-      const ctx = host.switchToHttp();
-      const request = ctx.getRequest();
       this.sentryService.captureException(exception, {
         url: request.url,
         method: request.method,
@@ -27,6 +26,11 @@ export class SentryExceptionFilter extends BaseExceptionFilter {
       });
     }
 
-    super.catch(exception, host);
+    // Send response
+    const body = exception instanceof HttpException
+      ? exception.getResponse()
+      : { statusCode: status, message: 'Internal server error' };
+
+    response.status(status).json(body);
   }
 }
