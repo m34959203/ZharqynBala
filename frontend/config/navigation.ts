@@ -38,8 +38,6 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
     { name: 'Тесты', href: '/admin/tests', icon: 'clipboard' },
     { name: 'Платежи', href: '/admin/payments', icon: 'wallet' },
     { name: 'Аналитика', href: '/admin/analytics', icon: 'chart' },
-    { name: 'Кейсы', href: '/cases', icon: 'document' },
-    { name: 'Буллинг', href: '/admin/bullying', icon: 'shield' },
     { name: 'Настройки', href: '/admin/settings', icon: 'cog' },
   ],
 };
