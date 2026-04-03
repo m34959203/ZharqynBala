@@ -106,19 +106,23 @@ export class PaymentsController {
     <div class="badge">SANDBOX MODE</div>
     <p class="info">Заказ: ${orderId}</p>
     <div class="amount">${Number(amount).toLocaleString('ru-RU')} <span>KZT</span></div>
-    <form method="POST" action="/api/v1/payments/sandbox/webhook">
-      <input type="hidden" name="orderId" value="${orderId}" />
-      <input type="hidden" name="status" value="completed" />
-      <input type="hidden" name="amount" value="${amount}" />
-      <button type="submit" class="btn">Оплатить</button>
-    </form>
+    <button class="btn" onclick="pay('completed')">Оплатить</button>
     <div class="divider"></div>
-    <form method="POST" action="/api/v1/payments/sandbox/webhook">
-      <input type="hidden" name="orderId" value="${orderId}" />
-      <input type="hidden" name="status" value="failed" />
-      <input type="hidden" name="amount" value="${amount}" />
-      <button type="submit" class="btn btn-cancel">Отменить</button>
-    </form>
+    <button class="btn btn-cancel" onclick="pay('failed')">Отменить</button>
+    <script>
+      function pay(status) {
+        fetch(window.location.origin + '/api/v1/payments/sandbox/webhook', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({orderId:'${orderId}',status:status,amount:'${amount}',signature:'sandbox'})
+        }).then(r => r.json()).then(d => {
+          if(d.redirectUrl) window.location.href = d.redirectUrl;
+          else window.location.href = '${process.env.FRONTEND_URL || 'http://100.118.110.5:3400'}/payment/status?id=${orderId}';
+        }).catch(() => {
+          window.location.href = '${process.env.FRONTEND_URL || 'http://100.118.110.5:3400'}/payment/status?id=${orderId}';
+        });
+      }
+    </script>
   </div>
 </body>
 </html>`;
@@ -144,7 +148,7 @@ export class PaymentsController {
       body.amount,
     );
 
-    return res.redirect(302, redirectUrl);
+    return res.json({ success: true, redirectUrl });
   }
 
   @Get(':id')

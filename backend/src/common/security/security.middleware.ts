@@ -17,7 +17,7 @@ export class SecurityMiddleware implements NestMiddleware {
     // Content Security Policy
     const cspDirectives = [
       "default-src 'self'",
-      "script-src 'self'",
+      "script-src 'self' 'unsafe-inline'",
       "style-src 'self' https://fonts.googleapis.com",
       "img-src 'self' data: https:",
       "font-src 'self' https://fonts.gstatic.com",
@@ -25,7 +25,7 @@ export class SecurityMiddleware implements NestMiddleware {
       "frame-src https://meet.jit.si https://*.jitsi.net",
       "frame-ancestors 'none'",
       "base-uri 'self'",
-      "form-action 'self'",
+      "form-action 'self' http://100.118.110.5:* http://localhost:*",
     ];
     res.setHeader('Content-Security-Policy', cspDirectives.join('; '));
 
