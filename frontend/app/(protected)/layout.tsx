@@ -2,7 +2,6 @@
 
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import Cookies from 'js-cookie';
 import { navigationByRole, roleLabels, roleColors } from '@/config/navigation';
@@ -112,7 +111,7 @@ export default function ProtectedLayout({
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
       </div>
     );
   }
@@ -140,34 +139,29 @@ export default function ProtectedLayout({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm sticky top-0 z-50">
+      <nav className="bg-white border-b sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo */}
             <div className="flex items-center">
-              <Link href="/dashboard" className="flex items-center">
-                <Image
-                  src="/logo.png"
-                  alt="Жарқын Бала"
-                  width={120}
-                  height={40}
-                  className="h-10 w-auto"
-                  priority
-                />
+              <Link href="/dashboard" className="text-xl font-bold text-purple-600">
+                ZharqynBala
               </Link>
               <span className={`ml-3 px-2 py-1 text-xs font-medium rounded-full ${roleColors[userRole]}`}>
                 {roleLabels[userRole]}
               </span>
             </div>
 
+            {/* Navigation links */}
             <div className="hidden md:flex items-center space-x-1">
               {navigation.map((item) => (
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`flex items-center px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                     pathname === item.href || pathname.startsWith(item.href + '/')
-                      ? 'bg-indigo-100 text-indigo-700'
-                      : 'text-gray-600 hover:bg-gray-100'
+                      ? 'bg-purple-600 text-white'
+                      : 'text-gray-600 hover:bg-purple-50 hover:text-purple-600'
                   }`}
                 >
                   {icons[item.icon]}
@@ -176,23 +170,20 @@ export default function ProtectedLayout({
               ))}
             </div>
 
-            <div className="flex items-center space-x-4">
-              <div className="hidden md:flex items-center">
-                <Link href="/profile" className="flex items-center text-sm text-gray-600 hover:text-gray-900 mr-4">
-                  <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center mr-2">
-                    <span className="text-indigo-600 font-medium text-sm">
-                      {userName[0]?.toUpperCase()}
-                    </span>
-                  </div>
-                  <span className="max-w-[120px] truncate">{userName}</span>
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  Выйти
-                </button>
-              </div>
+            {/* User menu */}
+            <div className="flex items-center gap-3">
+              <Link href="/profile" className="hidden md:flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900">
+                <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-sm font-medium text-purple-600">
+                  {userName[0]?.toUpperCase()}
+                </div>
+                <span className="max-w-[120px] truncate">{userName}</span>
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="hidden md:block text-sm text-gray-500 hover:text-gray-700"
+              >
+                Выйти
+              </button>
 
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -210,56 +201,59 @@ export default function ProtectedLayout({
           </div>
         </div>
 
+        {/* Mobile navigation */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-gray-200 bg-white">
-            <div className="px-4 py-3 space-y-1">
+          <div className="md:hidden border-t overflow-x-auto">
+            <div className="flex px-4 py-2 space-x-2">
               {navigation.map((item) => (
                 <Link
                   key={item.name}
                   href={item.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium ${
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${
                     pathname === item.href || pathname.startsWith(item.href + '/')
-                      ? 'bg-indigo-100 text-indigo-700'
-                      : 'text-gray-600 hover:bg-gray-100'
+                      ? 'bg-purple-600 text-white'
+                      : 'text-gray-600 bg-gray-100'
                   }`}
                 >
-                  {icons[item.icon]}
-                  <span className="ml-2">{item.name}</span>
+                  {item.name}
                 </Link>
               ))}
-              <div className="pt-3 border-t border-gray-200">
-                <div className="flex items-center px-3 mb-2">
-                  <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center mr-2">
-                    <span className="text-indigo-600 font-medium text-sm">
-                      {userName[0]?.toUpperCase()}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{userName}</p>
-                    <p className="text-xs text-gray-500">{user.email}</p>
-                  </div>
+            </div>
+            <div className="px-4 py-3 border-t border-gray-200">
+              <div className="flex items-center mb-2">
+                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-2">
+                  <span className="text-purple-600 font-medium text-sm">
+                    {userName[0]?.toUpperCase()}
+                  </span>
                 </div>
-                <Link
-                  href="/profile"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
-                >
-                  Настройки профиля
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="w-full text-left px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg"
-                >
-                  Выйти
-                </button>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{userName}</p>
+                  <p className="text-xs text-gray-500">{user.email}</p>
+                </div>
               </div>
+              <Link
+                href="/profile"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
+              >
+                Настройки профиля
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="w-full text-left px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg"
+              >
+                Выйти
+              </button>
             </div>
           </div>
         )}
       </nav>
 
-      <main>{children}</main>
+      {/* Main content - full width */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {children}
+      </main>
     </div>
   );
 }

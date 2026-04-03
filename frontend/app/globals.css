@@ -3,6 +3,14 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --color-primary: #7f13ec;
+  --color-primary-light: #9333ea;
+  --color-primary-bg: #f3e8ff;
+  --color-primary-50: #faf5ff;
+  --color-primary-100: #f3e8ff;
+  --color-primary-500: #9333ea;
+  --color-primary-600: #7f13ec;
+  --color-primary-700: #6b21a8;
 }
 
 @theme inline {

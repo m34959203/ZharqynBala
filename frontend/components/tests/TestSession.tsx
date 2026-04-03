@@ -92,7 +92,7 @@ export function TestSession({
         </div>
         <div className="w-full bg-gray-200 rounded-full h-2">
           <div
-            className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+            className="bg-purple-600 h-2 rounded-full transition-all duration-300"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -116,7 +116,7 @@ export function TestSession({
           <textarea
             value={reviewMode ? (reviewEntry?.textAnswer || '') : textAnswer}
             onChange={(e) => !reviewMode && setTextAnswer(e.target.value)}
-            className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
             rows={4}
             placeholder="Введите ваш ответ..."
             readOnly={reviewMode}
@@ -134,7 +134,7 @@ export function TestSession({
                   disabled={reviewMode}
                   className={`w-full p-4 text-left rounded-lg border-2 transition-all duration-200 ${
                     isSelected
-                      ? 'ring-2 ring-blue-500 bg-blue-50 border-blue-500'
+                      ? 'ring-2 ring-purple-500 bg-purple-50 border-purple-500'
                       : hasSelection
                         ? 'border-gray-200 opacity-60 hover:opacity-80'
                         : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
@@ -144,7 +144,7 @@ export function TestSession({
                     <div
                       className={`w-5 h-5 rounded-full border-2 mr-3 flex items-center justify-center flex-shrink-0 ${
                         isSelected
-                          ? 'border-blue-500 bg-blue-500'
+                          ? 'border-purple-500 bg-purple-500'
                           : 'border-gray-300'
                       }`}
                     >
@@ -154,7 +154,7 @@ export function TestSession({
                         </svg>
                       )}
                     </div>
-                    <span className={isSelected ? 'text-blue-900 font-medium' : 'text-gray-900'}>
+                    <span className={isSelected ? 'text-purple-900 font-medium' : 'text-gray-900'}>
                       {option.optionTextRu}
                     </span>
                   </div>
@@ -189,7 +189,7 @@ export function TestSession({
             disabled={!canSubmit || isSubmitting}
             className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
               canSubmit && !isSubmitting
-                ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                ? 'bg-purple-600 text-white hover:bg-purple-700'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >
@@ -212,7 +212,7 @@ export function TestSession({
         {reviewMode && (
           <button
             onClick={onGoBack}
-            className="px-6 py-3 rounded-lg font-medium transition-all duration-200 bg-indigo-600 text-white hover:bg-indigo-700"
+            className="px-6 py-3 rounded-lg font-medium transition-all duration-200 bg-purple-600 text-white hover:bg-purple-700"
           >
             <span className="flex items-center">
               Вернуться к текущему вопросу
