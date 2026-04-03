@@ -278,6 +278,7 @@ export default function ConsultationPage() {
   const canConfirmOrReject = consultation.status === 'PENDING' && isPsychologist;
   const canMarkNoShow = consultation.status === 'IN_PROGRESS' && isPsychologist;
   const canRate = consultation.status === 'COMPLETED' && !isPsychologist;
+  const canPay = consultation.status === 'PENDING' && !isPsychologist && consultation.paymentStatus === 'PENDING' && consultation.price > 0;
   const canAddNotes = isPsychologist && ['IN_PROGRESS', 'COMPLETED'].includes(consultation.status);
 
   const openNoteModal = (note?: PatientNote) => {
@@ -429,7 +430,19 @@ export default function ConsultationPage() {
           </div>
           <div>
             <p className="text-sm text-gray-500">Стоимость</p>
-            <p className="font-medium text-gray-900">{consultation.price.toLocaleString()} тг</p>
+            <p className="font-medium text-gray-900">
+              {consultation.price > 0 ? `${consultation.price.toLocaleString()} ₸` : 'Бесплатно'}
+              {consultation.paymentStatus && consultation.price > 0 && (
+                <span className={`ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                  consultation.paymentStatus === 'PAID' ? 'bg-green-100 text-green-700' :
+                  consultation.paymentStatus === 'REFUNDED' ? 'bg-gray-100 text-gray-600' :
+                  'bg-amber-100 text-amber-700'
+                }`}>
+                  {consultation.paymentStatus === 'PAID' ? 'Оплачено' :
+                   consultation.paymentStatus === 'REFUNDED' ? 'Возврат' : 'Не оплачено'}
+                </span>
+              )}
+            </p>
           </div>
           {consultation.childName && (
             <div>
@@ -461,6 +474,19 @@ export default function ConsultationPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
               </svg>
               Присоединиться к видеозвонку
+            </button>
+          )}
+
+          {/* Payment button for unpaid consultations */}
+          {canPay && (
+            <button
+              onClick={() => router.push(`/payment?consultationId=${consultation.id}`)}
+              className="inline-flex items-center gap-2 rounded-full bg-purple-600 px-6 py-3 font-medium text-white hover:bg-purple-700 shadow-lg shadow-purple-200 transition-all"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              </svg>
+              Оплатить {consultation.price?.toLocaleString()} ₸
             </button>
           )}
 
