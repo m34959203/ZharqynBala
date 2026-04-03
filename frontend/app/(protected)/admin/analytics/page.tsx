@@ -56,8 +56,9 @@ export default function AdminAnalyticsPage() {
 
         setTestsByCategory(categories);
 
-        const avgScore = testsReport.length > 0
-          ? Math.round(testsReport.reduce((sum, t) => sum + (t.averageScore || 0), 0) / testsReport.length)
+        const completedTests = testsReport.filter((t: any) => t.completedSessions > 0);
+        const avgScore = completedTests.length > 0
+          ? Math.round(completedTests.reduce((sum: number, t: any) => sum + (t.averageScore || 0), 0) / completedTests.length)
           : 0;
 
         setStats({

@@ -552,7 +552,7 @@ export default function ProfilePage() {
                       <p className="font-medium text-gray-900">{info.plan}</p>
                       <p className="text-sm text-gray-500">{info.features.join(', ')}</p>
                     </div>
-                    <Button variant="outline">Улучшить план</Button>
+                    <Button variant="outline" onClick={() => alert('Функция подписок скоро будет доступна')}>Улучшить план</Button>
                   </div>
                 );
               })()}
