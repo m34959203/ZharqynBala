@@ -111,8 +111,10 @@ export class ResultsService {
       riskZone: result.riskZone || 'GREEN',
       pdfUrl: result.pdfUrl || undefined,
       createdAt: result.createdAt,
+      testId: result.session.testId,
       testTitle: result.session.test.titleRu,
       testCategory: result.session.test.category,
+      childId: result.session.childId,
       scoringType: test.scoringType || 'percentage',
       childName: `${result.session.child.firstName} ${result.session.child.lastName}`,
       answers: result.session.answers.map((a) => ({
@@ -321,6 +323,42 @@ export class ResultsService {
     return this.findOne(resultId, userId);
   }
 
+  async getTestHistory(testId: string, childId: string, userId: string) {
+    // Verify child belongs to user
+    const child = await this.prisma.child.findFirst({
+      where: { id: childId, parentId: userId },
+    });
+    if (!child) {
+      throw new NotFoundException('Child not found');
+    }
+
+    const results = await this.prisma.result.findMany({
+      where: {
+        session: {
+          testId,
+          childId,
+          status: 'COMPLETED',
+        },
+      },
+      include: {
+        session: { select: { completedAt: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return results.map((r) => ({
+      id: r.id,
+      date: r.session.completedAt || r.createdAt,
+      totalScore: r.totalScore,
+      maxScore: r.maxScore,
+      percentage:
+        r.maxScore > 0
+          ? Math.round((r.totalScore / r.maxScore) * 100)
+          : 0,
+      riskZone: r.riskZone,
+    }));
+  }
+
   private calculateAge(birthDate: Date): number {
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
@@ -341,6 +379,7 @@ export class ResultsService {
       id: result.id,
       sessionId: result.sessionId,
       testId: result.session?.testId || result.session?.test?.id,
+      childId: result.session?.childId || result.session?.child?.id,
       totalScore: result.totalScore,
       maxScore: result.maxScore,
       percentage,

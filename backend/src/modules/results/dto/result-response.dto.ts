@@ -33,17 +33,23 @@ export class ResultResponseDto {
 
   // Test info
   @ApiPropertyOptional()
+  testId?: string;
+
+  @ApiPropertyOptional()
   testTitle?: string;
 
   @ApiPropertyOptional()
   testCategory?: string;
 
-  @ApiPropertyOptional({ description: 'Scoring type: percentage or absolute' })
-  scoringType?: 'percentage' | 'absolute';
-
   // Child info
   @ApiPropertyOptional()
+  childId?: string;
+
+  @ApiPropertyOptional()
   childName?: string;
+
+  @ApiPropertyOptional({ description: 'Scoring type: percentage or absolute' })
+  scoringType?: 'percentage' | 'absolute';
 }
 
 export class ResultDetailDto extends ResultResponseDto {

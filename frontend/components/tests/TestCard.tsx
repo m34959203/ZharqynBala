@@ -6,15 +6,16 @@ import { Test, categoryLabels, categoryColors } from '@/lib/types';
 interface TestCardProps {
   test: Test;
   completedInfo?: { score: number; maxScore: number; date: string } | null;
+  ageWarning?: boolean;
 }
 
-export function TestCard({ test, completedInfo }: TestCardProps) {
+export function TestCard({ test, completedInfo, ageWarning }: TestCardProps) {
   const categoryLabel = categoryLabels[test.category]?.ru || test.category;
   const categoryColor = categoryColors[test.category] || 'bg-gray-100 text-gray-700';
 
   return (
     <Link href={`/tests/${test.id}`} className="block">
-    <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden cursor-pointer">
+    <div className={`bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden cursor-pointer ${ageWarning ? 'opacity-70' : ''}`}>
       <div className="p-6">
         <div className="flex items-start justify-between mb-4">
           <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${categoryColor}`}>
@@ -50,7 +51,7 @@ export function TestCard({ test, completedInfo }: TestCardProps) {
           </div>
         )}
 
-        <div className="flex items-center text-sm text-gray-500 mb-4 space-x-4">
+        <div className="flex flex-wrap items-center text-sm text-gray-500 mb-4 space-x-4">
           <span className="flex items-center">
             <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -72,6 +73,10 @@ export function TestCard({ test, completedInfo }: TestCardProps) {
             </span>
           )}
         </div>
+
+        {ageWarning && (
+          <p className="text-xs text-amber-600 mt-1">Возраст ребёнка вне рекомендуемого диапазона ({test.ageMin}-{test.ageMax} лет)</p>
+        )}
 
         <div className="flex items-center justify-between">
           <div className="text-lg font-bold">

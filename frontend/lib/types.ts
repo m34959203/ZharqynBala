@@ -67,10 +67,12 @@ export interface Result {
   recommendations: string;
   pdfUrl?: string;
   createdAt: string;
+  testId?: string;
   testTitle?: string;
   testCategory?: string;
-  scoringType?: 'percentage' | 'absolute';
+  childId?: string;
   childName?: string;
+  scoringType?: 'percentage' | 'absolute';
   riskZone?: 'RED' | 'YELLOW' | 'GREEN';
 }
 

@@ -67,6 +67,16 @@ export class ResultsController {
     return this.resultsService.findBySession(sessionId, userId);
   }
 
+  @Get('history/:testId/:childId')
+  @ApiOperation({ summary: 'Get result history for a test and child' })
+  async getHistory(
+    @Param('testId', ParseUUIDPipe) testId: string,
+    @Param('childId', ParseUUIDPipe) childId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.resultsService.getTestHistory(testId, childId, userId);
+  }
+
   @Get(':id/pdf')
   @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 requests per minute to prevent abuse

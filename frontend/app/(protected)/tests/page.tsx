@@ -12,6 +12,10 @@ export default function TestsPage() {
   const [selectedCategory, setSelectedCategory] = useState<TestCategory | 'ALL'>('ALL');
   const [search, setSearch] = useState('');
   const [completedTests, setCompletedTests] = useState<Record<string, { score: number; maxScore: number; date: string }>>({});
+  const [children, setChildren] = useState<any[]>([]);
+  const [selectedChildId, setSelectedChildId] = useState<string>('');
+  const [childAge, setChildAge] = useState<number | null>(null);
+  const [showAgeMatch, setShowAgeMatch] = useState(false);
 
   useEffect(() => {
     fetchTests();
@@ -40,6 +44,17 @@ export default function TestsPage() {
         }
         setCompletedTests(completed);
       } catch {}
+
+      try {
+        const childrenRes = await api.get('/users/me/children');
+        const childrenData = childrenRes.data || [];
+        setChildren(childrenData);
+        if (childrenData.length === 1) {
+          setSelectedChildId(childrenData[0].id);
+          const age = Math.floor((Date.now() - new Date(childrenData[0].birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+          setChildAge(age);
+        }
+      } catch {}
     } catch (err: any) {
       setError('Не удалось загрузить тесты');
       console.error(err);
@@ -53,7 +68,8 @@ export default function TestsPage() {
     const matchesSearch = !search ||
       test.titleRu.toLowerCase().includes(search.toLowerCase()) ||
       test.descriptionRu?.toLowerCase().includes(search.toLowerCase());
-    return matchesCategory && matchesSearch;
+    const matchesAge = !showAgeMatch || !childAge || (childAge >= test.ageMin && childAge <= test.ageMax);
+    return matchesCategory && matchesSearch && matchesAge;
   });
 
   const categories: (TestCategory | 'ALL')[] = [
@@ -103,6 +119,46 @@ export default function TestsPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </div>
+
+        {/* Child selector + age filter */}
+        {children.length > 0 && (
+          <div className="flex flex-wrap items-center gap-3 mb-4">
+            {children.length > 1 && (
+              <select
+                value={selectedChildId}
+                onChange={e => {
+                  setSelectedChildId(e.target.value);
+                  const child = children.find((c: any) => c.id === e.target.value);
+                  if (child) {
+                    const age = Math.floor((Date.now() - new Date(child.birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+                    setChildAge(age);
+                  } else {
+                    setChildAge(null);
+                  }
+                }}
+                className="border rounded-lg px-3 py-2 text-sm"
+              >
+                <option value="">Выберите ребёнка</option>
+                {children.map((c: any) => (
+                  <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>
+                ))}
+              </select>
+            )}
+            {childAge !== null && (
+              <>
+                <span className="text-sm text-gray-500">Возраст: {childAge} лет</span>
+                <button
+                  onClick={() => setShowAgeMatch(!showAgeMatch)}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                    showAgeMatch ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Подходит по возрасту
+                </button>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Category filter */}
         <div className="mb-8 overflow-x-auto">
@@ -158,7 +214,7 @@ export default function TestsPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredTests.map((test) => (
-              <TestCard key={test.id} test={test} completedInfo={completedTests[test.id] || null} />
+              <TestCard key={test.id} test={test} completedInfo={completedTests[test.id] || null} ageWarning={childAge !== null && (childAge < test.ageMin || childAge > test.ageMax)} />
             ))}
           </div>
         )}

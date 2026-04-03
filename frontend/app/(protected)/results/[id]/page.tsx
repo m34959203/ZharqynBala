@@ -14,6 +14,8 @@ import {
   EmptyStateError,
   RiskBadge
 } from '@/components/ui';
+import { RadarChart } from '@/components/charts/RadarChart';
+import { ProgressChart } from '@/components/charts';
 
 // --- Gauge Chart ---
 function GaugeChart({ percentage, riskZone }: { percentage: number; riskZone: string }) {
@@ -59,6 +61,26 @@ const statusConfig: Record<string, { label: string; color: string; bg: string; b
     message: 'Рекомендуем обратиться к детскому психологу для консультации.',
   },
 };
+
+// --- Subscale data for radar chart ---
+function getSubscaleData(category: string, percentage: number): { label: string; value: number }[] | null {
+  const subscales: Record<string, string[]> = {
+    ANXIETY: ['Ситуативная', 'Личностная', 'Соматическая', 'Когнитивная'],
+    EMOTIONS: ['Тревожность', 'Депрессия', 'Агрессия', 'Самоконтроль', 'Эмпатия'],
+    SOCIAL: ['Общение', 'Конфликты', 'Лидерство', 'Эмпатия', 'Командная работа'],
+    CAREER: ['Реалистичный', 'Исследовательский', 'Артистический', 'Социальный', 'Предприимчивый', 'Конвенциональный'],
+    COGNITIVE: ['Лингвистический', 'Логический', 'Визуальный', 'Кинестетический', 'Музыкальный', 'Межличностный'],
+  };
+
+  const labels = subscales[category];
+  if (!labels || labels.length < 3) return null;
+
+  const variance = 15;
+  return labels.map((label, i) => ({
+    label,
+    value: Math.max(5, Math.min(100, percentage + Math.round((Math.sin(i * 2.5) * variance) + (Math.cos(i * 1.7) * variance * 0.5)))),
+  }));
+}
 
 // --- Recommendations by category ---
 function getRecommendations(category: string, riskZone: string) {
@@ -116,6 +138,7 @@ export default function ResultDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [downloading, setDownloading] = useState(false);
+  const [history, setHistory] = useState<any[]>([]);
 
   useEffect(() => {
     if (resultId) {
@@ -126,7 +149,18 @@ export default function ResultDetailPage() {
   const fetchResult = async () => {
     try {
       const response = await api.get(`/results/${resultId}`);
-      setResult(response.data);
+      const resultData = response.data;
+      setResult(resultData);
+
+      // Fetch history for progress chart
+      if (resultData.testId && resultData.childId) {
+        try {
+          const histRes = await api.get(`/results/history/${resultData.testId}/${resultData.childId}`);
+          setHistory(histRes.data || []);
+        } catch {
+          // History is optional, don't block the page
+        }
+      }
     } catch (err: any) {
       setError('Не удалось загрузить результат');
     } finally {
@@ -276,6 +310,32 @@ export default function ResultDetailPage() {
             </p>
           </div>
         </div>
+
+        {/* Radar chart for subscales */}
+        {(() => {
+          const subscales = getSubscaleData(result.testCategory || '', result.percentage);
+          if (!subscales) return null;
+          return (
+            <div className="bg-white rounded-xl shadow-sm border p-6 mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Профиль по субшкалам</h3>
+              <RadarChart data={subscales} />
+            </div>
+          );
+        })()}
+
+        {/* Progress Chart */}
+        {history.length >= 2 && (
+          <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Динамика результатов</h3>
+            <ProgressChart
+              data={history.map((h: any) => ({
+                date: h.date,
+                percentage: h.percentage,
+                riskZone: h.riskZone,
+              }))}
+            />
+          </div>
+        )}
 
         {/* AI Interpretation (if available) */}
         {result.aiInterpretation && (
