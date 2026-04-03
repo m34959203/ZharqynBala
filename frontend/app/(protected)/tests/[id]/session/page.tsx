@@ -1,10 +1,17 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { TestSession as TestSessionComponent } from '@/components/tests/TestSession';
 import { TestSession, Question } from '@/lib/types';
 import api from '@/lib/api';
+
+interface AnswerHistoryEntry {
+  questionId: string;
+  answerOptionId: string;
+  textAnswer?: string;
+  question: Question;
+}
 
 function TestSessionContent() {
   const router = useRouter();
@@ -19,11 +26,56 @@ function TestSessionContent() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
+  // Completion screen state
+  const [completed, setCompleted] = useState(false);
+  const [resultId, setResultId] = useState<string | null>(null);
+
+  // Answer history for back navigation
+  const [answerHistory, setAnswerHistory] = useState<AnswerHistoryEntry[]>([]);
+
+  // Review mode: viewing a previous question (read-only)
+  const [reviewIndex, setReviewIndex] = useState<number | null>(null);
+
+  // Timer state
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+
   useEffect(() => {
     if (sessionId) {
       fetchSession();
     }
   }, [sessionId]);
+
+  // Timer countdown
+  useEffect(() => {
+    if (testSession?.durationMinutes && timeLeft === null) {
+      setTimeLeft(testSession.durationMinutes * 60);
+    }
+  }, [testSession?.durationMinutes]);
+
+  useEffect(() => {
+    if (timeLeft === null || timeLeft <= 0) return;
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev === null || prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeLeft !== null && timeLeft > 0]);
+
+  // Auto-submit when timer runs out
+  useEffect(() => {
+    if (timeLeft === 0 && !completed) {
+      // Time is up — if there's a selected answer we could submit, but safest
+      // is to just show a message. The backend may also enforce the time limit.
+      setError('Время вышло! Тест завершён автоматически.');
+    }
+  }, [timeLeft, completed]);
 
   const fetchSession = async () => {
     try {
@@ -41,7 +93,18 @@ function TestSessionContent() {
     answerOptionId: string,
     textAnswer?: string
   ) => {
-    if (!sessionId) return;
+    if (!sessionId || !testSession?.currentQuestion) return;
+
+    // Save to answer history before submitting
+    setAnswerHistory((prev) => [
+      ...prev,
+      {
+        questionId,
+        answerOptionId,
+        textAnswer,
+        question: testSession.currentQuestion!,
+      },
+    ]);
 
     try {
       setSubmitting(true);
@@ -52,8 +115,9 @@ function TestSessionContent() {
       });
 
       if (response.data.isComplete) {
-        // Test completed, redirect to results
-        router.push(`/results/${response.data.resultId}`);
+        // Test completed — show completion screen instead of immediate redirect
+        setResultId(response.data.resultId);
+        setCompleted(true);
       } else {
         // Update session with next question
         setTestSession((prev) =>
@@ -68,11 +132,28 @@ function TestSessionContent() {
         );
       }
     } catch (err: any) {
+      // Remove the last history entry since the answer failed
+      setAnswerHistory((prev) => prev.slice(0, -1));
       setError('Не удалось отправить ответ');
     } finally {
       setSubmitting(false);
     }
   };
+
+  const handleGoBack = useCallback(() => {
+    if (reviewIndex !== null) {
+      // Currently reviewing — go back to current question
+      setReviewIndex(null);
+    } else if (answerHistory.length > 0) {
+      // Go to review mode for the previous question
+      setReviewIndex(answerHistory.length - 1);
+    }
+  }, [reviewIndex, answerHistory.length]);
+
+  const handleGoBackFromReview = useCallback(() => {
+    // Return to current (live) question
+    setReviewIndex(null);
+  }, []);
 
   if (loading) {
     return (
@@ -116,15 +197,49 @@ function TestSessionContent() {
     );
   }
 
+  // Completion screen
+  if (completed) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Тест завершён!</h2>
+          <p className="text-gray-600 mb-8">Ваши ответы сохранены. Результаты готовы.</p>
+          <button
+            onClick={() => router.push(`/results/${resultId}`)}
+            className="w-full bg-blue-600 text-white rounded-xl py-4 font-semibold text-lg hover:bg-blue-700 transition-colors"
+          >
+            Посмотреть результаты
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Determine what to display: review mode or current question
+  const isReviewMode = reviewIndex !== null;
+  const displayQuestion = isReviewMode
+    ? answerHistory[reviewIndex].question
+    : testSession.currentQuestion;
+  const displayIndex = isReviewMode ? reviewIndex : testSession.currentQuestionIndex;
+
   return (
     <div className="min-h-screen bg-gray-50 py-12">
       <TestSessionComponent
-        question={testSession.currentQuestion}
-        currentIndex={testSession.currentQuestionIndex}
+        question={displayQuestion}
+        currentIndex={displayIndex}
         totalQuestions={testSession.totalQuestions}
         progress={testSession.progress}
         onAnswer={handleAnswer}
         isSubmitting={submitting}
+        timeLeft={timeLeft}
+        answerHistory={answerHistory}
+        onGoBack={isReviewMode ? handleGoBackFromReview : handleGoBack}
+        reviewMode={isReviewMode}
       />
     </div>
   );

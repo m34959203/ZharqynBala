@@ -10,6 +10,8 @@ export default function TestsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<TestCategory | 'ALL'>('ALL');
+  const [search, setSearch] = useState('');
+  const [completedTests, setCompletedTests] = useState<Record<string, { score: number; maxScore: number; date: string }>>({});
 
   useEffect(() => {
     fetchTests();
@@ -20,6 +22,23 @@ export default function TestsPage() {
       setLoading(true);
       const response = await api.get('/tests');
       setTests(response.data);
+
+      try {
+        const resultsRes = await api.get('/results');
+        const results = resultsRes.data || [];
+        const completed: Record<string, { score: number; maxScore: number; date: string }> = {};
+        for (const r of results) {
+          const testId = r.testId || r.session?.testId;
+          if (testId) {
+            completed[testId] = {
+              score: r.totalScore,
+              maxScore: r.maxScore,
+              date: r.createdAt,
+            };
+          }
+        }
+        setCompletedTests(completed);
+      } catch {}
     } catch (err: any) {
       setError('Не удалось загрузить тесты');
       console.error(err);
@@ -28,9 +47,13 @@ export default function TestsPage() {
     }
   };
 
-  const filteredTests = selectedCategory === 'ALL'
-    ? tests
-    : tests.filter((test) => test.category === selectedCategory);
+  const filteredTests = tests.filter((test) => {
+    const matchesCategory = selectedCategory === 'ALL' || test.category === selectedCategory;
+    const matchesSearch = !search ||
+      test.titleRu.toLowerCase().includes(search.toLowerCase()) ||
+      test.descriptionRu?.toLowerCase().includes(search.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
 
   const categories: (TestCategory | 'ALL')[] = [
     'ALL',
@@ -55,7 +78,10 @@ export default function TestsPage() {
       {/* Header */}
       <div className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <h1 className="text-3xl font-bold text-gray-900">Каталог тестов</h1>
+          <div className="flex items-center justify-between mb-2">
+            <h1 className="text-3xl font-bold text-gray-900">Каталог тестов</h1>
+            <span className="text-sm text-gray-500">{filteredTests.length} из {tests.length} тестов</span>
+          </div>
           <p className="mt-2 text-gray-600">
             Выберите тест для диагностики вашего ребёнка
           </p>
@@ -63,6 +89,20 @@ export default function TestsPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Search */}
+        <div className="relative mb-4">
+          <input
+            type="text"
+            placeholder="Поиск по названию теста..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+          <svg className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+
         {/* Category filter */}
         <div className="mb-8 overflow-x-auto">
           <div className="flex space-x-2 pb-2">
@@ -117,7 +157,7 @@ export default function TestsPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredTests.map((test) => (
-              <TestCard key={test.id} test={test} />
+              <TestCard key={test.id} test={test} completedInfo={completedTests[test.id] || null} />
             ))}
           </div>
         )}

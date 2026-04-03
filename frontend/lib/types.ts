@@ -44,6 +44,7 @@ export interface TestSession {
   currentQuestionIndex: number;
   totalQuestions: number;
   progress: number;
+  durationMinutes?: number;
   currentQuestion?: Question;
 }
 
