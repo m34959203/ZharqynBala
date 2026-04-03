@@ -184,6 +184,14 @@ export class PaymentsService {
         },
       });
 
+      // Update consultation paymentStatus if this is a consultation payment
+      if (payment.paymentType === PaymentType.CONSULTATION && payment.relatedId) {
+        await this.prisma.consultation.update({
+          where: { id: payment.relatedId },
+          data: { paymentStatus: 'PAID', paymentId: payment.id },
+        }).catch(() => {});
+      }
+
       // Activate subscription if this is a subscription payment
       if (payment.paymentType === PaymentType.SUBSCRIPTION) {
         await this.kaspiService.activateSubscription(payment.userId, payment.relatedId ?? undefined);
@@ -214,6 +222,14 @@ export class PaymentsService {
           completedAt: new Date(),
         },
       });
+
+      // Update consultation paymentStatus
+      if (payment.paymentType === PaymentType.CONSULTATION && payment.relatedId) {
+        await this.prisma.consultation.update({
+          where: { id: payment.relatedId },
+          data: { paymentStatus: 'PAID', paymentId: payment.id },
+        }).catch(() => {});
+      }
 
       // Activate subscription if applicable
       if (payment.paymentType === PaymentType.SUBSCRIPTION) {
@@ -249,6 +265,14 @@ export class PaymentsService {
         completedAt: new Date(),
       },
     });
+
+    // Update consultation paymentStatus
+    if (updated.paymentType === PaymentType.CONSULTATION && updated.relatedId) {
+      await this.prisma.consultation.update({
+        where: { id: updated.relatedId },
+        data: { paymentStatus: 'PAID', paymentId: updated.id },
+      }).catch(() => {});
+    }
 
     return this.mapToDto(updated);
   }

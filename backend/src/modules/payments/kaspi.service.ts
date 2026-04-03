@@ -156,7 +156,9 @@ export class KaspiService {
 
     // In sandbox mode, return a URL that points to our own sandbox endpoint
     // This simulates the Kaspi redirect flow for development
-    const backendUrl = this.configService.get('BACKEND_URL') || 'http://localhost:3500';
+    let backendUrl = this.configService.get('BACKEND_URL') || 'http://localhost:3500';
+    // Force HTTP for sandbox (HTTPS not available in dev)
+    backendUrl = backendUrl.replace('https://', 'http://');
     const sandboxUrl = `${backendUrl}/api/v1/payments/sandbox/pay?orderId=${request.orderId}&amount=${request.amount}`;
 
     return {
