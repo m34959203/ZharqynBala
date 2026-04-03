@@ -103,6 +103,27 @@ export class ConsultationsService {
       },
     });
 
+    // Создаём запись об оплате
+    if (psychologist.hourlyRate > 0) {
+      await this.prisma.payment.create({
+        data: {
+          userId: clientId,
+          amount: psychologist.hourlyRate,
+          currency: 'KZT',
+          paymentType: 'CONSULTATION',
+          relatedId: consultation.id,
+          provider: 'KASPI',
+          status: 'PENDING',
+        },
+      });
+    } else {
+      // Бесплатная консультация — оплата автоматически PAID
+      await this.prisma.consultation.update({
+        where: { id: consultation.id },
+        data: { paymentStatus: 'PAID' },
+      });
+    }
+
     // Send notification to psychologist
     try {
       const psychUser = await this.prisma.user.findUnique({ where: { id: psychologist.userId } });
@@ -259,6 +280,11 @@ export class ConsultationsService {
 
     if (consultation.status !== ConsultationStatus.PENDING) {
       throw new BadRequestException('Консультация не может быть подтверждена');
+    }
+
+    // Проверяем оплату — консультация должна быть оплачена перед подтверждением
+    if (consultation.paymentStatus !== 'PAID' && consultation.price > 0) {
+      throw new BadRequestException('Консультация не оплачена. Клиент должен оплатить перед подтверждением.');
     }
 
     // Создаём видеокомнату
@@ -444,6 +470,11 @@ export class ConsultationsService {
 
     if (consultation.status !== ConsultationStatus.CONFIRMED) {
       throw new BadRequestException('Консультация не подтверждена');
+    }
+
+    // Проверяем оплату перед началом видеозвонка
+    if (consultation.paymentStatus !== 'PAID' && consultation.price > 0) {
+      throw new BadRequestException('Консультация не оплачена. Необходимо оплатить перед началом.');
     }
 
     const updated = await this.prisma.consultation.update({
