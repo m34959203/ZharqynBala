@@ -1,6 +1,6 @@
 import { Module, Global } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { SentryService } from './sentry.config';
+import { SentryService } from './sentry.service';
 import { LoggerService } from './logger.service';
 import { MetricsService } from './metrics.service';
 import { HealthController } from './health.controller';

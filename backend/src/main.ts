@@ -8,6 +8,8 @@ import * as cookieParser from 'cookie-parser';
 import { Request, Response, NextFunction } from 'express';
 
 import { AppModule } from './app.module';
+import { SentryService } from './common/monitoring/sentry.service';
+import { SentryExceptionFilter } from './common/monitoring/sentry-exception.filter';
 
 async function bootstrap() {
   // Startup diagnostics
@@ -106,6 +108,10 @@ async function bootstrap() {
 
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
+
+  // Sentry error monitoring
+  const sentryService = app.get(SentryService);
+  app.useGlobalFilters(new SentryExceptionFilter(sentryService));
 
   const port = configService.get('PORT') || 8080;
   // Bind to 0.0.0.0 for Docker/Railway - important for healthcheck!

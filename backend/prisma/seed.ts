@@ -6,6 +6,7 @@ import {
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { seedValidatedTests } from './test-data/psychological-tests';
+import { seedHrPlusTests } from './test-data/hr-plus-tests';
 
 const prisma = new PrismaClient();
 
@@ -564,6 +565,11 @@ async function main() {
   // ВАЛИДИРОВАННЫЕ ПСИХОЛОГИЧЕСКИЕ ТЕСТЫ
   // ============================================
   await seedValidatedTests(prisma);
+
+  // ============================================
+  // HR+ (АСПМ) КАТАЛОГ ТЕСТОВ
+  // ============================================
+  await seedHrPlusTests(prisma);
 
   console.log('');
   console.log('✅ Seed completed successfully!');

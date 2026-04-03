@@ -1,6 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
+import { initSentry } from "@/lib/sentry";
+
+// Initialize Sentry (client-side only)
+if (typeof window !== "undefined") {
+  initSentry();
+}
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://zharqynbala.kz"),

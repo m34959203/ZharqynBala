@@ -70,6 +70,9 @@ RUN npx prisma generate
 # Копируем собранное приложение из builder stage
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 
+# Копируем шрифты для PDF (Cyrillic support)
+COPY backend/assets ./assets
+
 # Копируем скомпилированный seed
 COPY --from=builder --chown=nodejs:nodejs /app/dist/prisma ./dist/prisma
 

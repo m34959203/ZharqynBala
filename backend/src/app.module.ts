@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 
 import { PrismaModule } from './common/prisma/prisma.module';
+import { MonitoringModule } from './common/monitoring/monitoring.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -43,6 +44,9 @@ import { CalendarModule } from './modules/calendar/calendar.module';
 
     // Database
     PrismaModule,
+
+    // Monitoring (Sentry, Logger, Metrics)
+    MonitoringModule,
 
     // Health check
     HealthModule,
