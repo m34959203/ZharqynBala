@@ -25,7 +25,8 @@ export default function TestsPage() {
 
       try {
         const resultsRes = await api.get('/results');
-        const results = resultsRes.data || [];
+        const resultsData = resultsRes.data?.results || resultsRes.data || [];
+        const results = Array.isArray(resultsData) ? resultsData : [];
         const completed: Record<string, { score: number; maxScore: number; date: string }> = {};
         for (const r of results) {
           const testId = r.testId || r.session?.testId;
