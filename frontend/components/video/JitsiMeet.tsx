@@ -41,10 +41,18 @@ declare global {
 
 // Check if media devices (camera/microphone) are available
 async function checkMediaDevices(): Promise<MediaDeviceStatus> {
+  // On HTTP (non-localhost), navigator.mediaDevices is undefined
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    return {
+      hasCamera: false,
+      hasMicrophone: false,
+      permissionDenied: false,
+      errorMessage: 'Для видеозвонка нужен HTTPS. Откройте ссылку на телефоне через QR-код.',
+    };
+  }
+
   try {
-    // First try to get stream to check permissions
     const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    // Stop all tracks immediately
     stream.getTracks().forEach(track => track.stop());
 
     const devices = await navigator.mediaDevices.enumerateDevices();
@@ -54,15 +62,12 @@ async function checkMediaDevices(): Promise<MediaDeviceStatus> {
     return { hasCamera, hasMicrophone, permissionDenied: false };
   } catch (err) {
     const error = err as Error;
-    // Check if permission was denied
     if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
       return { hasCamera: false, hasMicrophone: false, permissionDenied: true, errorMessage: 'Доступ к камере и микрофону запрещен' };
     }
-    // Check if devices not found
     if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
       return { hasCamera: false, hasMicrophone: false, permissionDenied: false, errorMessage: 'Камера или микрофон не найдены' };
     }
-    // Other errors
     return { hasCamera: false, hasMicrophone: false, permissionDenied: false, errorMessage: error.message };
   }
 }
