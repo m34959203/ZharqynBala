@@ -217,6 +217,7 @@ export class TestsService {
       status: session.status,
       currentQuestionIndex: 0,
       totalQuestions: test._count.questions,
+      durationMinutes: test.durationMinutes,
       progress: 0,
       currentQuestion: firstQuestion
         ? {
@@ -275,6 +276,7 @@ export class TestsService {
       status: session.status,
       currentQuestionIndex,
       totalQuestions,
+      durationMinutes: session.test.durationMinutes,
       progress: Math.round((currentQuestionIndex / totalQuestions) * 100),
       currentQuestion: currentQuestion
         ? {

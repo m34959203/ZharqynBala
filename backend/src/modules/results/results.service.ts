@@ -340,6 +340,7 @@ export class ResultsService {
     return {
       id: result.id,
       sessionId: result.sessionId,
+      testId: result.session?.testId || result.session?.test?.id,
       totalScore: result.totalScore,
       maxScore: result.maxScore,
       percentage,
