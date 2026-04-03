@@ -122,11 +122,8 @@ export default function ConsultationPage() {
   const fetchPatientNotes = useCallback(async () => {
     if (userRole !== 'PSYCHOLOGIST' || !consultationId) return;
     try {
-      const response = await fetch(`/api/patient-notes?consultationId=${consultationId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setPatientNotes(data);
-      }
+      const response = await api.get(`/patient-notes?consultationId=${consultationId}`);
+      setPatientNotes(response.data);
     } catch (err) {
       console.error('Error fetching patient notes:', err);
     }
@@ -330,15 +327,10 @@ export default function ConsultationPage() {
             consultationId: consultation.id,
           };
 
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Ошибка сохранения');
+      if (editingNote) {
+        await api.put(`/patient-notes/${editingNote.id}`, body);
+      } else {
+        await api.post('/patient-notes', body);
       }
 
       setShowNoteModal(false);
@@ -354,14 +346,7 @@ export default function ConsultationPage() {
     if (!confirm('Удалить эту заметку?')) return;
 
     try {
-      const response = await fetch(`/api/patient-notes/${noteId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Ошибка удаления');
-      }
+      await api.delete(`/patient-notes/${noteId}`);
 
       fetchPatientNotes();
     } catch (err) {
