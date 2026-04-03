@@ -122,13 +122,16 @@ export default function ProtectedLayout({
   }
 
   const handleLogout = () => {
-    // Clear both cookies and localStorage
-    Cookies.remove('accessToken');
-    Cookies.remove('refreshToken');
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
-    router.push('/login');
+    // Clear all cookies
+    document.cookie.split(';').forEach(c => {
+      const name = c.split('=')[0].trim();
+      document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+    });
+    // Clear all storage
+    localStorage.clear();
+    sessionStorage.clear();
+    // Redirect (full page reload to reset all state)
+    window.location.href = '/login';
   };
 
   const userRole: UserRole = user.role || 'PARENT';

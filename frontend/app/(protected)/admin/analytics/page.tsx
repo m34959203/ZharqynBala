@@ -83,10 +83,11 @@ export default function AdminAnalyticsPage() {
       'ANXIETY': 'Тревожность',
       'SELF_ESTEEM': 'Самооценка',
       'ATTENTION': 'Внимание',
+      'EMOTIONS': 'Эмоции',
       'EMOTIONAL': 'Эмоции',
-      'SOCIAL': 'Социальное развитие',
+      'SOCIAL': 'Социальные навыки',
       'CAREER': 'Профориентация',
-      'COGNITIVE': 'Когнитивное развитие',
+      'COGNITIVE': 'Когнитивные навыки',
     };
     return names[category] || category;
   };

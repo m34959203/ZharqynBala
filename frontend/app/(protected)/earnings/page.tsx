@@ -107,16 +107,27 @@ export default function EarningsPage() {
         <div className="bg-white rounded-xl shadow-sm p-5">
           <p className="text-sm font-medium text-gray-500">Консультаций</p>
           <p className="text-2xl font-bold text-gray-900">{stats.consultations}</p>
-          <p className="text-xs text-green-600 mt-1">+12% от прошлого месяца</p>
+          {stats.consultations > 0 ? (
+            <p className="text-xs text-gray-500 mt-1">за выбранный период</p>
+          ) : (
+            <p className="text-xs text-gray-400 mt-1">Нет данных</p>
+          )}
         </div>
         <div className="bg-white rounded-xl shadow-sm p-5">
           <p className="text-sm font-medium text-gray-500">Средний чек</p>
-          <p className="text-2xl font-bold text-gray-900">{stats.avgPerConsultation.toLocaleString()} ₸</p>
+          {stats.consultations > 0 ? (
+            <p className="text-2xl font-bold text-gray-900">{stats.avgPerConsultation.toLocaleString()} ₸</p>
+          ) : (
+            <p className="text-2xl font-bold text-gray-400">Нет данных</p>
+          )}
         </div>
         <div className="bg-white rounded-xl shadow-sm p-5">
           <p className="text-sm font-medium text-gray-500">Обзоры тестов</p>
-          <p className="text-2xl font-bold text-gray-900">15</p>
-          <p className="text-xs text-gray-500 mt-1">по 5,000 ₸</p>
+          {transactions.filter(t => t.type === 'TEST_REVIEW').length > 0 ? (
+            <p className="text-2xl font-bold text-gray-900">{transactions.filter(t => t.type === 'TEST_REVIEW').length}</p>
+          ) : (
+            <p className="text-2xl font-bold text-gray-400">Нет данных</p>
+          )}
         </div>
         <div className="bg-white rounded-xl shadow-sm p-5">
           <p className="text-sm font-medium text-gray-500">Комиссия платформы</p>

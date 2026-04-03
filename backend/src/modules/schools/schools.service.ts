@@ -49,6 +49,25 @@ export class SchoolsService {
     return this.mapToResponse(school);
   }
 
+  async findByUserId(userId: string): Promise<SchoolResponseDto> {
+    const school = await this.prisma.school.findUnique({
+      where: { userId },
+      include: {
+        classes: {
+          include: {
+            _count: { select: { students: true } },
+          },
+        },
+      },
+    });
+
+    if (!school) {
+      throw new NotFoundException('School not found for this user');
+    }
+
+    return this.mapToResponse(school);
+  }
+
   async findAll(): Promise<SchoolResponseDto[]> {
     const schools = await this.prisma.school.findMany({
       orderBy: { createdAt: 'desc' },
@@ -188,6 +207,200 @@ export class SchoolsService {
       academicYear: cls.academicYear,
       studentCount: cls._count.students,
     }));
+  }
+
+  async createClass(schoolId: string, data: { grade: number; letter: string; academicYear: string }): Promise<any> {
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+    });
+
+    if (!school) {
+      throw new NotFoundException('School not found');
+    }
+
+    const schoolClass = await this.prisma.schoolClass.create({
+      data: {
+        schoolId,
+        grade: data.grade,
+        letter: data.letter,
+        academicYear: data.academicYear,
+      },
+      include: {
+        _count: { select: { students: true } },
+      },
+    });
+
+    return {
+      id: schoolClass.id,
+      grade: schoolClass.grade,
+      letter: schoolClass.letter,
+      academicYear: schoolClass.academicYear,
+      studentCount: schoolClass._count.students,
+    };
+  }
+
+  async getStudents(schoolId: string, classId?: string): Promise<any[]> {
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+    });
+
+    if (!school) {
+      throw new NotFoundException('School not found');
+    }
+
+    const where: any = {
+      class: { schoolId },
+    };
+    if (classId) {
+      where.classId = classId;
+    }
+
+    const students = await this.prisma.student.findMany({
+      where,
+      include: {
+        class: true,
+      },
+      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+    });
+
+    return students.map((s) => ({
+      id: s.id,
+      firstName: s.firstName,
+      lastName: s.lastName,
+      birthDate: s.birthDate,
+      gender: s.gender,
+      classId: s.classId,
+      className: `${s.class.grade}-${s.class.letter}`,
+    }));
+  }
+
+  async createStudent(schoolId: string, data: {
+    firstName: string;
+    lastName: string;
+    birthDate: string;
+    gender: string;
+    classId: string;
+  }): Promise<any> {
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+    });
+
+    if (!school) {
+      throw new NotFoundException('School not found');
+    }
+
+    const student = await this.prisma.student.create({
+      data: {
+        classId: data.classId,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        birthDate: new Date(data.birthDate),
+        gender: data.gender as any,
+      },
+      include: {
+        class: true,
+      },
+    });
+
+    // Update total students count
+    const totalStudents = await this.prisma.student.count({
+      where: { class: { schoolId } },
+    });
+
+    await this.prisma.school.update({
+      where: { id: schoolId },
+      data: { totalStudents },
+    });
+
+    return {
+      id: student.id,
+      firstName: student.firstName,
+      lastName: student.lastName,
+      birthDate: student.birthDate,
+      gender: student.gender,
+      classId: student.classId,
+      className: `${student.class.grade}-${student.class.letter}`,
+    };
+  }
+
+  async getGroupTests(schoolId: string): Promise<any[]> {
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+      include: {
+        classes: {
+          include: {
+            groupTests: {
+              include: {
+                test: true,
+                class: true,
+              },
+              orderBy: { assignedAt: 'desc' },
+            },
+          },
+        },
+      },
+    });
+
+    if (!school) {
+      throw new NotFoundException('School not found');
+    }
+
+    const groupTests = school.classes.flatMap((cls) =>
+      cls.groupTests.map((gt) => ({
+        id: gt.id,
+        testId: gt.testId,
+        testName: gt.test.titleRu,
+        classId: gt.classId,
+        className: `${gt.class.grade}-${gt.class.letter}`,
+        assignedAt: gt.assignedAt,
+        deadline: gt.deadline,
+        completedCount: gt.completedCount,
+        totalCount: gt.totalCount,
+      })),
+    );
+
+    return groupTests;
+  }
+
+  async createGroupTest(schoolId: string, data: {
+    testId: string;
+    classId: string;
+    deadline?: string;
+  }): Promise<any> {
+    const schoolClass = await this.prisma.schoolClass.findFirst({
+      where: { id: data.classId, schoolId },
+      include: { _count: { select: { students: true } } },
+    });
+
+    if (!schoolClass) {
+      throw new NotFoundException('Class not found in this school');
+    }
+
+    const groupTest = await this.prisma.groupTest.create({
+      data: {
+        schoolId,
+        classId: data.classId,
+        testId: data.testId,
+        deadline: data.deadline ? new Date(data.deadline) : null,
+        totalCount: schoolClass._count.students,
+      },
+      include: {
+        test: true,
+        class: true,
+      },
+    });
+
+    return {
+      id: groupTest.id,
+      testId: groupTest.testId,
+      testName: groupTest.test.titleRu,
+      classId: groupTest.classId,
+      className: `${groupTest.class.grade}-${groupTest.class.letter}`,
+      assignedAt: groupTest.assignedAt,
+      deadline: groupTest.deadline,
+      completedCount: groupTest.completedCount,
+      totalCount: groupTest.totalCount,
+    };
   }
 
   async addStudent(schoolId: string, dto: AddStudentDto): Promise<any> {

@@ -538,13 +538,24 @@ export default function ProfilePage() {
               <h2 className="text-lg font-semibold text-gray-900">Подписка</h2>
             </CardHeader>
             <CardBody>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-gray-900">Бесплатный план</p>
-                  <p className="text-sm text-gray-500">3 бесплатных теста, 1 ребёнок</p>
-                </div>
-                <Button variant="outline">Улучшить план</Button>
-              </div>
+              {(() => {
+                const subscriptionInfo: Record<string, { plan: string; features: string[] }> = {
+                  PARENT: { plan: 'Бесплатный', features: ['3 бесплатных теста', '1 профиль ребёнка', 'Базовые результаты'] },
+                  PSYCHOLOGIST: { plan: 'Психолог', features: ['Неограниченные консультации', 'Кейс-менеджмент', 'Заметки о пациентах'] },
+                  SCHOOL: { plan: 'Школьный', features: ['Массовая диагностика', 'Управление классами', 'Отчёты и экспорт'] },
+                  ADMIN: { plan: 'Администратор', features: ['Полный доступ', 'Управление платформой', 'Аналитика'] },
+                };
+                const info = subscriptionInfo[profile?.role || 'PARENT'] || subscriptionInfo.PARENT;
+                return (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-gray-900">{info.plan}</p>
+                      <p className="text-sm text-gray-500">{info.features.join(', ')}</p>
+                    </div>
+                    <Button variant="outline">Улучшить план</Button>
+                  </div>
+                );
+              })()}
             </CardBody>
           </Card>
 

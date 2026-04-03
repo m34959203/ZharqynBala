@@ -12,7 +12,8 @@ export function TestCard({ test }: TestCardProps) {
   const categoryColor = categoryColors[test.category] || 'bg-gray-100 text-gray-700';
 
   return (
-    <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden">
+    <Link href={`/tests/${test.id}`} className="block">
+    <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden cursor-pointer">
       <div className="p-6">
         <div className="flex items-start justify-between mb-4">
           <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${categoryColor}`}>
@@ -64,17 +65,17 @@ export function TestCard({ test }: TestCardProps) {
               <span className="text-gray-900">{test.price.toLocaleString()} ₸</span>
             )}
           </div>
-          <Link
-            href={`/tests/${test.id}`}
+          <span
             className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
           >
             Подробнее
             <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
-          </Link>
+          </span>
         </div>
       </div>
     </div>
+    </Link>
   );
 }

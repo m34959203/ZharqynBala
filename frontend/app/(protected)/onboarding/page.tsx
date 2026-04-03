@@ -50,12 +50,23 @@ export default function OnboardingPage() {
   const [selectedConcerns, setSelectedConcerns] = useState<string[]>([]);
   const [createdChildId, setCreatedChildId] = useState<string | null>(null);
 
+  const [role, setRole] = useState<string>('PARENT');
+
+  const roleContent: Record<string, { title: string; subtitle: string }> = {
+    PARENT: { title: 'Добро пожаловать!', subtitle: 'ZharqynBala поможет вам лучше понять вашего ребёнка' },
+    PSYCHOLOGIST: { title: 'Добро пожаловать!', subtitle: 'ZharqynBala — ваша платформа для работы с клиентами' },
+    SCHOOL: { title: 'Добро пожаловать!', subtitle: 'ZharqynBala — система мониторинга учащихся вашей школы' },
+    ADMIN: { title: 'Панель администратора', subtitle: 'Управление платформой ZharqynBala' },
+  };
+
   // Get user from localStorage (set by layout)
   useEffect(() => {
     const userData = localStorage.getItem('user');
     if (userData) {
       try {
-        setUser(JSON.parse(userData));
+        const parsed = JSON.parse(userData);
+        setUser(parsed);
+        setRole(parsed.role || 'PARENT');
       } catch {
         // Invalid user data, layout will handle redirect
       }
@@ -205,11 +216,12 @@ export default function OnboardingPage() {
               </div>
 
               <h1 className="text-3xl font-bold text-gray-900 mb-4">
-                Добро пожаловать, {user?.firstName || 'Родитель'}!
+                {roleContent[role]?.title || 'Добро пожаловать'}, {user?.firstName || 'Пользователь'}!
               </h1>
 
               <p className="text-lg text-gray-600 mb-8 max-w-md mx-auto">
-                Zharqyn Bala поможет вам лучше понять вашего ребёнка через научные психологические тесты с AI-анализом.
+                {roleContent[role]?.subtitle || 'ZharqynBala поможет вам лучше понять вашего ребёнка'}
+                {role === 'PARENT' ? ' через научные психологические тесты с AI-анализом.' : '.'}
               </p>
 
               <div className="grid grid-cols-3 gap-4 mb-8 text-center">

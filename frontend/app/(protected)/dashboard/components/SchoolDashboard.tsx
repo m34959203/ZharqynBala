@@ -55,7 +55,7 @@ export default function SchoolDashboard({ userName }: SchoolDashboardProps) {
   };
 
   const getProgressWidth = (tested: number, total: number) => {
-    return Math.round((tested / total) * 100);
+    return total > 0 ? Math.round((tested / total) * 100) : 0;
   };
 
   return (
@@ -92,7 +92,7 @@ export default function SchoolDashboard({ userName }: SchoolDashboardProps) {
               <p className="text-sm font-medium text-gray-500">Протестировано</p>
               <p className="text-2xl font-bold text-gray-900">{stats.testedStudents}</p>
               <p className="text-xs text-green-600">
-                {Math.round((stats.testedStudents / stats.totalStudents) * 100)}% охват
+                {stats.totalStudents > 0 ? Math.round((stats.testedStudents / stats.totalStudents) * 100) : 0}% охват
               </p>
             </div>
             <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">

@@ -72,7 +72,15 @@ function LoginContent() {
       router.push('/dashboard');
     } catch (err: any) {
       console.error('Login error:', err);
-      setError('Ошибка входа. Попробуйте позже.');
+      if (err instanceof TypeError && err.message === 'Failed to fetch') {
+        setError('Сервер недоступен. Проверьте подключение к интернету.');
+      } else if (err?.response?.status === 401) {
+        setError('Неверный email или пароль');
+      } else if (err?.response?.status === 429) {
+        setError('Слишком много попыток. Подождите минуту.');
+      } else {
+        setError(err?.response?.data?.message || 'Ошибка входа. Попробуйте позже.');
+      }
     } finally {
       setIsLoading(false);
     }

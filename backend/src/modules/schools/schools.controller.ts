@@ -44,6 +44,14 @@ export class SchoolsController {
     return this.schoolsService.create(dto);
   }
 
+  @Get('me')
+  @Roles('SCHOOL')
+  @ApiOperation({ summary: 'Get current user school profile' })
+  @ApiResponse({ status: 200, type: SchoolResponseDto })
+  async getMySchool(@CurrentUser('id') userId: string): Promise<SchoolResponseDto> {
+    return this.schoolsService.findByUserId(userId);
+  }
+
   @Get()
   @Roles('ADMIN')
   @ApiOperation({ summary: 'Get all schools' })
@@ -93,6 +101,26 @@ export class SchoolsController {
     return this.schoolsService.getClasses(id);
   }
 
+  @Post(':id/classes')
+  @Roles('ADMIN', 'SCHOOL')
+  @ApiOperation({ summary: 'Create a class in school' })
+  async createClass(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() data: { grade: number; letter: string; academicYear: string },
+  ) {
+    return this.schoolsService.createClass(id, data);
+  }
+
+  @Get(':id/students')
+  @Roles('ADMIN', 'SCHOOL')
+  @ApiOperation({ summary: 'Get school students' })
+  async getStudents(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('classId') classId?: string,
+  ) {
+    return this.schoolsService.getStudents(id, classId);
+  }
+
   @Post(':id/students')
   @Roles('ADMIN', 'SCHOOL')
   @ApiOperation({ summary: 'Add student to school' })
@@ -101,6 +129,33 @@ export class SchoolsController {
     @Body() dto: AddStudentDto,
   ) {
     return this.schoolsService.addStudent(id, dto);
+  }
+
+  @Post(':id/students/create')
+  @Roles('ADMIN', 'SCHOOL')
+  @ApiOperation({ summary: 'Create a new student in school' })
+  async createStudent(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() data: { firstName: string; lastName: string; birthDate: string; gender: string; classId: string },
+  ) {
+    return this.schoolsService.createStudent(id, data);
+  }
+
+  @Get(':id/group-tests')
+  @Roles('ADMIN', 'SCHOOL')
+  @ApiOperation({ summary: 'Get group tests for school' })
+  async getGroupTests(@Param('id', ParseUUIDPipe) id: string) {
+    return this.schoolsService.getGroupTests(id);
+  }
+
+  @Post(':id/group-tests')
+  @Roles('ADMIN', 'SCHOOL')
+  @ApiOperation({ summary: 'Create group test assignment' })
+  async createGroupTest(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() data: { testId: string; classId: string; deadline?: string },
+  ) {
+    return this.schoolsService.createGroupTest(id, data);
   }
 
   @Post(':id/import')
