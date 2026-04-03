@@ -20,6 +20,16 @@ export default function ChildrenPage() {
   const router = useRouter();
   const [children, setChildren] = useState<Child[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Role guard — only PARENT can access this page
+  useEffect(() => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (user.role && user.role !== 'PARENT') {
+        router.replace('/dashboard');
+      }
+    } catch {}
+  }, [router]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingChild, setEditingChild] = useState<Child | null>(null);
   const [saving, setSaving] = useState(false);
