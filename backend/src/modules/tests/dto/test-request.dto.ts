@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsEnum, IsNotEmpty } from 'class-validator';
+import { IsOptional, IsString, IsEnum, IsNotEmpty, IsInt, Min, Max } from 'class-validator';
+import { Type } from 'class-transformer';
 import { TestCategory } from '@prisma/client';
 
 export class StartTestDto {
@@ -43,4 +44,12 @@ export class TestFilterDto {
   @ApiPropertyOptional()
   @IsOptional()
   isPremium?: boolean;
+
+  @ApiPropertyOptional({ description: 'Class grade (1-11) to filter age-appropriate tests' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(11)
+  grade?: number;
 }

@@ -25,6 +25,23 @@ interface ClassOption {
   studentCount: number;
 }
 
+function gradeToAgeRange(grade: number): { min: number; max: number } {
+  return { min: grade + 5, max: grade + 7 };
+}
+
+function ageToClassRange(ageMin: number, ageMax: number): string {
+  const minGrade = Math.max(1, ageMin - 6);
+  const maxGrade = Math.min(11, ageMax - 6);
+  if (minGrade === maxGrade) return `${minGrade} класс`;
+  return `${minGrade}-${maxGrade} класс`;
+}
+
+function isTestCompatibleWithGrade(test: TestOption, grade: number): boolean {
+  if (!test.ageMin || !test.ageMax) return true;
+  const ageRange = gradeToAgeRange(grade);
+  return test.ageMin <= ageRange.max && test.ageMax >= ageRange.min;
+}
+
 function NewTestingContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -73,9 +90,12 @@ function NewTestingContent() {
   };
 
   const toggleClass = (classId: string) => {
-    setSelectedClasses((prev) =>
-      prev.includes(classId) ? prev.filter((id) => id !== classId) : [...prev, classId]
-    );
+    setSelectedClasses((prev) => {
+      const updated = prev.includes(classId) ? prev.filter((id) => id !== classId) : [...prev, classId];
+      // Clear test selections when class selection changes (age compatibility may differ)
+      setSelectedTests([]);
+      return updated;
+    });
   };
 
   const handleStartTesting = async () => {
@@ -157,84 +177,14 @@ function NewTestingContent() {
           </div>
         </div>
         <div className="flex justify-between mt-2 text-sm text-gray-500">
-          <span>Выбор тестов</span>
           <span>Выбор классов</span>
+          <span>Выбор тестов</span>
           <span>Подтверждение</span>
         </div>
       </div>
 
-      {/* Step 1: Select Tests */}
+      {/* Step 1: Select Classes */}
       {step === 1 && (
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Выберите тесты</h2>
-          {tests.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-xl shadow-sm">
-              <p className="text-gray-500">Нет доступных тестов в каталоге</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {tests.map((test) => (
-                <div
-                  key={test.id}
-                  onClick={() => toggleTest(test.id)}
-                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                    selectedTests.includes(test.id)
-                      ? 'border-indigo-600 bg-indigo-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900">{test.titleRu}</h3>
-                      {test.descriptionRu && (
-                        <p className="text-sm text-gray-500 mt-1">{test.descriptionRu}</p>
-                      )}
-                      <div className="flex items-center mt-2 space-x-3 text-xs text-gray-400">
-                        {test.durationMinutes && <span>{test.durationMinutes} мин</span>}
-                        {test.category && (
-                          <>
-                            <span>-</span>
-                            <span>{categoryLabels[test.category as keyof typeof categoryLabels]?.ru || test.category}</span>
-                          </>
-                        )}
-                        {test.ageMin && test.ageMax && (
-                          <>
-                            <span>-</span>
-                            <span>{test.ageMin}-{test.ageMax} лет</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                      selectedTests.includes(test.id)
-                        ? 'border-indigo-600 bg-indigo-600'
-                        : 'border-gray-300'
-                    }`}>
-                      {selectedTests.includes(test.id) && (
-                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          <div className="mt-6 flex justify-end">
-            <button
-              onClick={() => setStep(2)}
-              disabled={selectedTests.length === 0}
-              className="px-6 py-3 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Далее: Выбор классов
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Step 2: Select Classes */}
-      {step === 2 && (
         <div>
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Выберите классы</h2>
           {classes.length === 0 ? (
@@ -279,23 +229,150 @@ function NewTestingContent() {
             />
           </div>
 
-          <div className="mt-6 flex justify-between">
+          <div className="mt-6 flex justify-end">
             <button
-              onClick={() => setStep(1)}
-              className="px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50"
-            >
-              Назад
-            </button>
-            <button
-              onClick={() => setStep(3)}
+              onClick={() => setStep(2)}
               disabled={selectedClasses.length === 0}
               className="px-6 py-3 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Далее: Подтверждение
+              Далее: Выбор тестов
             </button>
           </div>
         </div>
       )}
+
+      {/* Step 2: Select Tests (filtered by selected class grades) */}
+      {step === 2 && (() => {
+        const selectedClassGrades = classes
+          .filter((c) => selectedClasses.includes(c.id))
+          .map((c) => c.grade);
+        const uniqueGrades = [...new Set(selectedClassGrades)];
+
+        const isCompatible = (test: TestOption): boolean => {
+          if (uniqueGrades.length === 0) return true;
+          return uniqueGrades.every((grade) => isTestCompatibleWithGrade(test, grade));
+        };
+
+        const compatibleTests = tests.filter((t) => isCompatible(t));
+        const incompatibleTests = tests.filter((t) => !isCompatible(t));
+
+        return (
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Выберите тесты</h2>
+            {uniqueGrades.length > 0 && (
+              <p className="text-sm text-gray-500 mb-4">
+                Показаны тесты, подходящие для {uniqueGrades.sort((a, b) => a - b).map((g) => `${g} класса`).join(', ')}
+              </p>
+            )}
+            {tests.length === 0 ? (
+              <div className="text-center py-12 bg-white rounded-xl shadow-sm">
+                <p className="text-gray-500">Нет доступных тестов в каталоге</p>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {compatibleTests.map((test) => (
+                    <div
+                      key={test.id}
+                      onClick={() => toggleTest(test.id)}
+                      className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                        selectedTests.includes(test.id)
+                          ? 'border-indigo-600 bg-indigo-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900">{test.titleRu}</h3>
+                          {test.descriptionRu && (
+                            <p className="text-sm text-gray-500 mt-1">{test.descriptionRu}</p>
+                          )}
+                          <div className="flex items-center flex-wrap mt-2 gap-2 text-xs">
+                            {test.durationMinutes && <span className="text-gray-400">{test.durationMinutes} мин</span>}
+                            {test.category && (
+                              <span className="text-gray-400">{categoryLabels[test.category as keyof typeof categoryLabels]?.ru || test.category}</span>
+                            )}
+                            {test.ageMin != null && test.ageMax != null && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
+                                {test.ageMin}-{test.ageMax} лет ({ageToClassRange(test.ageMin, test.ageMax)})
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                          selectedTests.includes(test.id)
+                            ? 'border-indigo-600 bg-indigo-600'
+                            : 'border-gray-300'
+                        }`}>
+                          {selectedTests.includes(test.id) && (
+                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {incompatibleTests.length > 0 && (
+                  <>
+                    <div className="mt-6 mb-3 flex items-center gap-2">
+                      <div className="h-px flex-1 bg-gray-200"></div>
+                      <span className="text-xs text-gray-400 uppercase tracking-wider">Не подходят по возрасту</span>
+                      <div className="h-px flex-1 bg-gray-200"></div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {incompatibleTests.map((test) => (
+                        <div
+                          key={test.id}
+                          className="p-4 rounded-xl border-2 border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-gray-500">{test.titleRu}</h3>
+                              {test.descriptionRu && (
+                                <p className="text-sm text-gray-400 mt-1">{test.descriptionRu}</p>
+                              )}
+                              <div className="flex items-center flex-wrap mt-2 gap-2 text-xs">
+                                {test.ageMin != null && test.ageMax != null && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-50 text-amber-600">
+                                    {test.ageMin}-{test.ageMax} лет ({ageToClassRange(test.ageMin, test.ageMax)})
+                                  </span>
+                                )}
+                                <span className="text-amber-600">
+                                  Не подходит для {uniqueGrades.sort((a, b) => a - b).join(', ')} класса
+                                </span>
+                              </div>
+                            </div>
+                            <div className="w-6 h-6 rounded-full border-2 border-gray-200 flex items-center justify-center flex-shrink-0">
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+            <div className="mt-6 flex justify-between">
+              <button
+                onClick={() => setStep(1)}
+                className="px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50"
+              >
+                Назад
+              </button>
+              <button
+                onClick={() => setStep(3)}
+                disabled={selectedTests.length === 0}
+                className="px-6 py-3 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Далее: Подтверждение
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Step 3: Confirmation */}
       {step === 3 && (

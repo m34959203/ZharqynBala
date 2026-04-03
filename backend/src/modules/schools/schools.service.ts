@@ -348,6 +348,7 @@ export class SchoolsService {
     const groupTests = school.classes.flatMap((cls) =>
       cls.groupTests.map((gt) => ({
         id: gt.id,
+        token: gt.token,
         testId: gt.testId,
         testName: gt.test.titleRu,
         classId: gt.classId,
@@ -392,6 +393,7 @@ export class SchoolsService {
 
     return {
       id: groupTest.id,
+      token: groupTest.token,
       testId: groupTest.testId,
       testName: groupTest.test.titleRu,
       classId: groupTest.classId,

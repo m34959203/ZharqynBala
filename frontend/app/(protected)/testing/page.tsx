@@ -7,6 +7,7 @@ import { useSchool } from '@/lib/useSchool';
 
 interface GroupTest {
   id: string;
+  token: string;
   testId: string;
   testName: string;
   classId: string;
@@ -17,11 +18,33 @@ interface GroupTest {
   totalCount: number;
 }
 
+const FRONTEND_URL = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+
 export default function TestingPage() {
   const { schoolId, loading: schoolLoading, error: schoolError } = useSchool();
   const [groupTests, setGroupTests] = useState<GroupTest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const copyTestLink = async (gt: GroupTest) => {
+    const url = `${FRONTEND_URL}/take-test/${gt.token}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedId(gt.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      // Fallback for non-HTTPS
+      const textArea = document.createElement('textarea');
+      textArea.value = url;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopiedId(gt.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    }
+  };
 
   useEffect(() => {
     if (schoolId) {
@@ -202,9 +225,9 @@ export default function TestingPage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 md:mt-0 md:ml-8 md:text-right min-w-[140px]">
+                  <div className="mt-4 md:mt-0 md:ml-8 md:text-right min-w-[180px]">
                     <div className="text-sm text-gray-500 mb-1">
-                      {gt.completedCount} / {gt.totalCount} учеников
+                      {gt.completedCount} / {gt.totalCount} учеников ({progress}%)
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
@@ -218,7 +241,29 @@ export default function TestingPage() {
                         style={{ width: `${progress}%` }}
                       ></div>
                     </div>
-                    <div className="text-xs text-gray-400 mt-1">{progress}%</div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        copyTestLink(gt);
+                      }}
+                      className="mt-2 inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-colors"
+                    >
+                      {copiedId === gt.id ? (
+                        <>
+                          <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Скопировано!
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                          </svg>
+                          Копировать ссылку
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
               </div>

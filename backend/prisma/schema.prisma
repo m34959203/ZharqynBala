@@ -600,6 +600,7 @@ model Payment {
 
 model GroupTest {
   id              String      @id @default(uuid())
+  token           String      @unique @default(cuid())
   schoolId        String      @map("school_id")
   classId         String      @map("class_id")
   class           SchoolClass @relation(fields: [classId], references: [id], onDelete: Cascade)
@@ -612,6 +613,9 @@ model GroupTest {
 
   completedCount  Int         @default(0) @map("completed_count")
   totalCount      Int         @map("total_count")
+
+  // JSON array of student results: [{ studentId, studentName, score, maxScore, completedAt }]
+  results         Json?       @default("[]")
 
   @@map("group_tests")
   @@index([classId])

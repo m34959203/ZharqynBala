@@ -32,6 +32,12 @@ export class TestsService {
       where.isPremium = filter.isPremium;
     }
 
+    if (filter.grade) {
+      const ageRange = this.gradeToAgeRange(filter.grade);
+      where.ageMin = { lte: ageRange.max };
+      where.ageMax = { gte: ageRange.min };
+    }
+
     const tests = await this.prisma.test.findMany({
       where,
       orderBy: { order: 'asc' },
@@ -527,6 +533,14 @@ export class TestsService {
     });
 
     return result;
+  }
+
+  /**
+   * Maps a Kazakhstan school grade (1-11) to the expected student age range.
+   * Grade 1 starts at age 6-7, so: min = grade + 5, max = grade + 7.
+   */
+  private gradeToAgeRange(grade: number): { min: number; max: number } {
+    return { min: grade + 5, max: grade + 7 };
   }
 
   async completeSession(sessionId: string, userId: string) {

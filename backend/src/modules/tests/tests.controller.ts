@@ -38,6 +38,7 @@ export class TestsController {
   @ApiOperation({ summary: 'Get all available tests' })
   @ApiQuery({ name: 'category', enum: TestCategory, required: false })
   @ApiQuery({ name: 'isPremium', type: Boolean, required: false })
+  @ApiQuery({ name: 'grade', type: Number, required: false, description: 'Class grade (1-11) to filter age-appropriate tests' })
   @ApiResponse({ status: 200, type: [TestResponseDto] })
   async findAll(@Query() filter: TestFilterDto): Promise<TestResponseDto[]> {
     return this.testsService.findAll(filter);

@@ -24,6 +24,7 @@ import { CasesModule } from './modules/cases/cases.module';
 import { ExportModule } from './modules/export/export.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
 import { JournalModule } from './modules/journal/journal.module';
+import { GroupTestsModule } from './modules/group-tests/group-tests.module';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { JournalModule } from './modules/journal/journal.module';
     ExportModule,
     CalendarModule,
     JournalModule,
+    GroupTestsModule,
   ],
 })
 export class AppModule {}
