@@ -8,7 +8,7 @@ export class CreatePaymentDto {
   paymentType: PaymentType;
 
   @ApiProperty({ description: 'ID of test, consultation, or subscription' })
-  @IsUUID()
+  @IsString()
   relatedId: string;
 
   @ApiPropertyOptional({ enum: PaymentProvider, default: 'KASPI' })
