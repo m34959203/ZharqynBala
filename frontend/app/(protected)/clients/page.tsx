@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { plural, pluralN } from '@/lib/i18n/plural';
 
 interface Client {
   id: string;
@@ -136,20 +137,36 @@ export default function ClientsPage() {
                     </div>
                     <p className="text-sm text-gray-500">{client.email} • {client.phone}</p>
                     <div className="mt-2 flex items-center space-x-4 text-sm">
-                      <span className="text-gray-600">
-                        <strong>{client.children.length}</strong> {client.children.length === 1 ? 'ребёнок' : 'детей'}:
-                        {' '}{client.children.map(c => `${c.name} (${c.age} лет)`).join(', ')}
-                      </span>
+                      {client.children.length > 0 ? (
+                        <span className="text-gray-600">
+                          <strong>{client.children.length}</strong> {plural(client.children.length, 'ребёнок', 'ребёнка', 'детей')}:
+                          {' '}{client.children.map(c => `${c.name} (${pluralN(c.age, 'год', 'года', 'лет')})`).join(', ')}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 italic">
+                          Профили детей не добавлены
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm text-gray-500">Последняя консультация</p>
-                  <p className="font-medium text-gray-900">
-                    {new Date(client.lastConsultation).toLocaleDateString('ru-RU')}
-                  </p>
+                  {(() => {
+                    const d = new Date(client.lastConsultation);
+                    const isFuture = d.getTime() > Date.now();
+                    return (
+                      <>
+                        <p className="text-sm text-gray-500">
+                          {isFuture ? 'Следующая консультация' : 'Последняя консультация'}
+                        </p>
+                        <p className="font-medium text-gray-900">
+                          {d.toLocaleDateString('ru-RU')}
+                        </p>
+                      </>
+                    );
+                  })()}
                   <p className="text-sm text-gray-500 mt-1">
-                    Всего: {client.totalConsultations} консультаций
+                    Всего: {pluralN(client.totalConsultations, 'консультация', 'консультации', 'консультаций')}
                   </p>
                 </div>
               </div>

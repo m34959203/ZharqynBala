@@ -348,6 +348,40 @@ export class AdminService {
     return result;
   }
 
+  // ──────────────────────────────────────────────────
+  // Платёжные итоги — закрывает BUG-021 (3 разные revenue в 3 местах)
+  // Возвращает все три источника в одной обёртке.
+  // ──────────────────────────────────────────────────
+  async getPaymentTotals() {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [lifetime, monthAgg, pending, failed] = await Promise.all([
+      this.prisma.payment.aggregate({
+        where: { status: 'COMPLETED' },
+        _sum: { amount: true },
+        _count: { _all: true },
+      }),
+      this.prisma.payment.aggregate({
+        where: { status: 'COMPLETED', completedAt: { gte: monthStart } },
+        _sum: { amount: true },
+      }),
+      this.prisma.payment.aggregate({
+        where: { status: 'PENDING' },
+        _sum: { amount: true },
+      }),
+      this.prisma.payment.count({ where: { status: 'FAILED' } }),
+    ]);
+
+    return {
+      lifetimeRevenue: lifetime._sum.amount ?? 0,
+      lifetimeCount: lifetime._count._all ?? 0,
+      monthRevenue: monthAgg._sum.amount ?? 0,
+      pendingAmount: pending._sum.amount ?? 0,
+      failedCount: failed,
+    };
+  }
+
   async getDashboardStats(): Promise<DashboardStatsDto> {
     const [
       totalUsers,

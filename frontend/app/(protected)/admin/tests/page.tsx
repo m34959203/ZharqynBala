@@ -259,7 +259,7 @@ export default function AdminTestsPage() {
           <p className="text-2xl font-bold text-green-600">{stats.active}</p>
         </div>
         <div className="bg-white rounded-xl shadow-sm p-5">
-          <p className="text-sm text-gray-500">Прохождений</p>
+          <p className="text-sm text-gray-500">Попыток (все)</p>
           <p className="text-2xl font-bold text-indigo-600">{stats.totalSessions.toLocaleString()}</p>
         </div>
         <div className="bg-white rounded-xl shadow-sm p-5">

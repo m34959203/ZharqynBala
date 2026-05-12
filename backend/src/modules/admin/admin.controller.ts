@@ -81,6 +81,13 @@ export class AdminController {
     return this.adminService.getTopTests(safePeriod, Number.isFinite(n) && n > 0 ? n : 5);
   }
 
+  @Get('payments/totals')
+  @ApiOperation({ summary: 'Итоговые суммы по платежам: lifetime/month/pending/failed' })
+  @Header('Cache-Control', 'private, max-age=60')
+  async getPaymentTotals() {
+    return this.adminService.getPaymentTotals();
+  }
+
   @Get('stats/regions')
   @ApiOperation({ summary: 'Распределение детей по регионам Казахстана' })
   @ApiResponse({ status: 200, type: [RegionStatDto] })

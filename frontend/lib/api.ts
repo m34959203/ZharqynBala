@@ -263,6 +263,14 @@ export const adminApi = {
     return response.data;
   },
 
+  getPaymentTotals: async (): Promise<{
+    lifetimeRevenue: number; lifetimeCount: number;
+    monthRevenue: number; pendingAmount: number; failedCount: number;
+  }> => {
+    const response = await api.get('/admin/payments/totals');
+    return response.data;
+  },
+
   // Users
   getUsers: async (params?: { role?: string; search?: string; page?: number; limit?: number }) => {
     const response = await api.get('/admin/users', { params });

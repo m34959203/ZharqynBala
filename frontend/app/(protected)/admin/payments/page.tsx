@@ -16,6 +16,13 @@ interface Payment {
   completedAt?: string | null;
 }
 
+interface PaymentTotals {
+  lifetimeRevenue: number;
+  monthRevenue: number;
+  pendingAmount: number;
+  failedCount: number;
+}
+
 export default function AdminPaymentsPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,6 +32,10 @@ export default function AdminPaymentsPage() {
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
+  const [totals, setTotals] = useState<PaymentTotals>({
+    lifetimeRevenue: 0, monthRevenue: 0, pendingAmount: 0, failedCount: 0,
+  });
+
   useEffect(() => {
     const fetchPayments = async () => {
       try {
@@ -33,9 +44,13 @@ export default function AdminPaymentsPage() {
         if (statusFilter !== 'all') {
           params.status = statusFilter;
         }
-        const data = await adminApi.getPayments(params);
+        const [data, totalsRes] = await Promise.all([
+          adminApi.getPayments(params),
+          adminApi.getPaymentTotals().catch(() => null),
+        ]);
         setPayments(data.payments || []);
         setTotalPages(data.totalPages || 1);
+        if (totalsRes) setTotals(totalsRes);
       } catch (error) {
         console.error('Failed to fetch payments:', error);
       } finally {
@@ -88,11 +103,13 @@ export default function AdminPaymentsPage() {
     }
   };
 
+  // Всегда из API /payments/totals (по всей БД, не по странице) —
+  // закрывает BUG-021 (3 разных значения revenue в 3 местах).
   const stats = {
-    totalRevenue: payments.filter(p => p.status === 'COMPLETED').reduce((sum, p) => sum + p.amount, 0),
-    monthRevenue: payments.filter(p => p.status === 'COMPLETED' && new Date(p.createdAt).getMonth() === new Date().getMonth()).reduce((sum, p) => sum + p.amount, 0),
-    pendingAmount: payments.filter(p => p.status === 'PENDING').reduce((sum, p) => sum + p.amount, 0),
-    failedCount: payments.filter(p => p.status === 'FAILED').length,
+    totalRevenue: totals.lifetimeRevenue,
+    monthRevenue: totals.monthRevenue,
+    pendingAmount: totals.pendingAmount,
+    failedCount: totals.failedCount,
   };
 
   return (
