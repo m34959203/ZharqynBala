@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { adminApi } from '@/lib/api';
+import { adminApi, type AdminOverviewDto } from '@/lib/api';
 
 interface AdminDashboardProps {
   userName: string;
@@ -26,10 +26,16 @@ interface DashboardStats {
 
 const fmt = (n: number) => n.toLocaleString('ru-RU').replace(/,/g, ' ');
 const fmtCurrency = (n: number) => {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M ₸`;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)} М ₸`;
   if (n >= 1_000) return `${fmt(Math.round(n / 1000) * 1000)} ₸`;
   return `${fmt(n)} ₸`;
 };
+const fmtCommissionCompact = (n: number) =>
+  n >= 1_000_000 ? `${(n / 1_000_000).toFixed(2)} М ₸`
+  : n >= 1_000 ? `${(n / 1000).toFixed(0)} тыс ₸`
+  : `${fmt(n)} ₸`;
+const formatDelta = (n: number, suffix = '') =>
+  n === 0 ? null : `${n > 0 ? '+' : ''}${fmt(n)}${suffix}`;
 
 const today = () => {
   const d = new Date();
@@ -164,6 +170,152 @@ function Stat({
         )}
       </div>
     </Tag>
+  );
+}
+
+// ───────────────────────────────────────────────────────────
+// Overview stats — все значения из API, без хардкода
+// ───────────────────────────────────────────────────────────
+
+function StatSkeleton() {
+  return (
+    <div style={{
+      background: 'var(--card)', border: '1px solid var(--line)',
+      borderRadius: 20, padding: 24, minHeight: 130,
+      backgroundImage: 'linear-gradient(90deg, var(--ink-100) 0%, var(--ink-50) 50%, var(--ink-100) 100%)',
+      backgroundSize: '200% 100%',
+      animation: 'adminShimmer 1.6s linear infinite',
+    }}>
+      <style jsx>{`
+        @keyframes adminShimmer {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function OverviewStats({
+  overview, error, onRetry,
+}: {
+  overview: AdminOverviewDto | null;
+  error: boolean;
+  onRetry: () => void;
+}) {
+  if (error) {
+    return (
+      <div className="card" role="alert" style={{
+        padding: 24, marginBottom: 28, textAlign: 'center',
+        background: 'var(--risk-50)', borderColor: 'var(--risk-100)',
+      }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, color: 'var(--risk-700)', marginBottom: 8 }}>
+          Не удалось загрузить статистику
+        </div>
+        <div style={{ fontSize: 13, color: 'var(--ink-500)', marginBottom: 16 }}>
+          Попробуйте ещё раз. Если повторится — напишите в поддержку.
+        </div>
+        <button type="button" className="btn btn-secondary" onClick={onRetry}>
+          Повторить
+        </button>
+      </div>
+    );
+  }
+
+  if (!overview) {
+    return (
+      <div className="admin-stats" style={{ display: 'grid', gap: 16, marginBottom: 28 }}>
+        {[0, 1, 2, 3, 4, 5].map(i => <StatSkeleton key={i} />)}
+      </div>
+    );
+  }
+
+  const allZeros =
+    overview.users.total === 0
+    && overview.tests.passed === 0
+    && overview.revenue.monthAmountKzt === 0;
+
+  if (allZeros) {
+    return (
+      <>
+        <div className="admin-stats" style={{ display: 'grid', gap: 16, marginBottom: 16 }}>
+          <Stat icon="users" label="Пользователи" value="0" href="/admin/users" />
+          <Stat icon="user" label="Детей в системе" value="0" />
+          <Stat icon="shield" label="Психологи · одобрено" value="0" href="/admin/psychologists" />
+          <Stat icon="book" label="Тестов пройдено" value="0" href="/admin/tests" />
+          <Stat featured icon="wallet" label="Выручка месяца" value="0 ₸" href="/admin/payments" />
+          <Stat icon="target" label="Диагностика → консультация" value="0%" />
+        </div>
+        <div className="card" style={{
+          padding: 14, marginBottom: 28,
+          background: 'var(--ink-50)', borderStyle: 'dashed',
+        }}>
+          <div style={{ fontSize: 13, color: 'var(--ink-500)' }}>
+            Данные начнут появляться после первых регистраций и прохождений тестов.
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  const { users, children, psychologists, tests, revenue, conversion } = overview;
+
+  const usersMeta = users.total >= 10
+    ? `родители ${fmt(users.parents)} · психологи ${fmt(users.psychologists)} · админы ${fmt(users.admins)}`
+    : undefined;
+  const childrenMeta = (children.total >= 10 && children.perParent !== null)
+    ? `по ${children.perParent.toFixed(2).replace(/\.?0+$/, '')} ребёнка на родителя`
+    : undefined;
+  const psyMeta = `${fmt(psychologists.pending)} на модерации · ${fmt(psychologists.rejected)} отклонено`;
+  const testsMeta = tests.passed >= 50
+    ? `премиум-доля ${Math.round(tests.premiumShare * 100)}%`
+    : undefined;
+  const revenueMeta = revenue.monthAmountKzt >= 100_000
+    ? `комиссия платформы ${fmtCommissionCompact(revenue.commissionKzt)}`
+    : undefined;
+  const conversionMeta = `цель ≥ ${conversion.target}%${conversion.previousMonthPct > 0 ? ` · прошлый месяц ${conversion.previousMonthPct.toFixed(1)}%` : ''}`;
+
+  return (
+    <div className="admin-stats" style={{ display: 'grid', gap: 16, marginBottom: 28 }}>
+      <Stat
+        icon="users" label="Пользователи"
+        value={fmt(users.total)}
+        delta={formatDelta(users.deltaWeek, ' за 7 дней') ?? undefined}
+        sub={usersMeta} href="/admin/users"
+      />
+      <Stat
+        icon="user" label="Детей в системе"
+        value={fmt(children.total)}
+        delta={formatDelta(children.deltaWeek, ' за 7 дней') ?? undefined}
+        sub={childrenMeta}
+      />
+      <Stat
+        icon="shield" label="Психологи · одобрено"
+        value={fmt(psychologists.approved)}
+        delta={formatDelta(psychologists.deltaWeek, ' за 7 дней') ?? undefined}
+        sub={psyMeta} href="/admin/psychologists"
+      />
+      <Stat
+        icon="book" label="Тестов пройдено"
+        value={fmt(tests.passed)}
+        delta={formatDelta(tests.deltaWeek, ' за 7 дней') ?? undefined}
+        sub={testsMeta} href="/admin/tests"
+      />
+      <Stat
+        featured icon="wallet" label="Выручка месяца"
+        value={fmtCurrency(revenue.monthAmountKzt)}
+        delta={revenue.deltaMomPct !== 0 ? `${revenue.deltaMomPct > 0 ? '+' : ''}${revenue.deltaMomPct.toFixed(1)}% MoM` : undefined}
+        deltaTone={revenue.deltaMomPct < 0 ? 'risk' : 'ok'}
+        sub={revenueMeta} href="/admin/payments"
+      />
+      <Stat
+        icon="target" label="Диагностика → консультация"
+        value={`${conversion.diagnosticToConsultPct.toFixed(1)}%`}
+        delta={conversion.deltaPp !== 0 ? `${conversion.deltaPp > 0 ? '+' : ''}${conversion.deltaPp.toFixed(1)} п.п.` : undefined}
+        deltaTone={conversion.deltaPp < 0 ? 'warn' : 'ok'}
+        sub={conversionMeta}
+      />
+    </div>
   );
 }
 
@@ -441,16 +593,24 @@ export default function AdminDashboard({ userName }: AdminDashboardProps) {
   useEffect(() => {
     adminApi.getDashboardStats()
       .then((data) => setStats((data as DashboardStats) || {}))
-      .catch(() => {/* fall back to design mock */});
+      .catch(() => {/* keep current fallbacks below */});
   }, []);
 
-  const usersValue = stats.totalUsers ? fmt(stats.totalUsers) : '12 487';
-  const childrenValue = stats.totalChildren ? fmt(stats.totalChildren) : '18 240';
-  const psyApproved = stats.approvedPsychologists ?? 127;
-  const psyPending = stats.pendingPsychologists ?? 12;
-  const testsCount = stats.testsCompleted ?? stats.totalTests ?? 84_521;
-  const revenue = stats.revenueMonth ?? stats.totalRevenue ?? 18_450_000;
-  const conv = stats.consultationConversion ?? 11.8;
+  // Overview (real aggregated stats from /admin/stats/overview)
+  const [overview, setOverview] = useState<AdminOverviewDto | null>(null);
+  const [overviewError, setOverviewError] = useState(false);
+
+  useEffect(() => {
+    adminApi.getOverview()
+      .then(setOverview)
+      .catch(() => setOverviewError(true));
+  }, []);
+
+  const refetchOverview = () => {
+    setOverviewError(false);
+    setOverview(null);
+    adminApi.getOverview().then(setOverview).catch(() => setOverviewError(true));
+  };
 
   return (
     <div className="admin-shell" suppressHydrationWarning>
@@ -553,21 +713,12 @@ export default function AdminDashboard({ userName }: AdminDashboardProps) {
       </div>
 
       <main style={{ paddingTop: 28, paddingBottom: 48 }}>
-        {/* 6 stat cards */}
-        <div className="admin-stats" style={{ display: 'grid', gap: 16, marginBottom: 28 }}>
-          <Stat icon="users" label="Пользователи" value={usersValue} delta="+234"
-            sub="родители 11 902 · психологи 127 · админы 12" href="/admin/users" />
-          <Stat icon="user" label="Детей в системе" value={childrenValue} delta="+412"
-            sub="по 1.46 ребёнка на родителя" />
-          <Stat icon="shield" label="Психологи · одобрено" value={fmt(psyApproved)} delta="+4"
-            sub={`${psyPending} на модерации · 3 отклонено`} href="/admin/psychologists" />
-          <Stat icon="book" label="Тестов пройдено" value={fmt(testsCount)} delta="+2 100"
-            sub="из них премиум — 27%" href="/admin/tests" />
-          <Stat featured icon="wallet" label="Выручка май" value={fmtCurrency(revenue)} delta="+23% MoM"
-            sub="комиссия платформы 2.77M ₸" href="/admin/payments" />
-          <Stat icon="target" label="Диагностика → консультация" value={`${conv}%`} delta="+1.4 п.п."
-            sub="цель ≥ 8% · апрель 10.4%" />
-        </div>
+        {/* 6 stat cards — все значения и подписи из /admin/stats/overview */}
+        <OverviewStats
+          overview={overview}
+          error={overviewError}
+          onRetry={refetchOverview}
+        />
 
         {/* Two-col grid */}
         <div className="admin-two-col" style={{ display: 'grid', gap: 24, marginBottom: 28 }}>

@@ -65,6 +65,20 @@ api.interceptors.response.use(
   }
 );
 
+// ──────────────────────────────────────────────────
+// Admin overview DTO (mirror backend AdminOverviewDto)
+// ──────────────────────────────────────────────────
+
+export interface AdminOverviewDto {
+  users: { total: number; parents: number; psychologists: number; admins: number; deltaWeek: number };
+  children: { total: number; perParent: number | null; deltaWeek: number };
+  psychologists: { approved: number; pending: number; rejected: number; deltaWeek: number };
+  tests: { passed: number; premiumShare: number; deltaWeek: number };
+  revenue: { monthAmountKzt: number; commissionKzt: number; deltaMomPct: number };
+  conversion: { diagnosticToConsultPct: number; deltaPp: number; target: number; previousMonthPct: number };
+  health: { servicesOnline: number; servicesTotal: number; lastIncidentAt: string | null };
+}
+
 // Test types
 export interface TestData {
   id: string;
@@ -140,6 +154,11 @@ export const adminApi = {
   // Dashboard
   getDashboardStats: async () => {
     const response = await api.get('/admin/dashboard');
+    return response.data;
+  },
+
+  getOverview: async (): Promise<AdminOverviewDto> => {
+    const response = await api.get<AdminOverviewDto>('/admin/stats/overview');
     return response.data;
   },
 
