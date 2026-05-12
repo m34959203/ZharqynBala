@@ -116,6 +116,13 @@ export class AuthService {
     // Сохранение refresh token в БД
     await this.saveRefreshToken(user.id, tokens.refreshToken);
 
+    // Обновляем lastLoginAt — нужно для админ-таблицы пользователей,
+    // чтобы видеть кто реально живой. Не блокируем ответ — fire-and-forget.
+    this.prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    }).catch(err => this.logger.warn(`Failed to update lastLoginAt: ${err.message}`));
+
     this.logger.log('Login successful');
 
     return {

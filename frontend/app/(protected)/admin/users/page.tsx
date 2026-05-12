@@ -19,6 +19,10 @@ interface User {
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [roleCounts, setRoleCounts] = useState<{ parents: number; psychologists: number; schools: number; admins: number }>({
+    parents: 0, psychologists: 0, schools: 0, admins: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
@@ -36,8 +40,20 @@ export default function AdminUsersPage() {
       if (roleFilter !== 'all') params.role = roleFilter;
       if (searchQuery) params.search = searchQuery;
 
-      const data = await adminApi.getUsers(params);
+      const [data, overview] = await Promise.all([
+        adminApi.getUsers(params),
+        adminApi.getOverview().catch(() => null),
+      ]);
       setUsers(data.users || []);
+      setTotalCount(data.total ?? data.users?.length ?? 0);
+      if (overview) {
+        setRoleCounts({
+          parents: overview.users.parents,
+          psychologists: overview.users.psychologists,
+          schools: overview.users.schools,
+          admins: overview.users.admins,
+        });
+      }
     } catch (error) {
       console.error('Failed to load users:', error);
     } finally {
@@ -122,12 +138,14 @@ export default function AdminUsersPage() {
     }
   };
 
+  // Используем totalCount из API (полное количество с учётом пагинации),
+  // а не users.length (длина текущей страницы). roleCounts — из overview.
   const stats = {
-    total: users.length,
+    total: totalCount,
     active: users.filter(u => u.isActive).length,
-    parents: users.filter(u => u.role === 'PARENT').length,
-    psychologists: users.filter(u => u.role === 'PSYCHOLOGIST').length,
-    schools: users.filter(u => u.role === 'SCHOOL').length,
+    parents: roleCounts.parents,
+    psychologists: roleCounts.psychologists,
+    schools: roleCounts.schools,
   };
 
   const filteredUsers = users.filter(user => {
@@ -270,6 +288,7 @@ export default function AdminUsersPage() {
                           onClick={() => handleEditUser(user)}
                           className="p-2 text-gray-400 hover:text-indigo-600"
                           title="Редактировать"
+                          aria-label={`Редактировать пользователя ${user.firstName} ${user.lastName}`}
                         >
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -279,6 +298,7 @@ export default function AdminUsersPage() {
                           onClick={() => handleBanUser(user)}
                           className={`p-2 ${user.isActive ? 'text-gray-400 hover:text-yellow-600' : 'text-yellow-600 hover:text-green-600'}`}
                           title={user.isActive ? 'Заблокировать' : 'Разблокировать'}
+                          aria-label={`${user.isActive ? 'Заблокировать' : 'Разблокировать'} пользователя ${user.firstName} ${user.lastName}`}
                         >
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
@@ -288,6 +308,7 @@ export default function AdminUsersPage() {
                           onClick={() => handleDeleteUser(user)}
                           className="p-2 text-gray-400 hover:text-red-600"
                           title="Удалить"
+                          aria-label={`Удалить пользователя ${user.firstName} ${user.lastName}`}
                         >
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

@@ -168,57 +168,57 @@ export default function AdminAnalyticsPage() {
       {/* Main Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {/* Users */}
-        <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-6 text-white shadow-lg">
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center text-gray-600">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
           </div>
-          <p className="text-white/80 text-sm font-medium">Пользователей</p>
-          <p className="text-3xl font-bold mt-1">{stats.totalUsers.toLocaleString()}</p>
+          <p className="text-gray-500 text-sm font-medium">Пользователей</p>
+          <p className="text-3xl font-bold mt-1 text-gray-900">{stats.totalUsers.toLocaleString()}</p>
         </div>
 
         {/* Tests */}
-        <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-6 text-white shadow-lg">
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center text-gray-600">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
           </div>
-          <p className="text-white/80 text-sm font-medium">Тестов пройдено</p>
-          <p className="text-3xl font-bold mt-1">{stats.totalTests.toLocaleString()}</p>
+          <p className="text-gray-500 text-sm font-medium">Тестов пройдено</p>
+          <p className="text-3xl font-bold mt-1 text-gray-900">{stats.totalTests.toLocaleString()}</p>
         </div>
 
         {/* Average Score */}
-        <div className="bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl p-6 text-white shadow-lg">
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center text-gray-600">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
             </div>
           </div>
-          <p className="text-white/80 text-sm font-medium">Средний балл</p>
-          <p className="text-3xl font-bold mt-1">
+          <p className="text-gray-500 text-sm font-medium">Средний балл</p>
+          <p className="text-3xl font-bold mt-1 text-gray-900">
             {stats.avgTestScore > 0 ? `${stats.avgTestScore}%` : '—'}
           </p>
         </div>
 
         {/* Revenue */}
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg">
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center text-gray-600">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
           </div>
-          <p className="text-white/80 text-sm font-medium">Выручка</p>
-          <p className="text-3xl font-bold mt-1">
+          <p className="text-gray-500 text-sm font-medium">Выручка</p>
+          <p className="text-3xl font-bold mt-1 text-gray-900">
             {stats.totalRevenue > 0 ? formatCurrency(stats.totalRevenue) : '—'}
           </p>
         </div>

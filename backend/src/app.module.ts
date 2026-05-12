@@ -8,6 +8,7 @@ import { HealthModule } from './health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { ParentsModule } from './modules/parents/parents.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { TestsModule } from './modules/tests/tests.module';
 import { ResultsModule } from './modules/results/results.module';
 import { PaymentsModule } from './modules/payments/payments.module';
@@ -58,6 +59,7 @@ import { GroupTestsModule } from './modules/group-tests/group-tests.module';
     AuthModule,
     UsersModule,
     ParentsModule,
+    AnalyticsModule,
     TestsModule,
     ResultsModule,
     PaymentsModule,

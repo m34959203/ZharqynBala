@@ -9,10 +9,11 @@ interface Payment {
   id: string;
   userId: string;
   amount: number;
-  type: string;
+  paymentType: 'DIAGNOSTIC' | 'CONSULTATION' | 'SUBSCRIPTION';
+  provider?: 'KASPI' | 'PAYBOX';
   status: 'COMPLETED' | 'PENDING' | 'FAILED' | 'REFUNDED';
   createdAt: string;
-  paymentMethod?: string;
+  completedAt?: string | null;
 }
 
 export default function AdminPaymentsPage() {
@@ -45,26 +46,24 @@ export default function AdminPaymentsPage() {
   }, [page, statusFilter]);
 
   const filteredPayments = payments.filter(payment => {
-    const matchesType = typeFilter === 'all' || payment.type === typeFilter;
+    const matchesType = typeFilter === 'all' || payment.paymentType === typeFilter;
     return matchesType;
   });
 
   const getTypeLabel = (type: string) => {
     switch (type) {
-      case 'SUBSCRIPTION': return 'Подписка';
+      case 'DIAGNOSTIC': return 'Диагностика';
       case 'CONSULTATION': return 'Консультация';
-      case 'TEST_PACK': return 'Пакет тестов';
-      case 'SCHOOL_LICENSE': return 'Лицензия школы';
-      default: return type;
+      case 'SUBSCRIPTION': return 'Подписка';
+      default: return type || '—';
     }
   };
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'SUBSCRIPTION': return 'bg-blue-100 text-blue-800';
+      case 'DIAGNOSTIC': return 'bg-blue-100 text-blue-800';
       case 'CONSULTATION': return 'bg-purple-100 text-purple-800';
-      case 'TEST_PACK': return 'bg-orange-100 text-orange-800';
-      case 'SCHOOL_LICENSE': return 'bg-green-100 text-green-800';
+      case 'SUBSCRIPTION': return 'bg-emerald-100 text-emerald-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -210,15 +209,15 @@ export default function AdminPaymentsPage() {
                       <p className="text-sm text-gray-500">{payment.userId.slice(0, 8)}...</p>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getTypeColor(payment.type)}`}>
-                        {getTypeLabel(payment.type)}
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getTypeColor(payment.paymentType)}`}>
+                        {getTypeLabel(payment.paymentType)}
                       </span>
                     </td>
                     <td className="px-6 py-4 font-bold text-gray-900">
                       {payment.amount.toLocaleString()} ₸
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
-                      {payment.paymentMethod || 'Kaspi'}
+                      {payment.provider === 'PAYBOX' ? 'PayBox' : 'Kaspi'}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(payment.status)}`}>
