@@ -58,6 +58,20 @@ class HealthOverviewDto {
   lastIncidentAt!: string | null;
 }
 
+export class RevenueTimeseriesPointDto {
+  @ApiProperty({ example: 'Май' }) label!: string;
+  @ApiProperty({ example: 18450000 }) value!: number;
+  @ApiProperty({ example: true }) current!: boolean;
+}
+
+export class RevenueTimeseriesDto {
+  @ApiProperty({ enum: ['week', 'month', 'year'] }) range!: 'week' | 'month' | 'year';
+  @ApiProperty({ example: 'KZT' }) unit!: string;
+  @ApiProperty({ example: 20000000, description: 'Округлённый максимум для Y-оси' })
+  max!: number;
+  @ApiProperty({ type: [RevenueTimeseriesPointDto] }) data!: RevenueTimeseriesPointDto[];
+}
+
 export class AdminOverviewDto {
   @ApiProperty({ type: UsersOverviewDto }) users!: UsersOverviewDto;
   @ApiProperty({ type: ChildrenOverviewDto }) children!: ChildrenOverviewDto;

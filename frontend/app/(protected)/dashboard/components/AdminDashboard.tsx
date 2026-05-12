@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { adminApi, type AdminOverviewDto } from '@/lib/api';
+import { adminApi, type AdminOverviewDto, type RevenueTimeseriesDto } from '@/lib/api';
 
 interface AdminDashboardProps {
   userName: string;
@@ -353,17 +353,38 @@ function PsyModRow({
   );
 }
 
+function formatAxisTick(v: number): string {
+  if (v === 0) return '0';
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(v % 1_000_000 === 0 ? 0 : 1)}M`;
+  if (v >= 1_000) return `${Math.round(v / 1000)}K`;
+  return String(v);
+}
+
+function formatBarLabel(v: number): string {
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2).replace(/\.?0+$/, '')} М ₸`;
+  if (v >= 1_000) return `${Math.round(v / 1000)} тыс ₸`;
+  return `${v} ₸`;
+}
+
 function RevenueChart() {
   const [range, setRange] = useState<'week' | 'month' | 'year'>('month');
-  const data = useMemo(() => ([
-    { m: 'Янв', v: 9800 },
-    { m: 'Фев', v: 11200 },
-    { m: 'Мар', v: 13400 },
-    { m: 'Апр', v: 14980 },
-    { m: 'Май', v: 18450, current: true },
-  ]), []);
-  const max = 20000;
+  const [series, setSeries] = useState<RevenueTimeseriesDto | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    adminApi.getRevenueTimeseries(range)
+      .then(setSeries)
+      .catch(() => setSeries(null))
+      .finally(() => setLoading(false));
+  }, [range]);
+
+  const data = series?.data ?? [];
+  const max = Math.max(series?.max ?? 1, 1); // avoid /0
   const tabs: [typeof range, string][] = [['week', 'Неделя'], ['month', 'Месяц'], ['year', 'Год']];
+
+  // 5 evenly-spaced axis ticks (0, 25, 50, 75, 100% of max)
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map(p => Math.round(max * p));
 
   return (
     <div className="card" style={{ padding: 24 }}>
@@ -385,45 +406,61 @@ function RevenueChart() {
       </div>
 
       <div style={{ position: 'relative', height: 220 }}>
-        {[0, 5000, 10000, 15000, 20000].map((v, i) => (
+        {ticks.map((v, i) => (
           <div key={i} style={{
             position: 'absolute', left: 40, right: 0, bottom: `${(v / max) * 100}%`,
             borderTop: '1px dashed var(--ink-200)', height: 1,
           }}>
             <span style={{
               position: 'absolute', left: -42, top: -7, fontSize: 10.5, fontWeight: 500, color: 'var(--ink-400)',
-            }}>{v ? `${v / 1000}M` : '0'}</span>
+            }}>{formatAxisTick(v)}</span>
           </div>
         ))}
 
         <div style={{
           position: 'absolute', inset: 0, paddingLeft: 40, paddingBottom: 28,
-          display: 'flex', alignItems: 'flex-end', gap: 24,
+          display: 'flex', alignItems: 'flex-end', gap: data.length > 7 ? 8 : 24,
         }}>
-          {data.map((d, i) => (
+          {loading && !series ? (
+            // skeleton bars
+            Array.from({ length: 5 }).map((_, i) => (
+              <div key={`s-${i}`} style={{
+                flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%',
+              }}>
+                <div style={{
+                  width: '100%', maxWidth: 64, height: `${40 + (i % 3) * 20}%`,
+                  borderRadius: '10px 10px 4px 4px',
+                  backgroundImage: 'linear-gradient(180deg, #F1EEF8 0%, #F8F6FD 100%)',
+                  opacity: 0.6,
+                }}/>
+              </div>
+            ))
+          ) : data.map((d, i) => (
             <div key={i} style={{
               flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', position: 'relative',
             }}>
               <div style={{
-                width: '100%', maxWidth: 64, height: `${(d.v / max) * 100}%`,
+                width: '100%', maxWidth: 64,
+                // Show at least a thin sliver if value is 0 — keeps grid readable
+                height: d.value === 0 ? '2px' : `${Math.max(2, (d.value / max) * 100)}%`,
                 borderRadius: '10px 10px 4px 4px',
-                background: d.current ? 'var(--brand-grad)' : 'var(--brand-100)',
+                background: d.value === 0 ? 'var(--ink-200)' : d.current ? 'var(--brand-grad)' : 'var(--brand-100)',
                 boxShadow: d.current ? 'var(--shadow-brand)' : 'none',
                 position: 'relative', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: 8,
               }}>
-                {d.current && (
+                {d.current && d.value > 0 && (
                   <div style={{
                     position: 'absolute', top: -28, padding: '4px 10px', borderRadius: 8,
                     background: '#0E0B22', color: '#fff', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap',
                   }}>
-                    {(d.v / 1000).toFixed(1)}M ₸
+                    {formatBarLabel(d.value)}
                   </div>
                 )}
               </div>
               <div style={{
-                position: 'absolute', bottom: 0, fontSize: 12, fontWeight: 600,
+                position: 'absolute', bottom: 0, fontSize: data.length > 7 ? 10 : 12, fontWeight: 600,
                 color: d.current ? 'var(--brand-600)' : 'var(--ink-500)',
-              }}>{d.m}</div>
+              }}>{d.label}</div>
             </div>
           ))}
         </div>

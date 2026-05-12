@@ -1,7 +1,18 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { DashboardStatsDto, CreateTestDto, UpdateTestDto } from './dto/admin.dto';
-import { AdminOverviewDto } from './dto/admin-overview.dto';
+import { AdminOverviewDto, RevenueTimeseriesDto } from './dto/admin-overview.dto';
+
+function niceMax(v: number): number {
+  if (v <= 0) return 100;
+  const exp = Math.floor(Math.log10(v));
+  const base = Math.pow(10, exp);
+  const k = v / base;
+  if (k <= 1) return base;
+  if (k <= 2) return 2 * base;
+  if (k <= 5) return 5 * base;
+  return 10 * base;
+}
 
 @Injectable()
 export class AdminService {
@@ -129,6 +140,78 @@ export class AdminService {
         lastIncidentAt: null,
       },
     };
+  }
+
+  // ──────────────────────────────────────────────────
+  // Revenue timeseries for chart: week / month / year
+  // ──────────────────────────────────────────────────
+  async getRevenueTimeseries(range: 'week' | 'month' | 'year'): Promise<RevenueTimeseriesDto> {
+    const now = new Date();
+    const DAY_LABELS = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+    const MONTH_LABELS = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+
+    type Bucket = { from: Date; to: Date; label: string; current: boolean };
+    const buckets: Bucket[] = [];
+
+    if (range === 'week') {
+      for (let i = 6; i >= 0; i--) {
+        const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+        const next = new Date(day.getTime() + 24 * 3600_000);
+        buckets.push({
+          from: day, to: next,
+          label: DAY_LABELS[day.getDay()],
+          current: i === 0,
+        });
+      }
+    } else if (range === 'month') {
+      // last 5 calendar months including current
+      for (let i = 4; i >= 0; i--) {
+        const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+        buckets.push({
+          from: monthStart, to: monthEnd,
+          label: MONTH_LABELS[monthStart.getMonth()],
+          current: i === 0,
+        });
+      }
+    } else {
+      // year: 12 calendar months of current year
+      const yearStart = new Date(now.getFullYear(), 0, 1);
+      for (let i = 0; i < 12; i++) {
+        const monthStart = new Date(yearStart.getFullYear(), i, 1);
+        const monthEnd = new Date(yearStart.getFullYear(), i + 1, 1);
+        buckets.push({
+          from: monthStart, to: monthEnd,
+          label: MONTH_LABELS[i],
+          current: i === now.getMonth(),
+        });
+      }
+    }
+
+    // Single query: fetch sums for the whole span, then bucket
+    const earliest = buckets[0].from;
+    const latest = buckets[buckets.length - 1].to;
+
+    const payments = await this.prisma.payment.findMany({
+      where: {
+        status: 'COMPLETED',
+        completedAt: { gte: earliest, lt: latest },
+      },
+      select: { amount: true, completedAt: true },
+    });
+
+    const data = buckets.map(b => {
+      const value = payments
+        .filter(p => p.completedAt && p.completedAt >= b.from && p.completedAt < b.to)
+        .reduce((s, p) => s + p.amount, 0);
+      return { label: b.label, value, current: b.current };
+    });
+
+    // Nice max for Y-axis
+    const peak = Math.max(0, ...data.map(d => d.value));
+    const max = niceMax(peak);
+
+    return { range, unit: 'KZT', max, data };
   }
 
   async getDashboardStats(): Promise<DashboardStatsDto> {

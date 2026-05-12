@@ -29,7 +29,7 @@ import {
   CreateTestDto,
   UpdateTestDto,
 } from './dto/admin.dto';
-import { AdminOverviewDto } from './dto/admin-overview.dto';
+import { AdminOverviewDto, RevenueTimeseriesDto } from './dto/admin-overview.dto';
 
 @ApiTags('Admin')
 @Controller('admin')
@@ -53,6 +53,15 @@ export class AdminController {
   @Header('Cache-Control', 'private, max-age=60')
   async getOverview(): Promise<AdminOverviewDto> {
     return this.adminService.getOverview();
+  }
+
+  @Get('stats/revenue-timeseries')
+  @ApiOperation({ summary: 'Динамика выручки по дням/месяцам/году для графика' })
+  @ApiResponse({ status: 200, type: RevenueTimeseriesDto })
+  @Header('Cache-Control', 'private, max-age=60')
+  async getRevenueTimeseries(@Query('range') range?: string): Promise<RevenueTimeseriesDto> {
+    const safeRange = (range === 'week' || range === 'month' || range === 'year') ? range : 'month';
+    return this.adminService.getRevenueTimeseries(safeRange);
   }
 
   @Get('dashboard/activity')

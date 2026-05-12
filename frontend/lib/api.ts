@@ -104,6 +104,18 @@ export interface ParentOverviewDto {
   } | null;
 }
 
+export interface RevenueTimeseriesPoint {
+  label: string;
+  value: number;
+  current: boolean;
+}
+export interface RevenueTimeseriesDto {
+  range: 'week' | 'month' | 'year';
+  unit: 'KZT';
+  max: number;
+  data: RevenueTimeseriesPoint[];
+}
+
 export const parentsApi = {
   getOverview: async (): Promise<ParentOverviewDto> => {
     const response = await api.get<ParentOverviewDto>('/parents/me/overview');
@@ -201,6 +213,11 @@ export const adminApi = {
 
   getOverview: async (): Promise<AdminOverviewDto> => {
     const response = await api.get<AdminOverviewDto>('/admin/stats/overview');
+    return response.data;
+  },
+
+  getRevenueTimeseries: async (range: 'week' | 'month' | 'year'): Promise<RevenueTimeseriesDto> => {
+    const response = await api.get<RevenueTimeseriesDto>('/admin/stats/revenue-timeseries', { params: { range } });
     return response.data;
   },
 
