@@ -659,27 +659,44 @@ export default function PsychologistDashboard({ userName }: PsychologistDashboar
           .psy-shell .psy-h-1 { font-size: 28px; }
         }
 
-        .psy-shell .psy-timeline { position: relative; padding-left: 92px; }
+        .psy-shell .psy-timeline { position: relative; }
         .psy-shell .psy-timeline::before {
-          content: ''; position: absolute;
-          left: 36px; top: 18px; bottom: 18px;
-          width: 2px; background: var(--psy-ink-200);
+          content: '';
+          position: absolute;
+          left: 83px; /* time-col (64) + gap (12) + dot-center (8) - half-rail (1) */
+          top: 30px;
+          bottom: 30px;
+          width: 2px;
+          background: var(--psy-ink-200);
           border-radius: 999px;
+          z-index: 0;
         }
-        .psy-shell .psy-timeline-row { position: relative; }
+        .psy-shell .psy-timeline-row {
+          display: grid;
+          grid-template-columns: 64px 16px 1fr;
+          column-gap: 12px;
+          align-items: start;
+          position: relative;
+          z-index: 1;
+        }
         .psy-shell .psy-timeline-time {
-          position: absolute; left: -92px; top: 16px; width: 72px;
           font-family: var(--psy-font-display); font-weight: 700; font-size: 18px;
-          color: var(--psy-ink-700); text-align: right;
+          color: var(--psy-ink-700);
+          text-align: right;
+          white-space: nowrap;
+          line-height: 1.2;
           font-variant-numeric: tabular-nums;
+          padding-top: 16px;
         }
         .psy-shell .psy-timeline-time[data-status="IN_PROGRESS"] { color: var(--psy-brand-600); }
         .psy-shell .psy-timeline-time[data-status="COMPLETED"]   { color: var(--psy-ink-400); }
         .psy-shell .psy-timeline-dot {
-          position: absolute; left: -60px; top: 22px;
           width: 16px; height: 16px; border-radius: 999px;
           background: #fff; border: 2px solid var(--psy-ink-300);
-          z-index: 2; display: grid; place-items: center;
+          display: grid; place-items: center;
+          margin-top: 22px;
+          position: relative;
+          z-index: 2;
         }
         .psy-shell .psy-timeline-dot[data-status="IN_PROGRESS"] {
           background: var(--psy-brand-grad); border: 0;
@@ -688,6 +705,14 @@ export default function PsychologistDashboard({ userName }: PsychologistDashboar
         }
         .psy-shell .psy-timeline-dot[data-status="COMPLETED"] {
           background: var(--psy-ink-300); border: 0; color: #fff;
+        }
+        @media (max-width: 640px) {
+          .psy-shell .psy-timeline-row {
+            grid-template-columns: 52px 16px 1fr;
+            column-gap: 8px;
+          }
+          .psy-shell .psy-timeline::before { left: 67px; }
+          .psy-shell .psy-timeline-time { font-size: 15px; }
         }
 
         .psy-shell .psy-session-card {
