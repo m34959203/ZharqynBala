@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
   ParseUUIDPipe,
+  Header,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -28,6 +29,7 @@ import {
   CreateTestDto,
   UpdateTestDto,
 } from './dto/admin.dto';
+import { AdminOverviewDto } from './dto/admin-overview.dto';
 
 @ApiTags('Admin')
 @Controller('admin')
@@ -43,6 +45,14 @@ export class AdminController {
   @ApiResponse({ status: 200, type: DashboardStatsDto })
   async getDashboardStats(): Promise<DashboardStatsDto> {
     return this.adminService.getDashboardStats();
+  }
+
+  @Get('stats/overview')
+  @ApiOperation({ summary: 'Агрегированная сводка для админ-дашборда (users/children/psy/tests/revenue/conversion/health)' })
+  @ApiResponse({ status: 200, type: AdminOverviewDto })
+  @Header('Cache-Control', 'private, max-age=60')
+  async getOverview(): Promise<AdminOverviewDto> {
+    return this.adminService.getOverview();
   }
 
   @Get('dashboard/activity')

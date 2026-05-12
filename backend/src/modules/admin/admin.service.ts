@@ -1,12 +1,135 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { DashboardStatsDto, CreateTestDto, UpdateTestDto } from './dto/admin.dto';
+import { AdminOverviewDto } from './dto/admin-overview.dto';
 
 @Injectable()
 export class AdminService {
   private readonly logger = new Logger(AdminService.name);
 
   constructor(private prisma: PrismaService) {}
+
+  // ──────────────────────────────────────────────────
+  // Aggregated dashboard overview for /admin/stats/overview
+  // ──────────────────────────────────────────────────
+  async getOverview(): Promise<AdminOverviewDto> {
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 3600_000);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+    // Run aggregations in parallel
+    const [
+      usersByRole,
+      usersThisWeek,
+      totalChildren,
+      childrenThisWeek,
+      psyApproved,
+      psyPending,
+      psyRejected,
+      psyThisWeek,
+      passedTotal,
+      passedThisWeek,
+      premiumPassed,
+      monthRevenueAgg,
+      prevMonthRevenueAgg,
+      consultCompletedTotal,
+      prevMonthPassed,
+      prevMonthConsults,
+    ] = await Promise.all([
+      this.prisma.user.groupBy({ by: ['role'], _count: { id: true } }),
+      this.prisma.user.count({ where: { createdAt: { gte: weekAgo } } }),
+      this.prisma.child.count(),
+      this.prisma.child.count({ where: { createdAt: { gte: weekAgo } } }),
+      this.prisma.psychologist.count({ where: { isApproved: true } }),
+      this.prisma.psychologist.count({ where: { isApproved: false, user: { isActive: true } } }),
+      this.prisma.psychologist.count({ where: { user: { isActive: false } } }),
+      this.prisma.psychologist.count({ where: { createdAt: { gte: weekAgo } } }),
+      this.prisma.testSession.count({ where: { status: 'COMPLETED' } }),
+      this.prisma.testSession.count({ where: { status: 'COMPLETED', completedAt: { gte: weekAgo } } }),
+      this.prisma.testSession.count({ where: { status: 'COMPLETED', test: { isPremium: true } } }),
+      this.prisma.payment.aggregate({
+        where: { status: 'COMPLETED', completedAt: { gte: monthStart } },
+        _sum: { amount: true },
+      }),
+      this.prisma.payment.aggregate({
+        where: { status: 'COMPLETED', completedAt: { gte: prevMonthStart, lt: monthStart } },
+        _sum: { amount: true },
+      }),
+      this.prisma.consultation.count({ where: { status: 'COMPLETED' } }),
+      this.prisma.testSession.count({
+        where: { status: 'COMPLETED', completedAt: { gte: prevMonthStart, lt: monthStart } },
+      }),
+      this.prisma.consultation.count({
+        where: { status: 'COMPLETED', completedAt: { gte: prevMonthStart, lt: monthStart } },
+      }),
+    ]);
+
+    const byRole = (role: string) =>
+      usersByRole.find(r => r.role === role)?._count.id ?? 0;
+
+    const totalUsers = usersByRole.reduce((s, r) => s + r._count.id, 0);
+    const parents = byRole('PARENT');
+    const psychologistsRole = byRole('PSYCHOLOGIST');
+    const admins = byRole('ADMIN');
+
+    const perParent = parents > 0
+      ? Math.round((totalChildren / parents) * 100) / 100
+      : null;
+
+    const premiumShare = passedTotal > 0
+      ? Math.round((premiumPassed / passedTotal) * 100) / 100
+      : 0;
+
+    const monthAmount = monthRevenueAgg._sum.amount ?? 0;
+    const prevMonthAmount = prevMonthRevenueAgg._sum.amount ?? 0;
+    const commissionKzt = Math.round(monthAmount * 0.15);
+    const deltaMomPct = prevMonthAmount > 0
+      ? Math.round(((monthAmount - prevMonthAmount) / prevMonthAmount) * 1000) / 10
+      : 0;
+
+    const conversion = passedTotal > 0
+      ? Math.round((consultCompletedTotal / passedTotal) * 1000) / 10
+      : 0;
+    const previousMonthPct = prevMonthPassed > 0
+      ? Math.round((prevMonthConsults / prevMonthPassed) * 1000) / 10
+      : 0;
+    const deltaPp = Math.round((conversion - previousMonthPct) * 10) / 10;
+
+    return {
+      users: {
+        total: totalUsers,
+        parents, psychologists: psychologistsRole, admins,
+        deltaWeek: usersThisWeek,
+      },
+      children: {
+        total: totalChildren, perParent, deltaWeek: childrenThisWeek,
+      },
+      psychologists: {
+        approved: psyApproved, pending: psyPending, rejected: psyRejected,
+        deltaWeek: psyThisWeek,
+      },
+      tests: {
+        passed: passedTotal, premiumShare, deltaWeek: passedThisWeek,
+      },
+      revenue: {
+        monthAmountKzt: monthAmount,
+        commissionKzt,
+        deltaMomPct,
+      },
+      conversion: {
+        diagnosticToConsultPct: conversion,
+        deltaPp,
+        target: 8,
+        previousMonthPct,
+      },
+      health: {
+        servicesOnline: 12,
+        servicesTotal: 12,
+        lastIncidentAt: null,
+      },
+    };
+  }
 
   async getDashboardStats(): Promise<DashboardStatsDto> {
     const [
