@@ -1,9 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 class UsersOverviewDto {
-  @ApiProperty({ example: 139 }) total!: number;
-  @ApiProperty({ example: 120 }) parents!: number;
-  @ApiProperty({ example: 18 }) psychologists!: number;
+  @ApiProperty({ example: 146 }) total!: number;
+  @ApiProperty({ example: 121 }) parents!: number;
+  @ApiProperty({ example: 20 }) psychologists!: number;
+  @ApiProperty({ example: 4 }) schools!: number;
   @ApiProperty({ example: 1 }) admins!: number;
   @ApiProperty({ example: 11, description: 'Прирост за последние 7 дней' })
   deltaWeek!: number;

@@ -29,9 +29,10 @@ const formatRelativeJoin = (iso: string): string => {
 
 const formatConsultDate = (iso: string): string => {
   const d = new Date(iso);
-  const days = ['воскресенье', 'понедельник', 'вторник', 'среду', 'четверг', 'пятницу', 'субботу'];
+  // Винительный падеж после предлога «в»: «в субботу 16 мая в 14:38»
+  const daysAcc = ['воскресенье', 'понедельник', 'вторник', 'среду', 'четверг', 'пятницу', 'субботу'];
   const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
-  return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} в ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return `в ${daysAcc[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}, в ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
 
 // Plural helpers вынесены в @/lib/i18n/plural — здесь только импорт
@@ -191,15 +192,17 @@ export default function ParentDashboard({ userName }: ParentDashboardProps) {
           <StatPill
             iconBg="bg-green-100" iconColor="text-green-600"
             label="Пройдено тестов" value={fmt(totals.testsPassed)}
-            delta={showDeltaTests ? signed(totals.testsPassedDeltaMonth, 'за месяц') : null}
+            delta={showDeltaTests && totals.testsPassedDeltaMonth !== 0
+              ? signed(totals.testsPassedDeltaMonth, 'vs прошлый месяц')
+              : null}
             icon="check"
           />
           <StatPill
             iconBg="bg-purple-100" iconColor="text-purple-600"
             label="Средний балл"
             value={totals.avgScore !== null ? `${totals.avgScore}%` : '—'}
-            delta={totals.avgScore !== null && totals.avgScoreDeltaMonth !== null
-              ? signed(totals.avgScoreDeltaMonth, plural(Math.abs(totals.avgScoreDeltaMonth), ...W.point))
+            delta={totals.avgScore !== null && totals.avgScoreDeltaMonth !== null && totals.avgScoreDeltaMonth !== 0
+              ? signed(totals.avgScoreDeltaMonth, 'п.п.')
               : null}
             meta={totals.avgScore === null ? 'Появится после первого теста' : null}
             icon="chart"
@@ -207,7 +210,7 @@ export default function ParentDashboard({ userName }: ParentDashboardProps) {
           {totals.consultationsTotal > 0 ? (
             <StatPill
               iconBg="bg-amber-100" iconColor="text-amber-600"
-              label="Консультации" value={fmt(totals.consultationsTotal)}
+              label="Проведено консультаций" value={fmt(totals.consultationsTotal)}
               meta={totals.consultationsThisMonth > 0
                 ? `${totals.consultationsThisMonth} в этом мес.`
                 : null}

@@ -139,13 +139,17 @@ export const categoryLabels: Record<TestCategory, { ru: string; kz: string }> = 
 };
 
 // Category colors
+// Категории — нейтральные тона. Красный/жёлтый/зелёный зарезервированы
+// под RiskZone, чтобы цвет нёс смысл, а не путал пользователя
+// (раньше «Тревожность» всегда отображалась красной, даже когда сам
+// результат был «Норма» — это противоречие).
 export const categoryColors: Record<TestCategory, string> = {
-  ANXIETY: 'bg-red-100 text-red-700',
-  MOTIVATION: 'bg-green-100 text-green-700',
-  ATTENTION: 'bg-yellow-100 text-yellow-700',
-  EMOTIONS: 'bg-purple-100 text-purple-700',
-  CAREER: 'bg-blue-100 text-blue-700',
-  SELF_ESTEEM: 'bg-indigo-100 text-indigo-700',
-  SOCIAL: 'bg-teal-100 text-teal-700',
-  COGNITIVE: 'bg-cyan-100 text-cyan-700',
+  ANXIETY: 'bg-gray-100 text-gray-700',
+  MOTIVATION: 'bg-gray-100 text-gray-700',
+  ATTENTION: 'bg-gray-100 text-gray-700',
+  EMOTIONS: 'bg-gray-100 text-gray-700',
+  CAREER: 'bg-gray-100 text-gray-700',
+  SELF_ESTEEM: 'bg-gray-100 text-gray-700',
+  SOCIAL: 'bg-gray-100 text-gray-700',
+  COGNITIVE: 'bg-gray-100 text-gray-700',
 };

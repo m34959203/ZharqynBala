@@ -261,7 +261,7 @@ function OverviewStats({
   const { users, children, psychologists, tests, revenue, conversion } = overview;
 
   const usersMeta = users.total >= 10
-    ? `родители ${fmt(users.parents)} · психологи ${fmt(users.psychologists)} · админы ${fmt(users.admins)}`
+    ? `родители ${fmt(users.parents)} · психологи ${fmt(users.psychologists)} · школы ${fmt(users.schools)} · админы ${fmt(users.admins)}`
     : undefined;
   const childrenMeta = (children.total >= 10 && children.perParent !== null)
     ? `по ${children.perParent.toFixed(2).replace(/\.?0+$/, '')} ребёнка на родителя`
@@ -466,28 +466,45 @@ function RevenueChart() {
         </div>
       </div>
 
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 24, marginTop: 24,
-        paddingTop: 16, borderTop: '1px solid var(--line)',
-      }}>
-        <div>
-          <div style={{ fontSize: 12, color: 'var(--ink-500)' }}>Янв–Май</div>
-          <div style={{ fontWeight: 700, fontSize: 18, marginTop: 2 }}>67.83M ₸</div>
-        </div>
-        <div>
-          <div style={{ fontSize: 12, color: 'var(--ink-500)' }}>Комиссия (15%)</div>
-          <div style={{ fontWeight: 700, fontSize: 18, marginTop: 2, color: 'var(--brand-600)' }}>10.17M ₸</div>
-        </div>
-        <div>
-          <div style={{ fontSize: 12, color: 'var(--ink-500)' }}>Средний чек</div>
-          <div style={{ fontWeight: 700, fontSize: 18, marginTop: 2 }}>8 240 ₸</div>
-        </div>
-        <div style={{ marginLeft: 'auto' }}>
-          <button className="btn btn-secondary btn-sm">
-            <Icon name="download" size={13} /> CSV
-          </button>
-        </div>
-      </div>
+      {(() => {
+        const totalSum = data.reduce((s, d) => s + d.value, 0);
+        const commission = Math.round(totalSum * 0.15);
+        const nonZero = data.filter(d => d.value > 0).length;
+        const avgPerBucket = nonZero > 0 ? Math.round(totalSum / nonZero) : 0;
+        const periodLabel = data.length > 0
+          ? `${data[0].label}–${data[data.length - 1].label}`
+          : '';
+        return (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 24, marginTop: 24,
+            paddingTop: 16, borderTop: '1px solid var(--line)',
+          }}>
+            <div>
+              <div style={{ fontSize: 12, color: 'var(--ink-500)' }}>{periodLabel}</div>
+              <div style={{ fontWeight: 700, fontSize: 18, marginTop: 2 }}>{formatBarLabel(totalSum)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: 'var(--ink-500)' }}>Комиссия (15%)</div>
+              <div style={{ fontWeight: 700, fontSize: 18, marginTop: 2, color: 'var(--brand-600)' }}>
+                {formatBarLabel(commission)}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: 'var(--ink-500)' }}>
+                {range === 'week' ? 'Средний день' : 'Средний месяц'}
+              </div>
+              <div style={{ fontWeight: 700, fontSize: 18, marginTop: 2 }}>
+                {formatBarLabel(avgPerBucket)}
+              </div>
+            </div>
+            <div style={{ marginLeft: 'auto' }}>
+              <button className="btn btn-secondary btn-sm">
+                <Icon name="download" size={13} /> CSV
+              </button>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -770,9 +787,13 @@ export default function AdminDashboard({ userName }: AdminDashboardProps) {
                     <span style={{
                       display: 'inline-flex', padding: '4px 10px', borderRadius: 999,
                       fontSize: 11.5, fontWeight: 600, background: 'var(--warn-50)', color: 'var(--warn-700)',
-                    }}>12 в очереди</span>
+                    }}>{overview ? `${overview.psychologists.pending} в очереди` : '—'}</span>
                   </div>
-                  <div style={{ fontSize: 13, color: 'var(--ink-500)', marginTop: 4 }}>Среднее время сверки диплома — 47 минут</div>
+                  <div style={{ fontSize: 13, color: 'var(--ink-500)', marginTop: 4 }}>
+                    {overview && overview.psychologists.pending > 0
+                      ? 'Психологи ждут проверки диплома и сертификатов'
+                      : 'Очередь свободна'}
+                  </div>
                 </div>
                 <Link href="/admin/psychologists" style={{
                   fontSize: 13, fontWeight: 600, color: 'var(--brand-600)',

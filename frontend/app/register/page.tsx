@@ -246,7 +246,7 @@ export default function RegisterPage() {
 
         {/* Footer */}
         <p className="text-center text-sm text-gray-500">
-          © 2025 Жарқын Бала. Все права защищены.
+          © {new Date().getFullYear()} Жарқын Бала. Все права защищены.
         </p>
       </div>
     </div>

@@ -82,6 +82,7 @@ export class AdminService {
     const totalUsers = usersByRole.reduce((s, r) => s + r._count.id, 0);
     const parents = byRole('PARENT');
     const psychologistsRole = byRole('PSYCHOLOGIST');
+    const schoolsRole = byRole('SCHOOL');
     const admins = byRole('ADMIN');
 
     const perParent = parents > 0
@@ -110,7 +111,7 @@ export class AdminService {
     return {
       users: {
         total: totalUsers,
-        parents, psychologists: psychologistsRole, admins,
+        parents, psychologists: psychologistsRole, schools: schoolsRole, admins,
         deltaWeek: usersThisWeek,
       },
       children: {

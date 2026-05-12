@@ -124,7 +124,7 @@ export const parentsApi = {
 };
 
 export interface AdminOverviewDto {
-  users: { total: number; parents: number; psychologists: number; admins: number; deltaWeek: number };
+  users: { total: number; parents: number; psychologists: number; schools: number; admins: number; deltaWeek: number };
   children: { total: number; perParent: number | null; deltaWeek: number };
   psychologists: { approved: number; pending: number; rejected: number; deltaWeek: number };
   tests: { passed: number; premiumShare: number; deltaWeek: number };

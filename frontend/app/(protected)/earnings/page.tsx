@@ -110,7 +110,7 @@ export default function EarningsPage() {
           {stats.consultations > 0 ? (
             <p className="text-xs text-gray-500 mt-1">за выбранный период</p>
           ) : (
-            <p className="text-xs text-gray-400 mt-1">Нет данных</p>
+            <p className="text-xs text-gray-400 mt-1">за выбранный период не было</p>
           )}
         </div>
         <div className="bg-white rounded-xl shadow-sm p-5">
@@ -118,7 +118,7 @@ export default function EarningsPage() {
           {stats.consultations > 0 ? (
             <p className="text-2xl font-bold text-gray-900">{stats.avgPerConsultation.toLocaleString()} ₸</p>
           ) : (
-            <p className="text-2xl font-bold text-gray-400">Нет данных</p>
+            <p className="text-2xl font-bold text-gray-400">—</p>
           )}
         </div>
         <div className="bg-white rounded-xl shadow-sm p-5">
@@ -126,7 +126,7 @@ export default function EarningsPage() {
           {transactions.filter(t => t.type === 'TEST_REVIEW').length > 0 ? (
             <p className="text-2xl font-bold text-gray-900">{transactions.filter(t => t.type === 'TEST_REVIEW').length}</p>
           ) : (
-            <p className="text-2xl font-bold text-gray-400">Нет данных</p>
+            <p className="text-2xl font-bold text-gray-400">—</p>
           )}
         </div>
         <div className="bg-white rounded-xl shadow-sm p-5">
