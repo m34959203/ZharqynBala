@@ -52,6 +52,8 @@ class AttentionItemDto {
 class AiRecommendationDto {
   @ApiProperty() testId!: string;
   @ApiProperty() testName!: string;
+  @ApiProperty({ description: 'Готовый заголовок со склонённым именем ребёнка (дательный падеж)' })
+  heading!: string;
   @ApiProperty() reason!: string;
   @ApiProperty() childId!: string;
   @ApiProperty() childName!: string;

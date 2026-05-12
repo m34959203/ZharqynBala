@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { ParentOverviewDto } from './dto/parent-overview.dto';
+import { declineName } from '../../common/i18n/decline';
 
 const RECOMMENDED_TOTAL = 30;
 
@@ -234,15 +235,21 @@ export class ParentsService {
         orderBy: { order: 'asc' },
       });
       if (candidate && child) {
+        const nameDat = declineName(child.firstName, child.gender, 'dat');
+        const nameGen = declineName(child.firstName, child.gender, 'gen');
+        const wasPro = child.gender === 'FEMALE' ? 'проходила' : 'проходил';
         aiRecommendation = {
           testId: candidate.id,
           testName: candidate.titleRu,
-          reason: `У ${child.firstName} в зоне внимания «${item.shortLabel.toLowerCase()}». Тест «${candidate.titleRu}» поможет уточнить, какие ситуации триггерят это состояние.`,
+          heading: `${nameDat} стоит пройти «${candidate.titleRu}»`,
+          reason: `У ${nameGen} в зоне внимания «${item.shortLabel.toLowerCase()}». Тест «${candidate.titleRu}» поможет уточнить, какие ситуации триггерят это состояние.`,
           childId: child.id,
           childName: child.firstName,
           source: 'rule_v1',
           generatedAt: new Date().toISOString(),
         };
+        // suppress unused warning; the variable will be useful when reason templates expand
+        void wasPro;
       }
     }
     if (!aiRecommendation && children.length) {
@@ -261,10 +268,13 @@ export class ParentsService {
         orderBy: { order: 'asc' },
       });
       if (candidate) {
+        const nameDat = declineName(youngest.firstName, youngest.gender, 'dat');
+        const wasPro = youngest.gender === 'FEMALE' ? 'проходила' : 'проходил';
         aiRecommendation = {
           testId: candidate.id,
           testName: candidate.titleRu,
-          reason: `${youngest.firstName} ещё не проходил(а) «${candidate.titleRu}». Хороший вариант для следующей диагностики.`,
+          heading: `${nameDat} стоит пройти «${candidate.titleRu}»`,
+          reason: `${youngest.firstName} ещё не ${wasPro} «${candidate.titleRu}». Хороший вариант для следующей диагностики.`,
           childId: youngest.id,
           childName: youngest.firstName,
           source: 'rule_v1',

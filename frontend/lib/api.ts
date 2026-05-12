@@ -93,7 +93,7 @@ export interface ParentOverviewDto {
     childId: string; childName: string;
   }>;
   aiRecommendation: {
-    testId: string; testName: string; reason: string;
+    testId: string; testName: string; heading: string; reason: string;
     childId: string; childName: string;
     source: 'rule_v1' | 'llm_v1'; generatedAt: string;
   } | null;

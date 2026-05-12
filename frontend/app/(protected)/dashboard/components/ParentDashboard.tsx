@@ -553,7 +553,7 @@ export default function ParentDashboard({ userName }: ParentDashboardProps) {
                   className="font-semibold text-lg mb-1"
                   style={{ fontFamily: 'Manrope, Inter, sans-serif' }}
                 >
-                  {aiRecommendation.childName} стоит пройти «{aiRecommendation.testName}»
+                  {aiRecommendation.heading}
                 </h3>
                 <p className="text-white/90 text-sm mb-4">
                   {aiRecommendation.reason}
