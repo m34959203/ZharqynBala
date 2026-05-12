@@ -7,6 +7,7 @@ import { MonitoringModule } from './common/monitoring/monitoring.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
+import { ParentsModule } from './modules/parents/parents.module';
 import { TestsModule } from './modules/tests/tests.module';
 import { ResultsModule } from './modules/results/results.module';
 import { PaymentsModule } from './modules/payments/payments.module';
@@ -56,6 +57,7 @@ import { GroupTestsModule } from './modules/group-tests/group-tests.module';
     // Feature modules
     AuthModule,
     UsersModule,
+    ParentsModule,
     TestsModule,
     ResultsModule,
     PaymentsModule,
