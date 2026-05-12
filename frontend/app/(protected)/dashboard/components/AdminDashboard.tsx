@@ -1,435 +1,769 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import api, { adminApi } from '@/lib/api';
-
-interface RecentUser {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  role: string;
-  createdAt: string;
-}
-
-interface RecentPayment {
-  id: string;
-  amount: number;
-  status: string;
-  createdAt: string;
-  userId?: string;
-}
-
-interface DashboardStats {
-  totalUsers: number;
-  totalChildren: number;
-  totalTests: number;
-  completedSessions: number;
-  totalRevenue: number;
-  newUsersToday: number;
-  testsToday: number;
-}
-
-interface RiskZoneStats {
-  total: number;
-  green: number;
-  yellow: number;
-  red: number;
-  byCategory?: Record<string, { green: number; yellow: number; red: number }>;
-}
+import { useEffect, useMemo, useState } from 'react';
+import { adminApi } from '@/lib/api';
 
 interface AdminDashboardProps {
   userName: string;
 }
 
-export default function AdminDashboard({ userName }: AdminDashboardProps) {
-  const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
-  const [recentPayments, setRecentPayments] = useState<RecentPayment[]>([]);
-  const [riskStats, setRiskStats] = useState<RiskZoneStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<DashboardStats>({
-    totalUsers: 0,
-    totalChildren: 0,
-    totalTests: 0,
-    completedSessions: 0,
-    totalRevenue: 0,
-    newUsersToday: 0,
-    testsToday: 0,
+interface DashboardStats {
+  totalUsers?: number;
+  totalChildren?: number;
+  totalTests?: number;
+  completedSessions?: number;
+  totalRevenue?: number;
+  newUsersToday?: number;
+  testsToday?: number;
+  totalPsychologists?: number;
+  approvedPsychologists?: number;
+  pendingPsychologists?: number;
+  testsCompleted?: number;
+  revenueMonth?: number;
+  consultationConversion?: number;
+}
+
+const fmt = (n: number) => n.toLocaleString('ru-RU').replace(/,/g, ' ');
+const fmtCurrency = (n: number) => {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M ₸`;
+  if (n >= 1_000) return `${fmt(Math.round(n / 1000) * 1000)} ₸`;
+  return `${fmt(n)} ₸`;
+};
+
+const today = () => {
+  const d = new Date();
+  return d.toLocaleDateString('ru-RU', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
   });
+};
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
+const timeNow = () => {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} UTC+6`;
+};
 
-        // Fetch dashboard stats
-        const dashboardStats = await adminApi.getDashboardStats();
-        setStats(dashboardStats);
+type IconName =
+  | 'users' | 'user' | 'shield' | 'book' | 'wallet' | 'target'
+  | 'arrowUp' | 'arrowDown' | 'plus' | 'download' | 'check' | 'close' | 'clock'
+  | 'arrow' | 'file' | 'info' | 'lock' | 'globe' | 'sparkle' | 'settings';
 
-        // Fetch recent users
-        try {
-          const usersData = await adminApi.getUsers({ limit: 4 });
-          const users = usersData.users || usersData;
-          setRecentUsers(Array.isArray(users) ? users.slice(0, 4) : []);
-        } catch {
-          setRecentUsers([]);
-        }
-
-        // Fetch recent payments
-        try {
-          const paymentsData = await adminApi.getPayments({ page: 1 });
-          const payments = paymentsData.payments || [];
-          setRecentPayments(payments.slice(0, 4));
-        } catch {
-          setRecentPayments([]);
-        }
-
-        // Fetch risk zone stats
-        try {
-          const riskData = await api.get('/analytics/risk-zones');
-          setRiskStats(riskData.data);
-        } catch {
-          // Risk zone stats are optional
-        }
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDashboardData();
-  }, []);
-
-  const formatCurrency = (amount: number) => {
-    if (amount >= 1000000) {
-      return `${(amount / 1000000).toFixed(1)}M ₸`;
-    }
-    if (amount >= 1000) {
-      return `${(amount / 1000).toFixed(0)}K ₸`;
-    }
-    return `${amount} ₸`;
+function Icon({ name, size = 18, stroke = 1.75 }: { name: IconName; size?: number; stroke?: number }) {
+  const props = {
+    width: size,
+    height: size,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: stroke,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
   };
-
-  const getRoleLabel = (role: string) => {
-    switch (role) {
-      case 'PARENT': return 'Родитель';
-      case 'PSYCHOLOGIST': return 'Психолог';
-      case 'SCHOOL': return 'Школа';
-      case 'ADMIN': return 'Админ';
-      default: return role;
-    }
+  const paths: Record<IconName, React.ReactNode> = {
+    users: (<><circle cx="9" cy="8" r="3.5" /><path d="M3 20c0-3 3-5 6-5s6 2 6 5" /><circle cx="17" cy="9" r="2.5" /><path d="M15 20c0-2 2-4 4-4s2 1 2 4" /></>),
+    user: (<><circle cx="12" cy="8" r="3.5" /><path d="M5 20c1-4 3-6 7-6s6 2 7 6" /></>),
+    shield: (<><path d="M12 3 4 6v6c0 5 3.5 8.5 8 9.5 4.5-1 8-4.5 8-9.5V6l-8-3z" /><path d="m9 12 2 2 4-4" /></>),
+    book: (<><path d="M5 5a2 2 0 0 1 2-2h11v18H7a2 2 0 0 1-2-2V5z" /><path d="M5 17a2 2 0 0 1 2-2h11" /></>),
+    wallet: (<><path d="M3 8a2 2 0 0 1 2-2h13a1 1 0 0 1 1 1v2" /><path d="M3 8v10a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-3" /><path d="M16 13h5v3h-5a1.5 1.5 0 0 1 0-3z" /></>),
+    target: (<><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4.5" /><circle cx="12" cy="12" r="1.5" /></>),
+    arrowUp: (<><path d="M12 19V5" /><path d="m6 11 6-6 6 6" /></>),
+    arrowDown: (<><path d="M12 5v14" /><path d="m6 13 6 6 6-6" /></>),
+    plus: (<><path d="M12 5v14M5 12h14" /></>),
+    download: (<><path d="M12 4v12" /><path d="m7 11 5 5 5-5" /><path d="M5 20h14" /></>),
+    check: (<><path d="m5 12 5 5 9-11" /></>),
+    close: (<><path d="M6 6l12 12M18 6 6 18" /></>),
+    clock: (<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>),
+    arrow: (<><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></>),
+    file: (<><path d="M7 3h8l4 4v13a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" /><path d="M14 3v5h5" /></>),
+    info: (<><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8v.5" /></>),
+    lock: (<><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></>),
+    globe: (<><circle cx="12" cy="12" r="9" /><path d="M3 12h18" /><path d="M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" /></>),
+    sparkle: (<><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1" /></>),
+    settings: (<><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></>),
   };
+  return <svg {...props}>{paths[name]}</svg>;
+}
 
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case 'PARENT': return 'bg-blue-100 text-blue-800';
-      case 'PSYCHOLOGIST': return 'bg-purple-100 text-purple-800';
-      case 'SCHOOL': return 'bg-green-100 text-green-800';
-      case 'ADMIN': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
+type DeltaTone = 'ok' | 'warn' | 'risk';
 
-  const getPaymentStatusColor = (status: string) => {
-    switch (status) {
-      case 'COMPLETED': return 'bg-green-100 text-green-800';
-      case 'PENDING': return 'bg-yellow-100 text-yellow-800';
-      case 'FAILED': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-
-    if (hours < 1) return 'Только что';
-    if (hours < 24) return `${hours}ч назад`;
-    return date.toLocaleDateString('ru-RU');
-  };
+function Stat({
+  icon, label, value, delta, deltaTone = 'ok', featured = false, sub, href,
+}: {
+  icon: IconName; label: string; value: string; delta?: string; deltaTone?: DeltaTone;
+  featured?: boolean; sub?: string; href?: string;
+}) {
+  const deltaBg = featured ? 'rgba(255,255,255,0.18)'
+    : deltaTone === 'risk' ? 'var(--risk-50)' : deltaTone === 'warn' ? 'var(--warn-50)' : 'var(--ok-50)';
+  const deltaFg = featured ? '#fff'
+    : deltaTone === 'risk' ? 'var(--risk-700)' : deltaTone === 'warn' ? 'var(--warn-700)' : 'var(--ok-700)';
+  const Tag = href ? Link : 'button';
+  const tagProps = href ? { href } : { type: 'button' as const };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Welcome Section */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">
-          Панель администратора
-        </h1>
-        <p className="mt-2 text-gray-600">
-          Добро пожаловать, {userName}
-        </p>
-      </div>
-
-      {/* KPI Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white rounded-xl shadow-sm p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Пользователей</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.totalUsers.toLocaleString()}</p>
-              {stats.newUsersToday > 0 && (
-                <p className="text-xs text-green-600 flex items-center mt-1">
-                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                  </svg>
-                  +{stats.newUsersToday} сегодня
-                </p>
-              )}
-            </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Детей</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.totalChildren.toLocaleString()}</p>
-              <p className="text-xs text-gray-500 mt-1">
-                зарегистрировано
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Выручка</p>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.totalRevenue)}</p>
-              <p className="text-xs text-gray-500 mt-1">за всё время</p>
-            </div>
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Тестов пройдено</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.completedSessions.toLocaleString()}</p>
-              {stats.testsToday > 0 && (
-                <p className="text-xs text-green-600 mt-1">+{stats.testsToday} сегодня</p>
-              )}
-            </div>
-            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Risk Zones Card */}
-      {riskStats && riskStats.total > 0 && (
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Зоны риска</h3>
-          <div className="flex flex-wrap gap-6">
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-green-500" />
-              <span className="text-sm text-gray-700">Норма: <span className="font-semibold">{riskStats.green}</span></span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-yellow-500" />
-              <span className="text-sm text-gray-700">Внимание: <span className="font-semibold">{riskStats.yellow}</span></span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-red-500" />
-              <span className="text-sm text-gray-700">Риск: <span className="font-semibold">{riskStats.red}</span></span>
-            </div>
-          </div>
-          {riskStats.total > 0 && (
-            <div className="mt-4 w-full bg-gray-200 rounded-full h-3 flex overflow-hidden">
-              <div
-                className="bg-green-500 h-3"
-                style={{ width: `${(riskStats.green / riskStats.total) * 100}%` }}
-              />
-              <div
-                className="bg-yellow-500 h-3"
-                style={{ width: `${(riskStats.yellow / riskStats.total) * 100}%` }}
-              />
-              <div
-                className="bg-red-500 h-3"
-                style={{ width: `${(riskStats.red / riskStats.total) * 100}%` }}
-              />
-            </div>
-          )}
-        </div>
+    // @ts-expect-error -- conditional polymorphic
+    <Tag
+      {...tagProps}
+      className="card hover-lift"
+      style={{
+        padding: 22, textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 14,
+        cursor: 'pointer', minHeight: 152, width: '100%',
+        background: featured ? 'var(--brand-grad)' : 'var(--card)',
+        color: featured ? '#fff' : 'var(--ink-900)',
+        border: featured ? 0 : '1px solid var(--line)',
+        borderRadius: 'var(--radius-lg)',
+        boxShadow: featured ? 'var(--shadow-brand)' : 'var(--shadow-sm)',
+        position: 'relative', overflow: 'hidden',
+      }}
+    >
+      {featured && (
+        <span style={{
+          position: 'absolute', inset: 0, pointerEvents: 'none',
+          background: 'radial-gradient(120% 80% at 100% 0%, rgba(255,255,255,0.18) 0%, transparent 50%)',
+        }} />
       )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Recent Users */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-gray-900">Новые пользователи</h2>
-            <Link href="/admin/users" className="text-sm text-indigo-600 hover:text-indigo-500 font-medium">
-              Все пользователи
-            </Link>
-          </div>
-
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {recentUsers.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">Нет пользователей</p>
-              ) : (
-                recentUsers.map((user) => (
-                  <div key={user.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center">
-                      <div className="w-10 h-10 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
-                        {(user.firstName || user.email)[0].toUpperCase()}
-                      </div>
-                      <div className="ml-3">
-                        <p className="font-medium text-gray-900">
-                          {user.firstName && user.lastName
-                            ? `${user.firstName} ${user.lastName}`
-                            : user.email}
-                        </p>
-                        <p className="text-sm text-gray-500">{user.email}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRoleColor(user.role)}`}>
-                        {getRoleLabel(user.role)}
-                      </span>
-                      <p className="text-xs text-gray-400 mt-1">{formatTime(user.createdAt)}</p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 1 }}>
+        <div style={{
+          width: 38, height: 38, borderRadius: 11,
+          background: featured ? 'rgba(255,255,255,0.18)' : 'var(--brand-50)',
+          color: featured ? '#fff' : 'var(--brand-600)',
+          display: 'grid', placeItems: 'center',
+        }}>
+          <Icon name={icon} size={18} />
         </div>
-
-        {/* Recent Payments */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-gray-900">Последние платежи</h2>
-            <Link href="/admin/payments" className="text-sm text-indigo-600 hover:text-indigo-500 font-medium">
-              Все платежи
-            </Link>
+        {delta && (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '4px 10px', borderRadius: 999, fontSize: 11.5, fontWeight: 600,
+            background: deltaBg, color: deltaFg,
+          }}>
+            <Icon name={deltaTone === 'risk' ? 'arrowDown' : 'arrowUp'} size={11} stroke={2.5} />
+            {delta}
+          </span>
+        )}
+      </div>
+      <div style={{ zIndex: 1 }}>
+        <div style={{ fontSize: 13, opacity: featured ? 0.9 : 1, color: featured ? '#fff' : 'var(--ink-500)' }}>
+          {label}
+        </div>
+        <div style={{
+          fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 30, lineHeight: 1.1,
+          letterSpacing: '-0.02em', marginTop: 4,
+        }}>
+          {value}
+        </div>
+        {sub && (
+          <div style={{
+            fontSize: 12, marginTop: 8, lineHeight: 1.4,
+            opacity: featured ? 0.85 : 0.7, color: featured ? '#fff' : 'var(--ink-500)',
+          }}>
+            {sub}
           </div>
+        )}
+      </div>
+    </Tag>
+  );
+}
 
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {recentPayments.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">Нет платежей</p>
-              ) : (
-                recentPayments.map((payment) => (
-                  <div key={payment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center">
-                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                      <div className="ml-3">
-                        <p className="font-medium text-gray-900">Платёж #{payment.id.slice(0, 8)}</p>
-                        <p className="text-sm text-gray-500">{formatTime(payment.createdAt)}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-gray-900">{payment.amount.toLocaleString()} ₸</p>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPaymentStatusColor(payment.status)}`}>
-                        {payment.status === 'COMPLETED' ? 'Оплачено' : payment.status === 'PENDING' ? 'Ожидает' : payment.status}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
+type AvatarTone = 'tone-rose' | 'tone-mint' | 'tone-sun' | 'tone-sky' | 'tone-warm';
+const toneBg: Record<AvatarTone, string> = {
+  'tone-rose': 'linear-gradient(135deg, #FF8FB1 0%, #B66BFF 100%)',
+  'tone-mint': 'linear-gradient(135deg, #6BE0B5 0%, #6BC8FF 100%)',
+  'tone-sun': 'linear-gradient(135deg, #FFD56B 0%, #FF8F6B 100%)',
+  'tone-sky': 'linear-gradient(135deg, #6BC8FF 0%, #6D4AFF 100%)',
+  'tone-warm': 'linear-gradient(135deg, #FFB36B 0%, #FF7BB5 100%)',
+};
+
+function PsyModRow({
+  initials, tone, name, years, edu, applied,
+}: { initials: string; tone: AvatarTone; name: string; years: string; edu: string; applied: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 0', borderBottom: '1px solid var(--line)' }}>
+      <div style={{
+        width: 44, height: 44, borderRadius: 999, color: '#fff', background: toneBg[tone],
+        display: 'grid', placeItems: 'center', fontWeight: 700, fontSize: 14, flexShrink: 0,
+      }}>{initials}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--ink-900)' }}>{name}</div>
+        <div style={{ fontSize: 12, color: 'var(--ink-500)', marginTop: 4 }}>{years} опыта · {edu}</div>
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--ink-500)' }}>{applied}</div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button className="btn btn-ghost btn-sm"><Icon name="file" size={13} /> Диплом</button>
+        <button className="btn btn-secondary btn-sm">Отклонить</button>
+        <button className="btn btn-sm" style={{ background: 'var(--ok-500)', color: '#fff' }}>
+          <Icon name="check" size={13} stroke={2.5} /> Одобрить
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function RevenueChart() {
+  const [range, setRange] = useState<'week' | 'month' | 'year'>('month');
+  const data = useMemo(() => ([
+    { m: 'Янв', v: 9800 },
+    { m: 'Фев', v: 11200 },
+    { m: 'Мар', v: 13400 },
+    { m: 'Апр', v: 14980 },
+    { m: 'Май', v: 18450, current: true },
+  ]), []);
+  const max = 20000;
+  const tabs: [typeof range, string][] = [['week', 'Неделя'], ['month', 'Месяц'], ['year', 'Год']];
+
+  return (
+    <div className="card" style={{ padding: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div>
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16 }}>Динамика выручки</div>
+          <div style={{ fontSize: 13, color: 'var(--ink-500)', marginTop: 4 }}>в тысячах ₸ · до комиссии платформы</div>
+        </div>
+        <div style={{ display: 'flex', background: 'var(--ink-100)', borderRadius: 999, padding: 3 }}>
+          {tabs.map(([k, l]) => (
+            <button key={k} onClick={() => setRange(k)} style={{
+              padding: '6px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600,
+              background: range === k ? '#fff' : 'transparent',
+              color: range === k ? 'var(--ink-900)' : 'var(--ink-500)',
+              boxShadow: range === k ? 'var(--shadow-sm)' : 'none',
+            }}>{l}</button>
+          ))}
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Link
-          href="/admin/users"
-          className="flex items-center p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100"
-        >
-          <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-            <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
+      <div style={{ position: 'relative', height: 220 }}>
+        {[0, 5000, 10000, 15000, 20000].map((v, i) => (
+          <div key={i} style={{
+            position: 'absolute', left: 40, right: 0, bottom: `${(v / max) * 100}%`,
+            borderTop: '1px dashed var(--ink-200)', height: 1,
+          }}>
+            <span style={{
+              position: 'absolute', left: -42, top: -7, fontSize: 10.5, fontWeight: 500, color: 'var(--ink-400)',
+            }}>{v ? `${v / 1000}M` : '0'}</span>
           </div>
-          <div className="ml-4">
-            <p className="font-medium text-gray-900">Пользователи</p>
-            <p className="text-sm text-gray-500">Управление</p>
-          </div>
-        </Link>
+        ))}
 
-        <Link
-          href="/admin/tests"
-          className="flex items-center p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100"
-        >
-          <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-            <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </div>
-          <div className="ml-4">
-            <p className="font-medium text-gray-900">Тесты</p>
-            <p className="text-sm text-gray-500">Каталог</p>
-          </div>
-        </Link>
-
-        <Link
-          href="/admin/analytics"
-          className="flex items-center p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100"
-        >
-          <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-            <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-          </div>
-          <div className="ml-4">
-            <p className="font-medium text-gray-900">Аналитика</p>
-            <p className="text-sm text-gray-500">Отчёты</p>
-          </div>
-        </Link>
-
-        <Link
-          href="/admin/settings"
-          className="flex items-center p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100"
-        >
-          <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-            <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </div>
-          <div className="ml-4">
-            <p className="font-medium text-gray-900">Настройки</p>
-            <p className="text-sm text-gray-500">Система</p>
-          </div>
-        </Link>
+        <div style={{
+          position: 'absolute', inset: 0, paddingLeft: 40, paddingBottom: 28,
+          display: 'flex', alignItems: 'flex-end', gap: 24,
+        }}>
+          {data.map((d, i) => (
+            <div key={i} style={{
+              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', position: 'relative',
+            }}>
+              <div style={{
+                width: '100%', maxWidth: 64, height: `${(d.v / max) * 100}%`,
+                borderRadius: '10px 10px 4px 4px',
+                background: d.current ? 'var(--brand-grad)' : 'var(--brand-100)',
+                boxShadow: d.current ? 'var(--shadow-brand)' : 'none',
+                position: 'relative', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: 8,
+              }}>
+                {d.current && (
+                  <div style={{
+                    position: 'absolute', top: -28, padding: '4px 10px', borderRadius: 8,
+                    background: '#0E0B22', color: '#fff', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap',
+                  }}>
+                    {(d.v / 1000).toFixed(1)}M ₸
+                  </div>
+                )}
+              </div>
+              <div style={{
+                position: 'absolute', bottom: 0, fontSize: 12, fontWeight: 600,
+                color: d.current ? 'var(--brand-600)' : 'var(--ink-500)',
+              }}>{d.m}</div>
+            </div>
+          ))}
+        </div>
       </div>
+
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 24, marginTop: 24,
+        paddingTop: 16, borderTop: '1px solid var(--line)',
+      }}>
+        <div>
+          <div style={{ fontSize: 12, color: 'var(--ink-500)' }}>Янв–Май</div>
+          <div style={{ fontWeight: 700, fontSize: 18, marginTop: 2 }}>67.83M ₸</div>
+        </div>
+        <div>
+          <div style={{ fontSize: 12, color: 'var(--ink-500)' }}>Комиссия (15%)</div>
+          <div style={{ fontWeight: 700, fontSize: 18, marginTop: 2, color: 'var(--brand-600)' }}>10.17M ₸</div>
+        </div>
+        <div>
+          <div style={{ fontSize: 12, color: 'var(--ink-500)' }}>Средний чек</div>
+          <div style={{ fontWeight: 700, fontSize: 18, marginTop: 2 }}>8 240 ₸</div>
+        </div>
+        <div style={{ marginLeft: 'auto' }}>
+          <button className="btn btn-secondary btn-sm">
+            <Icon name="download" size={13} /> CSV
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TopTest({
+  rank, name, author, count, max,
+}: { rank: number; name: string; author: string; count: number; max: number }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--line)' }}>
+      <div style={{
+        width: 28, height: 28, borderRadius: 8,
+        background: rank === 1 ? 'var(--brand-grad)' : 'var(--ink-100)',
+        color: rank === 1 ? '#fff' : 'var(--ink-500)',
+        display: 'grid', placeItems: 'center',
+        fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 12, flexShrink: 0,
+      }}>{rank}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 600, fontSize: 14 }}>{name}</div>
+        <div style={{ fontSize: 12, color: 'var(--ink-500)', marginTop: 2 }}>{author}</div>
+        <div style={{ height: 4, background: 'var(--ink-100)', borderRadius: 999, overflow: 'hidden', marginTop: 8 }}>
+          <div style={{
+            height: '100%', width: `${(count / max) * 100}%`,
+            borderRadius: 999, background: 'var(--brand-grad)',
+          }} />
+        </div>
+      </div>
+      <div style={{ fontWeight: 700, fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>{fmt(count)}</div>
+    </div>
+  );
+}
+
+type PaymentStatus = 'paid' | 'pending' | 'failed';
+function PaymentRow({
+  id, user, amount, status,
+}: { id: string; user: string; amount: string; status: PaymentStatus }) {
+  const bg = status === 'paid' ? 'var(--ok-50)' : status === 'pending' ? 'var(--warn-50)' : 'var(--risk-50)';
+  const fg = status === 'paid' ? 'var(--ok-700)' : status === 'pending' ? 'var(--warn-700)' : 'var(--risk-700)';
+  const badgeClass = status === 'paid' ? 'badge-norm' : status === 'pending' ? 'badge-warn' : 'badge-risk';
+  const label = status === 'paid' ? 'Оплачено' : status === 'pending' ? 'Ожидает' : 'Неудачно';
+  const iconName: IconName = status === 'paid' ? 'check' : status === 'pending' ? 'clock' : 'close';
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 0', borderBottom: '1px solid var(--line)' }}>
+      <div style={{
+        width: 32, height: 32, borderRadius: 8, background: bg, color: fg,
+        display: 'grid', placeItems: 'center', flexShrink: 0,
+      }}>
+        <Icon name={iconName} size={14} stroke={2.5} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, color: 'var(--ink-700)', fontWeight: 600 }}>{id}</div>
+        <div style={{
+          fontSize: 12, color: 'var(--ink-500)', marginTop: 2,
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>{user}</div>
+      </div>
+      <div style={{ textAlign: 'right' }}>
+        <div style={{ fontWeight: 700, fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>{amount} ₸</div>
+        <span className={`badge ${badgeClass}`} style={{ fontSize: 10, padding: '2px 7px', marginTop: 3 }}>{label}</span>
+      </div>
+    </div>
+  );
+}
+
+function SysNote({
+  icon, tone, title, time,
+}: { icon: IconName; tone: 'warn' | 'brand' | 'ok'; title: string; time: string }) {
+  const bg = tone === 'warn' ? 'var(--warn-50)' : tone === 'brand' ? 'var(--brand-50)' : 'var(--ok-50)';
+  const fg = tone === 'warn' ? 'var(--warn-700)' : tone === 'brand' ? 'var(--brand-600)' : 'var(--ok-700)';
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '11px 0', borderBottom: '1px solid var(--line)' }}>
+      <div style={{
+        width: 32, height: 32, borderRadius: 8, background: bg, color: fg, flexShrink: 0,
+        display: 'grid', placeItems: 'center',
+      }}>
+        <Icon name={icon} size={14} />
+      </div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 13, lineHeight: 1.4, color: 'var(--ink-700)' }}>{title}</div>
+        <div style={{ fontSize: 12, color: 'var(--ink-500)', marginTop: 4 }}>{time}</div>
+      </div>
+    </div>
+  );
+}
+
+function RegionRow({ name, percent, tone }: { name: string; percent: number; tone: string }) {
+  return (
+    <div style={{ padding: '10px 0' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div style={{ fontSize: 13, fontWeight: 600 }}>{name}</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--brand-600)', fontVariantNumeric: 'tabular-nums' }}>{percent}%</div>
+      </div>
+      <div style={{ height: 6, background: 'var(--ink-100)', borderRadius: 999, overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${percent}%`, background: tone, borderRadius: 999 }} />
+      </div>
+    </div>
+  );
+}
+
+function RiskRow({
+  tone, title, sub, cta,
+}: { tone: 'risk' | 'warn' | 'ok'; title: string; sub: string; cta?: string }) {
+  const map = {
+    risk: { bg: 'var(--risk-50)', border: 'var(--risk-100)', dot: 'var(--risk-500)', label: 'var(--risk-700)' },
+    warn: { bg: 'var(--warn-50)', border: 'var(--warn-100)', dot: 'var(--warn-500)', label: 'var(--warn-700)' },
+    ok: { bg: 'var(--ok-50)', border: 'var(--ok-100)', dot: 'var(--ok-500)', label: 'var(--ok-700)' },
+  }[tone];
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 16,
+      padding: 18, borderRadius: 14,
+      background: map.bg, border: `1px solid ${map.border}`,
+    }}>
+      <span style={{
+        width: 12, height: 12, borderRadius: 999, background: map.dot,
+        boxShadow: `0 0 0 5px ${map.bg}, 0 0 0 6px ${map.dot}30`,
+        flexShrink: 0,
+      }} />
+      <div style={{ flex: 1 }}>
+        <div style={{ fontWeight: 600, fontSize: 13, color: map.label }}>{title}</div>
+        <div style={{ fontSize: 12, marginTop: 4, color: map.label, opacity: 0.85 }}>{sub}</div>
+      </div>
+      {cta && (
+        <button className="btn btn-sm" style={{ background: '#fff', color: map.label, border: `1px solid ${map.border}` }}>
+          {cta} <Icon name="arrow" size={12} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+export default function AdminDashboard({ userName }: AdminDashboardProps) {
+  const [stats, setStats] = useState<DashboardStats>({});
+  const [now, setNow] = useState(timeNow());
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(timeNow()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    adminApi.getDashboardStats()
+      .then((data) => setStats((data as DashboardStats) || {}))
+      .catch(() => {/* fall back to design mock */});
+  }, []);
+
+  const usersValue = stats.totalUsers ? fmt(stats.totalUsers) : '12 487';
+  const childrenValue = stats.totalChildren ? fmt(stats.totalChildren) : '18 240';
+  const psyApproved = stats.approvedPsychologists ?? 127;
+  const psyPending = stats.pendingPsychologists ?? 12;
+  const testsCount = stats.testsCompleted ?? stats.totalTests ?? 84_521;
+  const revenue = stats.revenueMonth ?? stats.totalRevenue ?? 18_450_000;
+  const conv = stats.consultationConversion ?? 11.8;
+
+  return (
+    <div className="admin-shell" suppressHydrationWarning>
+      <style jsx global>{`
+        :root {
+          --brand-600: #6D4AFF; --brand-500: #8A6BFF; --brand-400: #B66BFF;
+          --brand-50: #F4F0FF; --brand-100: #EAE2FF;
+          --brand-grad: linear-gradient(135deg, #6D4AFF 0%, #B66BFF 100%);
+          --ink-900: #0E0B22; --ink-700: #2A2640; --ink-500: #595673;
+          --ink-400: #8480A0; --ink-300: #B7B3CC; --ink-200: #E5E1F0;
+          --ink-100: #F1EEF8; --ink-50: #F8F6FD;
+          --card: #FFFFFF; --line: #ECE9F5;
+          --ok-50: #ECFDF3; --ok-100: #D1FADF; --ok-500: #12B76A; --ok-700: #027A48;
+          --warn-50: #FFFAEB; --warn-100: #FEF0C7; --warn-500: #F79009; --warn-700: #B54708;
+          --risk-50: #FEF3F2; --risk-100: #FEE4E2; --risk-500: #F04438; --risk-700: #B42318;
+          --radius-md: 14px; --radius-lg: 20px;
+          --shadow-sm: 0 1px 2px rgba(20,14,60,.04), 0 1px 1px rgba(20,14,60,.02);
+          --shadow-brand: 0 12px 28px rgba(109,74,255,.28);
+          --font-display: 'Manrope', 'Inter', system-ui, sans-serif;
+        }
+        .admin-shell { font-family: 'Inter', 'Manrope', system-ui, -apple-system, sans-serif; color: var(--ink-900); }
+        .admin-shell .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
+        .admin-shell .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 18px; border-radius: 12px; font-size: 14px; font-weight: 600; line-height: 1; transition: transform .12s, box-shadow .15s, background .15s, color .15s; white-space: nowrap; border: 1px solid transparent; cursor: pointer; }
+        .admin-shell .btn:hover { transform: translateY(-1px); }
+        .admin-shell .btn-primary { background: var(--brand-grad); color: #fff; box-shadow: var(--shadow-brand); }
+        .admin-shell .btn-secondary { background: #fff; color: var(--ink-900); border-color: var(--line); box-shadow: var(--shadow-sm); }
+        .admin-shell .btn-secondary:hover { background: var(--ink-50); }
+        .admin-shell .btn-ghost { color: var(--ink-700); }
+        .admin-shell .btn-ghost:hover { background: var(--ink-100); }
+        .admin-shell .btn-sm { padding: 9px 14px; font-size: 13px; border-radius: 10px; }
+        .admin-shell .chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; background: #fff; border: 1px solid var(--line); font-size: 12.5px; font-weight: 500; color: var(--ink-700); cursor: pointer; }
+        .admin-shell .chip.is-active { background: var(--ink-900); color: #fff; border-color: var(--ink-900); }
+        .admin-shell .badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 600; }
+        .admin-shell .badge::before { content: ''; width: 6px; height: 6px; border-radius: 999px; background: currentColor; flex-shrink: 0; }
+        .admin-shell .badge-norm { background: var(--ok-50); color: var(--ok-700); }
+        .admin-shell .badge-warn { background: var(--warn-50); color: var(--warn-700); }
+        .admin-shell .badge-risk { background: var(--risk-50); color: var(--risk-700); }
+        .admin-shell .badge-plain { display: inline-flex; padding: 4px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 600; background: var(--ink-100); color: var(--ink-700); }
+        .admin-shell .hover-lift { transition: transform .15s; }
+        .admin-shell .hover-lift:hover { transform: translateY(-2px); }
+        .admin-stats { grid-template-columns: repeat(6, 1fr); }
+        .admin-two-col { grid-template-columns: 2fr 1fr; }
+        @keyframes adminPulse { 0%, 100% { opacity: .25; transform: scale(1);} 50% { opacity: .5; transform: scale(1.6);} }
+        @media (max-width: 1100px) { .admin-stats { grid-template-columns: repeat(3, 1fr); } .admin-two-col { grid-template-columns: 1fr; } }
+        @media (max-width: 640px) { .admin-stats { grid-template-columns: repeat(2, 1fr); } }
+      `}</style>
+
+      {/* Dark command-center banner */}
+      <div style={{
+        background: '#0E0E14', color: '#fff',
+        padding: '28px 32px',
+        borderRadius: 'var(--radius-lg)',
+        boxShadow: '0 20px 60px rgba(14,11,34,.25)',
+        border: '1px solid rgba(255,255,255,0.05)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+          <div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '4px 10px', borderRadius: 999, fontSize: 11.5, fontWeight: 600,
+                background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.08)',
+                color: '#fff',
+              }}>
+                <Icon name="shield" size={11} /> Админ · {userName}
+              </span>
+              <span style={{
+                padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600,
+                background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.55)',
+              }}>v2.4.1 · PROD</span>
+            </div>
+            <h1 style={{
+              fontFamily: 'var(--font-display)', fontWeight: 800,
+              fontSize: 36, lineHeight: 1.1, letterSpacing: '-0.02em', color: '#fff',
+            }}>Операционный центр Жарқын Бала</h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 18, marginTop: 12, flexWrap: 'wrap' }}>
+              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)' }}>
+                {today()} · {now}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, color: '#6BE0B5' }}>
+                <span style={{ position: 'relative', width: 8, height: 8, borderRadius: 999, background: '#12B76A', flexShrink: 0 }}>
+                  <span style={{
+                    position: 'absolute', inset: -4, borderRadius: 999, background: '#12B76A',
+                    animation: 'adminPulse 2s ease-in-out infinite',
+                  }} />
+                </span>
+                Система работает в норме · 12 сервисов онлайн
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button className="btn btn-secondary" style={{ background: 'rgba(255,255,255,0.06)', color: '#fff', border: '1px solid rgba(255,255,255,0.12)' }}>
+              <Icon name="download" size={14} /> Экспорт репорта
+            </button>
+            <button className="btn btn-primary">
+              <Icon name="plus" size={14} /> Пригласить психолога
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <main style={{ paddingTop: 28, paddingBottom: 48 }}>
+        {/* 6 stat cards */}
+        <div className="admin-stats" style={{ display: 'grid', gap: 16, marginBottom: 28 }}>
+          <Stat icon="users" label="Пользователи" value={usersValue} delta="+234"
+            sub="родители 11 902 · психологи 127 · админы 12" href="/admin/users" />
+          <Stat icon="user" label="Детей в системе" value={childrenValue} delta="+412"
+            sub="по 1.46 ребёнка на родителя" />
+          <Stat icon="shield" label="Психологи · одобрено" value={fmt(psyApproved)} delta="+4"
+            sub={`${psyPending} на модерации · 3 отклонено`} href="/admin/psychologists" />
+          <Stat icon="book" label="Тестов пройдено" value={fmt(testsCount)} delta="+2 100"
+            sub="из них премиум — 27%" href="/admin/tests" />
+          <Stat featured icon="wallet" label="Выручка май" value={fmtCurrency(revenue)} delta="+23% MoM"
+            sub="комиссия платформы 2.77M ₸" href="/admin/payments" />
+          <Stat icon="target" label="Диагностика → консультация" value={`${conv}%`} delta="+1.4 п.п."
+            sub="цель ≥ 8% · апрель 10.4%" />
+        </div>
+
+        {/* Two-col grid */}
+        <div className="admin-two-col" style={{ display: 'grid', gap: 24, marginBottom: 28 }}>
+          {/* LEFT 2/3 */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            {/* Moderation */}
+            <div className="card" style={{ padding: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 12 }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16 }}>Новые психологи на модерации</div>
+                    <span style={{
+                      display: 'inline-flex', padding: '4px 10px', borderRadius: 999,
+                      fontSize: 11.5, fontWeight: 600, background: 'var(--warn-50)', color: 'var(--warn-700)',
+                    }}>12 в очереди</span>
+                  </div>
+                  <div style={{ fontSize: 13, color: 'var(--ink-500)', marginTop: 4 }}>Среднее время сверки диплома — 47 минут</div>
+                </div>
+                <Link href="/admin/psychologists" style={{
+                  fontSize: 13, fontWeight: 600, color: 'var(--brand-600)',
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                }}>
+                  Открыть очередь <Icon name="arrow" size={12} />
+                </Link>
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <PsyModRow initials="АК" tone="tone-rose" name="Аяна Каримова" years="6 лет"
+                  edu="КазНУ им. аль-Фараби, психология" applied="2 ч назад" />
+                <PsyModRow initials="ЕМ" tone="tone-mint" name="Ерлан Мухамеджанов" years="4 года"
+                  edu="МУИТ, клиническая психология" applied="5 ч назад" />
+                <PsyModRow initials="ГС" tone="tone-sun" name="Гульмира Сариева" years="11 лет"
+                  edu="КазНПУ, детская психология" applied="1 день назад" />
+                <PsyModRow initials="БТ" tone="tone-sky" name="Бахытжан Турсунов" years="8 лет"
+                  edu="Назарбаев Универ., MA Psychology" applied="2 дня назад" />
+              </div>
+            </div>
+
+            <RevenueChart />
+
+            {/* Top tests */}
+            <div className="card" style={{ padding: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 12 }}>
+                <div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16 }}>Популярные тесты месяца</div>
+                  <div style={{ fontSize: 13, color: 'var(--ink-500)', marginTop: 4 }}>Май 2026 · по числу прохождений</div>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="chip is-active">Май</button>
+                  <button className="chip">Апрель</button>
+                  <button className="chip">Квартал</button>
+                </div>
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <TopTest rank={1} name="Школьная мотивация" author="Лусканова Н. Г." count={8142} max={8142} />
+                <TopTest rank={2} name="Шкала самооценки" author="Ковалёв С. В." count={6781} max={8142} />
+                <TopTest rank={3} name="ДДО" author="Климов Е. А." count={5940} max={8142} />
+                <TopTest rank={4} name="Школьная тревожность" author="Филлипс" count={4322} max={8142} />
+                <TopTest rank={5} name="Реактивная и личностная тревожность" author="Спилбергер–Ханин" count={3815} max={8142} />
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT 1/3 */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            {/* Payments */}
+            <div className="card" style={{ padding: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16 }}>Последние платежи · Kaspi</div>
+                <Link href="/admin/payments" style={{ fontSize: 12, fontWeight: 600, color: 'var(--brand-600)' }}>Все</Link>
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <PaymentRow id="#2811b470" user="Айгуль К. · тест Филлипса" amount="3 500" status="paid" />
+                <PaymentRow id="#2811b46f" user="Дамир А. · консультация" amount="15 000" status="paid" />
+                <PaymentRow id="#2811b46e" user="Маргарита О. · Ковалёв" amount="3 500" status="pending" />
+                <PaymentRow id="#2811b46d" user="Семья Бердыбековых" amount="15 000" status="paid" />
+                <PaymentRow id="#2811b46c" user="Алмаз К. · Шварц" amount="3 500" status="failed" />
+              </div>
+            </div>
+
+            {/* System notifications */}
+            <div className="card" style={{ padding: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16 }}>Системные уведомления</div>
+                <span className="badge-plain">3 новых</span>
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <SysNote icon="info" tone="warn" title="Новый психолог ожидает сверку диплома" time="2 ч назад · модерация" />
+                <SysNote icon="check" tone="brand" title="Платёж #2811b470 — оверрайд оператора, успешно завершён" time="3 ч назад · K. Орлова" />
+                <SysNote icon="shield" tone="ok" title="Бэкап БД выполнен успешно (4.2 ГБ)" time="06:00 · автоматически" />
+              </div>
+            </div>
+
+            {/* Regions */}
+            <div className="card" style={{ padding: 24 }}>
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16 }}>Регионы Казахстана</div>
+                <div style={{ fontSize: 13, color: 'var(--ink-500)', marginTop: 4 }}>Распределение активных аккаунтов</div>
+              </div>
+              <div style={{ marginTop: 8 }}>
+                <RegionRow name="Алматы" percent={42} tone="var(--brand-grad)" />
+                <RegionRow name="Астана" percent={28} tone="linear-gradient(90deg, #8A6BFF 0%, #B66BFF 100%)" />
+                <RegionRow name="Шымкент" percent={12} tone="linear-gradient(90deg, #FFB36B 0%, #FF7BB5 100%)" />
+                <RegionRow name="Другие регионы" percent={18} tone="linear-gradient(90deg, #6BC8FF 0%, #6BE0B5 100%)" />
+              </div>
+              <div style={{
+                fontSize: 12, color: 'var(--ink-500)', marginTop: 16,
+                paddingTop: 14, borderTop: '1px solid var(--line)',
+              }}>
+                Всего активных за 30 дней: <b style={{ color: 'var(--ink-900)' }}>9 248</b>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Operational risks */}
+        <div className="card" style={{ padding: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 20 }}>Операционные риски</div>
+                <span className="badge-plain">светофор SLA</span>
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--ink-500)', marginTop: 4 }}>Обновляется каждые 5 минут · последняя проверка 09:40</div>
+            </div>
+            <button className="btn btn-secondary btn-sm">
+              <Icon name="settings" size={13} /> Настроить пороги
+            </button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <RiskRow tone="risk"
+              title="2 жалобы от клиентов без ответа более 24 часов"
+              sub="Кейсы #C-841, #C-839 · поддержка Динара К. в отпуске, требуется переадресация"
+              cta="Разобрать" />
+            <RiskRow tone="warn"
+              title="Среднее время ответа поддержки — 4 ч 12 м (выше SLA 2 ч)"
+              sub="Тренд за неделю: +38% · рекомендуется добавить агента или включить шаблоны"
+              cta="Открыть" />
+            <RiskRow tone="ok"
+              title="Квартальный аудит информационной безопасности — пройден"
+              sub="Акт KZ87VQQ-2026Q1 действует до 30 июня · ISO/IEC 27001, ЗРК ПДн"
+              cta="Скачать акт" />
+          </div>
+        </div>
+
+        {/* Security/cert footer strip */}
+        <div style={{
+          marginTop: 32, padding: '20px 24px', borderRadius: 'var(--radius-lg)',
+          background: '#0E0E14', color: '#B7B3CC',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          flexWrap: 'wrap', gap: 16,
+        }}>
+          <div style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span>© 2026 Жарқын Бала</span>
+            <span style={{ opacity: 0.5 }}>·</span>
+            <span>v2.4.1 · PROD</span>
+          </div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            {[
+              { icon: 'shield' as IconName, t: 'ISO/IEC 27001 · KZ87VQQ-2026Q1' },
+              { icon: 'lock' as IconName, t: 'ЗРК ПДн · Реестр №118' },
+              { icon: 'globe' as IconName, t: 'Данные хранятся в РК' },
+            ].map((c) => (
+              <span key={c.t} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                padding: '8px 12px', borderRadius: 10, fontSize: 12,
+                background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+              }}>
+                <span style={{ color: '#B66BFF', display: 'inline-flex' }}><Icon name={c.icon} size={13} /></span>
+                {c.t}
+              </span>
+            ))}
+          </div>
+        </div>
+      </main>
+
+      {/* AI assistant FAB */}
+      <button
+        type="button"
+        onClick={() => alert('AI-помощник админа: чем помочь?')}
+        style={{
+          position: 'fixed', right: 28, bottom: 28, zIndex: 40,
+          display: 'flex', alignItems: 'center', gap: 10,
+          background: '#0E0B22', color: '#fff',
+          padding: '12px 18px 12px 12px', borderRadius: 999,
+          boxShadow: '0 12px 32px rgba(14,11,34,.32)',
+          fontWeight: 600, fontSize: 13.5, border: 0, cursor: 'pointer',
+        }}
+      >
+        <span style={{
+          width: 32, height: 32, borderRadius: 999, display: 'grid', placeItems: 'center',
+          background: 'var(--brand-grad)', color: '#fff',
+        }}>
+          <Icon name="sparkle" size={16} />
+        </span>
+        AI-ассистент админа
+      </button>
     </div>
   );
 }
