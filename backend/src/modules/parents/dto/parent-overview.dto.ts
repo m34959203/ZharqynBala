@@ -6,6 +6,13 @@ class ParentInfoDto {
   @ApiProperty() lastName!: string;
 }
 
+class TestInProgressItemDto {
+  @ApiProperty() sessionId!: string;
+  @ApiProperty() testId!: string;
+  @ApiProperty() testName!: string;
+  @ApiProperty() startedAt!: string;
+}
+
 class ParentChildDto {
   @ApiProperty() id!: string;
   @ApiProperty() firstName!: string;
@@ -15,6 +22,8 @@ class ParentChildDto {
   @ApiProperty() joinedAt!: string;
   @ApiProperty({ description: '% от рекомендованных тестов (30)' }) progressPct!: number;
   @ApiProperty() testsInProgress!: number;
+  @ApiProperty({ type: [TestInProgressItemDto], description: 'Детали тестов в работе (для кнопки «Продолжить»)' })
+  testsInProgressList!: TestInProgressItemDto[];
   @ApiProperty() avatarTone!: string;
 }
 

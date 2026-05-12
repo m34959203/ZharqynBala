@@ -99,8 +99,17 @@ export class AdminService {
     const monthAmount = monthRevenueAgg._sum.amount ?? 0;
     const prevMonthAmount = prevMonthRevenueAgg._sum.amount ?? 0;
     const commissionKzt = Math.round(monthAmount * 0.15);
+    // MoM нормализация: текущий месяц прорезан → проектируем выручку
+    // на полный месяц, чтобы сравнение не было дезориентирующим
+    // (BUG-WARN-004: «весь предыдущий месяц vs 13 дней текущего» = −67.7%).
+    // Формула: monthProjected = monthAmount × (daysInMonth / dayOfMonth).
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const dayOfMonth = now.getDate();
+    const monthProjected = dayOfMonth > 0
+      ? Math.round((monthAmount / dayOfMonth) * daysInMonth)
+      : monthAmount;
     const deltaMomPct = prevMonthAmount > 0
-      ? Math.round(((monthAmount - prevMonthAmount) / prevMonthAmount) * 1000) / 10
+      ? Math.round(((monthProjected - prevMonthAmount) / prevMonthAmount) * 1000) / 10
       : 0;
 
     const conversion = passedTotal > 0

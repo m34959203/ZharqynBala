@@ -75,6 +75,9 @@ export interface ParentOverviewDto {
     id: string; firstName: string; lastName: string;
     ageYears: number; gradeLevel: number | null;
     joinedAt: string; progressPct: number; testsInProgress: number;
+    testsInProgressList: Array<{
+      sessionId: string; testId: string; testName: string; startedAt: string;
+    }>;
     avatarTone: string;
   }>;
   totals: {

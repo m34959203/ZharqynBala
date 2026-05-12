@@ -55,7 +55,13 @@ export class ParentsService {
         _count: { select: { testSessions: { where: { status: 'COMPLETED' } } } },
         testSessions: {
           where: { status: 'IN_PROGRESS' },
-          select: { id: true },
+          select: {
+            id: true,
+            testId: true,
+            startedAt: true,
+            test: { select: { titleRu: true } },
+          },
+          orderBy: { startedAt: 'desc' },
         },
       },
     });
@@ -308,6 +314,12 @@ export class ParentsService {
         joinedAt: c.createdAt.toISOString(),
         progressPct,
         testsInProgress: testsInProgressByChild[c.id] ?? 0,
+        testsInProgressList: c.testSessions.map(s => ({
+          sessionId: s.id,
+          testId: s.testId,
+          testName: s.test.titleRu,
+          startedAt: s.startedAt.toISOString(),
+        })),
         avatarTone: stableTone(c.firstName + c.lastName),
       };
     });

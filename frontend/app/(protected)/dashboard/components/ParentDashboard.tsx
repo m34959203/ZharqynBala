@@ -345,10 +345,24 @@ export default function ParentDashboard({ userName }: ParentDashboardProps) {
                       }}
                     />
                   </div>
-                  {child.testsInProgress > 0 && (
-                    <p className="text-xs text-purple-600 font-medium mt-2">
-                      У {child.firstName} {pluralW(W.testInProgress, child.testsInProgress)}
-                    </p>
+                  {child.testsInProgress > 0 && child.testsInProgressList.length > 0 && (
+                    <div className="mt-2 text-xs">
+                      <p className="text-purple-600 font-medium mb-1">
+                        У {child.firstName} {pluralW(W.testInProgress, child.testsInProgress)}
+                      </p>
+                      {child.testsInProgressList.slice(0, 2).map(t => (
+                        <Link
+                          key={t.sessionId}
+                          href={`/tests/${t.testId}/session?sessionId=${t.sessionId}`}
+                          className="inline-flex items-center gap-1.5 mr-2 text-purple-700 hover:text-purple-900 hover:underline"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                          </svg>
+                          Продолжить «{t.testName.length > 30 ? t.testName.slice(0, 28) + '…' : t.testName}»
+                        </Link>
+                      ))}
+                    </div>
                   )}
                 </div>
                 <div className="flex gap-2 mt-4 flex-wrap">

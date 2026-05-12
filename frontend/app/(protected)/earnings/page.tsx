@@ -12,6 +12,15 @@ interface Transaction {
   status: 'COMPLETED' | 'PENDING' | 'WITHDRAWN';
 }
 
+// Дата следующей выплаты: 1-е число следующего месяца (стандарт KZ-payroll).
+function nextPayoutDate(): string {
+  const now = new Date();
+  const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+                  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+  return `${next.getDate()} ${months[next.getMonth()]}`;
+}
+
 export default function EarningsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,7 +101,11 @@ export default function EarningsPage() {
           <div>
             <p className="text-white/80 mb-2">Текущий баланс</p>
             <p className="text-4xl font-bold">{stats.balance.toLocaleString()} ₸</p>
-            <p className="text-white/80 mt-2">Ожидает: {stats.pending.toLocaleString()} ₸</p>
+            {stats.pending > 0 && (
+              <p className="text-white/80 mt-2">
+                Ожидает: {stats.pending.toLocaleString()} ₸ · к выплате {nextPayoutDate()}
+              </p>
+            )}
           </div>
           <div className="text-right">
             <p className="text-white/80 mb-2">За этот месяц</p>

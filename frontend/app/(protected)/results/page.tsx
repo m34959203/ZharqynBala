@@ -11,6 +11,7 @@ export default function ResultsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('');
+  const [filterChildId, setFilterChildId] = useState<string>('');
   const [sortBy, setSortBy] = useState<'date' | 'score'>('date');
 
   useEffect(() => {
@@ -50,11 +51,21 @@ export default function ResultsPage() {
     [results]
   );
 
+  // Unique children from results (for filter dropdown on multi-child accounts)
+  const children = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of results) {
+      if (r.childId && r.childName) m.set(r.childId, r.childName);
+    }
+    return Array.from(m.entries()).map(([id, name]) => ({ id, name }));
+  }, [results]);
+
   // Filtered and sorted results
   const filteredResults = useMemo(
     () =>
       results
         .filter((r) => !filterCategory || r.testCategory === filterCategory)
+        .filter((r) => !filterChildId || r.childId === filterChildId)
         .sort((a, b) => {
           if (sortBy === 'date')
             return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -62,7 +73,7 @@ export default function ResultsPage() {
           const pctB = b.maxScore > 0 ? b.totalScore / b.maxScore : 0;
           return pctB - pctA;
         }),
-    [results, filterCategory, sortBy]
+    [results, filterCategory, filterChildId, sortBy]
   );
 
   if (loading) {
@@ -86,7 +97,7 @@ export default function ResultsPage() {
               </p>
             </div>
             {results.length > 0 && (
-              <ExportButton url="/export/results" filename="results.xlsx" label="Скачать Excel" />
+              <ExportButton url="/export/results" filename="results.xlsx" label="Скачать отчёт" />
             )}
           </div>
         </div>
@@ -150,7 +161,20 @@ export default function ResultsPage() {
               </button>
             ))}
 
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-2">
+              {children.length > 1 && (
+                <select
+                  value={filterChildId}
+                  onChange={(e) => setFilterChildId(e.target.value)}
+                  className="text-sm border rounded-lg px-3 py-1.5"
+                  aria-label="Фильтр по ребёнку"
+                >
+                  <option value="">Все дети ({children.length})</option>
+                  {children.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              )}
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as 'date' | 'score')}
