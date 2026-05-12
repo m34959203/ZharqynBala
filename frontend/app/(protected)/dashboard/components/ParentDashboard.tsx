@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api, { parentsApi, type ParentOverviewDto } from '@/lib/api';
+import { plural, pluralW, W } from '@/lib/i18n/plural';
 
 interface ParentDashboardProps {
   userName: string;
@@ -33,13 +34,7 @@ const formatConsultDate = (iso: string): string => {
   return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} в ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
 
-const pluralize = (n: number, one: string, few: string, many: string): string => {
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return `${n} ${one}`;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${n} ${few}`;
-  return `${n} ${many}`;
-};
+// Plural helpers вынесены в @/lib/i18n/plural — здесь только импорт
 
 const toneStyle: Record<string, string> = {
   'tone-warm': 'linear-gradient(135deg, #FFB36B 0%, #FF7BB5 100%)',
@@ -204,7 +199,7 @@ export default function ParentDashboard({ userName }: ParentDashboardProps) {
             label="Средний балл"
             value={totals.avgScore !== null ? `${totals.avgScore}%` : '—'}
             delta={totals.avgScore !== null && totals.avgScoreDeltaMonth !== null
-              ? signed(totals.avgScoreDeltaMonth, pluralize(Math.abs(totals.avgScoreDeltaMonth), 'балл', 'балла', 'баллов').split(' ')[1])
+              ? signed(totals.avgScoreDeltaMonth, plural(Math.abs(totals.avgScoreDeltaMonth), ...W.point))
               : null}
             meta={totals.avgScore === null ? 'Появится после первого теста' : null}
             icon="chart"
@@ -327,7 +322,7 @@ export default function ParentDashboard({ userName }: ParentDashboardProps) {
                       {child.firstName} {child.lastName}
                     </h3>
                     <p className="text-sm text-gray-500">
-                      {pluralize(child.ageYears, 'год', 'года', 'лет')}
+                      {pluralW(W.year, child.ageYears)}
                       {child.gradeLevel !== null && ` · ${child.gradeLevel} класс`}
                       {` · в системе с ${formatRelativeJoin(child.joinedAt)}`}
                     </p>
@@ -349,7 +344,7 @@ export default function ParentDashboard({ userName }: ParentDashboardProps) {
                   </div>
                   {child.testsInProgress > 0 && (
                     <p className="text-xs text-purple-600 font-medium mt-2">
-                      У {child.firstName} {pluralize(child.testsInProgress, 'тест в работе', 'теста в работе', 'тестов в работе')}
+                      У {child.firstName} {pluralW(W.testInProgress, child.testsInProgress)}
                     </p>
                   )}
                 </div>
@@ -510,7 +505,7 @@ export default function ParentDashboard({ userName }: ParentDashboardProps) {
               Зона внимания
             </h3>
             <p className="text-sm text-gray-500 mb-3">
-              Чтобы оценить зону внимания, нужно пройти хотя бы {AI_THRESHOLD} {pluralize(AI_THRESHOLD, 'тест', 'теста', 'тестов').split(' ')[1]}.
+              Чтобы оценить зону внимания, нужно пройти хотя бы {pluralW(W.test, AI_THRESHOLD)}.
             </p>
             <div className="mb-3">
               <div className="flex justify-between items-center mb-1">
@@ -596,7 +591,7 @@ export default function ParentDashboard({ userName }: ParentDashboardProps) {
                   AI готовит рекомендации
                 </h3>
                 <p className="text-sm text-gray-500 mb-3">
-                  Пройдите ещё {pluralize(testsToThreshold, 'тест', 'теста', 'тестов')}, чтобы получить персональные подсказки.
+                  Пройдите ещё {pluralW(W.test, testsToThreshold)}, чтобы получить персональные подсказки.
                 </p>
                 <div className="w-full h-2 bg-gray-100 rounded-full mb-3 max-w-sm">
                   <div

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import api from '@/lib/api';
+import { plural, pluralW, W } from '@/lib/i18n/plural';
 
 // ──────────────────────────────────────────────────────────────────
 // Types
@@ -211,7 +212,7 @@ const SessionCard = ({ s }: { s: SessionItem }) => {
           )}
           {showJoin && s.minutesUntil != null && (
             <span className="psy-badge-plain" style={{ background: 'var(--psy-warn-50)', color: 'var(--psy-warn-700)' }}>
-              через {s.minutesUntil} мин
+              через {pluralW(W.minute, s.minutesUntil)}
             </span>
           )}
         </div>
@@ -889,7 +890,7 @@ export default function PsychologistDashboard({ userName }: PsychologistDashboar
           <h1 className="psy-h-1">Добрый день, {greetingFirstName}.</h1>
           <p className="muted" style={{ fontSize: 16, marginTop: 8 }}>
             {todayStats.total > 0
-              ? `Сегодня ${todayStats.total} ${todayStats.total === 1 ? 'консультация' : 'консультаций'}${nearestMinutes != null ? `, ближайшая через ${nearestMinutes} мин.` : '.'}`
+              ? `Сегодня ${pluralW(W.consult, todayStats.total)}${nearestMinutes != null ? `, ближайшая через ${pluralW(W.minute, nearestMinutes)}.` : '.'}`
               : 'Сегодня свободно. Хороший день, чтобы обновить заметки или принять новые запросы.'}
           </p>
         </div>
@@ -948,8 +949,8 @@ export default function PsychologistDashboard({ userName }: PsychologistDashboar
           <div>
             <div className="psy-h-3">Сегодня, {todayLabel()}</div>
             <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
-              {todayStats.total} {todayStats.total === 1 ? 'слот' : 'слотов'}:&nbsp;
-              {todayStats.completed} завершено, {todayStats.inProgress} {todayStats.inProgress === 1 ? 'идёт' : 'идут'}, {todayStats.scheduled} запланировано
+              {pluralW(W.slot, todayStats.total)}:&nbsp;
+              {todayStats.completed} завершено, {todayStats.inProgress} {plural(todayStats.inProgress, 'идёт', 'идут', 'идут')}, {todayStats.scheduled} запланировано
             </div>
           </div>
           <Link href="/schedule" className="psy-btn psy-btn-ghost psy-btn-sm">
@@ -1144,7 +1145,7 @@ export default function PsychologistDashboard({ userName }: PsychologistDashboar
           {earnings && (
             <>
               <div style={{ fontSize: 13.5, opacity: 0.9, marginBottom: 4 }}>
-                {earnings.sessions} {earnings.sessions === 1 ? 'консультация' : 'консультаций'}, средний чек {formatKzt(earnings.averageKzt)}
+                {pluralW(W.consult, earnings.sessions)}, средний чек {formatKzt(earnings.averageKzt)}
               </div>
               <div style={{ fontSize: 13.5, opacity: 0.85, marginBottom: 20 }}>
                 К выплате {earnings.payoutDate}. Комиссия {earnings.commissionPct}% уже учтена.
