@@ -108,9 +108,9 @@ export default function EarningsPage() {
             )}
           </div>
           <div className="text-right">
-            <p className="text-white/80 mb-2">За этот месяц</p>
+            <p className="text-white/80 mb-2">Завершено за этот месяц</p>
             <p className="text-3xl font-bold">+{stats.monthEarnings.toLocaleString()} ₸</p>
-            <p className="text-white/80 mt-2">{stats.consultations} консультаций</p>
+            <p className="text-white/80 mt-2">{stats.consultations} проведено</p>
           </div>
         </div>
       </div>
@@ -118,7 +118,7 @@ export default function EarningsPage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
         <div className="bg-white rounded-xl shadow-sm p-5">
-          <p className="text-sm font-medium text-gray-500">Консультаций</p>
+          <p className="text-sm font-medium text-gray-500">Проведено консультаций</p>
           <p className="text-2xl font-bold text-gray-900">{stats.consultations}</p>
           {stats.consultations > 0 ? (
             <p className="text-xs text-gray-500 mt-1">за выбранный период</p>
