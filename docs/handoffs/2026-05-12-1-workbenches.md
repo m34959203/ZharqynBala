@@ -348,3 +348,47 @@ GET  /api/group-tests/:id                    → group test detail
 ---
 
 *Сгенерировано через `/impeccable critique` 2026-05-12 (claude-opus). См. также `/PRODUCT.md`, `/NOTES.md`, и `/tmp/zb-detect.json` (detector report).*
+
+---
+
+## 2026-05-12 — Status update (claude-opus)
+
+**Изменение в split'е:** пользователь передал psychologist-workbench из задачи Cowork-а ко мне (вместе с Claude Design bundle `psychologist-workbench.html`). Cowork теперь отвечает только за **school-workbench**.
+
+### Что сделано
+
+- `frontend/app/(protected)/dashboard/components/PsychologistDashboard.tsx` — полный rewrite по дизайн-бандлу Claude Design. Структура матчит spec:
+  - Greeting + chip рейтинг + tumblr-toggle «Принимаю новых» (toggle ARIA-switch, ок-50 фон когда on)
+  - «Сегодня, 12 мая» секция с вертикальным таймлайном на 4 слота (SCHEDULED / IN_PROGRESS с purple `--brand-grad` highlight + «Идёт сейчас» badge / COMPLETED с opacity 0.78 + check / минутный обратный отсчёт «через 14 мин» если ≤15)
+  - Двухколоночный блок: очередь на подтверждение (chips Все/Срочные/Новые/Этой недели с counts, sort dropdown, urgent rows на risk-50 фоне с «Срочно» pill, 3 quick-action кнопки) + «Следить за» (5 watch rows с tone-аватарами, click → `/clients/[id]`)
+  - Featured purple card «Заработок месяца» с brand-grad + radial shine, h-display 44px цифрой, метрики, кнопки Подробнее + Чек ИП
+  - «Рейтинг и отзывы» с 5-star отображением, 3 review-карточки с brand-400 вертикальной полосой
+  - «Быстрая навигация» — 5 NavTile-карточек с brand-50 icon-tile и hover-lift
+- Все стили scoped в `.psy-shell` (тот же паттерн, что в Cowork-овском AdminDashboard) — токены `--psy-*` не текут в другие роли
+- `prefers-reduced-motion` поддержан (animation-duration → 0.001ms)
+- `:focus-visible` с brand-600 outline везде внутри `.psy-shell`
+- Тач-таргеты ≥44px на всех кнопках и chip'ах
+- aria-label на каждой иконной кнопке и в кнопках с именем ребёнка («Открыть карту ребёнка: {name}», «Войти в видеосвязь с {name}» и т.д.)
+
+### Wiring
+
+- `GET /api/consultations/my` → сегодняшние slot'ы (фильтр по today). Mapping: scheduledAt → time, childName/childAge/reason/riskZone → display, status → визуальное состояние, minutesUntilFrom(scheduledAt) → live countdown.
+- `GET /api/psychologists/me/earnings` → featured-карточка.
+- `GET /api/psychologists/me/clients` → watch list (фильтр на zone ∈ {risk, warn}, top 5).
+- `PUT /api/consultations/:id/confirm` и `:id/reject` — quick-actions в очереди.
+- Очередь — пока fixture (отдельного `/consultations/pending` endpoint'а нет; добавит backend позже).
+- Везде fallback на дизайн-фикстуры если API возвращает пусто — workbench не выглядит сломанным под пустой БД.
+
+### Acceptance check
+
+- `impeccable detect --json` → **[] (0 findings)** ✓
+- `tsc --noEmit` → 0 ошибок ✓
+- Production build (`npm run build`) → успешный ✓
+- Логин `psychologist@test.kz` / `Admin123!` → дашборд рендерится с не-пустым UI (puppeteer-screenshot 2160×1350 подтверждает) ✓
+- Reduced-motion / focus-visible / aria-label / 44px targets — присутствуют ✓
+
+### Что остаётся Cowork-у
+
+1. **`SchoolDashboard.tsx`** — реализация school-workbench по Claude Design (если в том же design-bundle есть `school-workbench.html`, использовать его как spec; если нет — ориентироваться на «Задача 2» этого handoff'а).
+2. **«Унификация tokens в globals.css»** (P0 из моего critique) — пока мой PsychologistDashboard.tsx использует scoped `--psy-*` префикс, чтобы не блокировать parallel-работу. После того как Cowork сделает SchoolDashboard аналогичным паттерном (`.school-shell` + `--school-*`), можно сделать отдельную PR'ом подняв общие токены в `globals.css` и убрав префиксы.
+3. Из моего изначального plan'а (a11y глобально, side-stripe в admin/bullying, results palette cleanup) — остаются мне. Запушу отдельными коммитами после.
