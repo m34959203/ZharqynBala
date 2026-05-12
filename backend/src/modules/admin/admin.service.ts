@@ -1,7 +1,10 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { DashboardStatsDto, CreateTestDto, UpdateTestDto } from './dto/admin.dto';
-import { AdminOverviewDto, RevenueTimeseriesDto } from './dto/admin-overview.dto';
+import {
+  AdminOverviewDto, RevenueTimeseriesDto,
+  PsychologistInModerationDto, TopTestDto, RegionStatDto,
+} from './dto/admin-overview.dto';
 
 function niceMax(v: number): number {
   if (v <= 0) return 100;
@@ -213,6 +216,127 @@ export class AdminService {
     const max = niceMax(peak);
 
     return { range, unit: 'KZT', max, data };
+  }
+
+  // ──────────────────────────────────────────────────
+  // Модерация психологов: pending = isApproved=false, isActive=true
+  // ──────────────────────────────────────────────────
+  async getModerationQueue(limit = 5): Promise<PsychologistInModerationDto[]> {
+    const TONES = ['tone-rose', 'tone-mint', 'tone-sun', 'tone-sky', 'tone-warm'];
+    const items = await this.prisma.psychologist.findMany({
+      where: { isApproved: false, user: { isActive: true } },
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        user: { select: { firstName: true, lastName: true, createdAt: true } },
+      },
+    });
+    return items.map((p, i) => {
+      const fn = p.user.firstName;
+      const ln = p.user.lastName;
+      const fullName = `${fn} ${ln}`;
+      const initials = `${fn[0] ?? ''}${ln[0] ?? ''}`.toUpperCase();
+      return {
+        id: p.id,
+        fullName,
+        initials,
+        tone: TONES[i % TONES.length],
+        experienceYears: p.experienceYears,
+        education: p.education,
+        appliedAt: p.user.createdAt.toISOString(),
+      };
+    });
+  }
+
+  // ──────────────────────────────────────────────────
+  // Топ-5 тестов по прохождениям (текущий месяц / прошлый / за всё)
+  // ──────────────────────────────────────────────────
+  async getTopTests(period: 'current' | 'previous' | 'all' = 'current', limit = 5): Promise<TopTestDto[]> {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+    const where: any = { status: 'COMPLETED' };
+    if (period === 'current') where.completedAt = { gte: monthStart };
+    if (period === 'previous') where.completedAt = { gte: prevMonthStart, lt: monthStart };
+
+    // GroupBy testId с count и sort
+    const grouped = await this.prisma.testSession.groupBy({
+      by: ['testId'],
+      where,
+      _count: { _all: true },
+      orderBy: { _count: { testId: 'desc' } },
+      take: limit,
+    });
+    if (!grouped.length) return [];
+    const testIds = grouped.map(g => g.testId);
+    const tests = await this.prisma.test.findMany({
+      where: { id: { in: testIds } },
+      select: { id: true, titleRu: true },
+    });
+    const titleById = new Map(tests.map(t => [t.id, t.titleRu]));
+    const maxCount = grouped[0]._count._all;
+
+    return grouped.map((g, idx) => {
+      const raw = titleById.get(g.testId) ?? 'Тест';
+      // Parse author from titleRu — convention «Название (Автор)» или «Название по Автору»
+      const m = raw.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+      const name = m ? m[1].trim() : raw;
+      const author = m ? m[2].trim() : '';
+      return {
+        rank: idx + 1,
+        name, author,
+        count: g._count._all,
+        max: maxCount,
+      };
+    });
+  }
+
+  // ──────────────────────────────────────────────────
+  // Регионы Казахстана: распределение учеников по городам школ
+  // (parent-only активность без школьной привязки → «Другие»)
+  // ──────────────────────────────────────────────────
+  async getRegions(): Promise<RegionStatDto[]> {
+    const [schools, totalChildren] = await Promise.all([
+      this.prisma.school.findMany({
+        select: {
+          city: true,
+          _count: { select: { classes: true } },
+          classes: { select: { _count: { select: { students: true } } } },
+        },
+      }),
+      this.prisma.child.count(),
+    ]);
+
+    const cityCount = new Map<string, number>();
+    for (const s of schools) {
+      const studentsInSchool = s.classes.reduce((sum, c) => sum + c._count.students, 0);
+      cityCount.set(s.city, (cityCount.get(s.city) ?? 0) + studentsInSchool);
+    }
+
+    const totalSchoolStudents = Array.from(cityCount.values()).reduce((s, v) => s + v, 0);
+    const otherActivity = Math.max(0, totalChildren - 0); // parents' children без school-binding
+
+    const grandTotal = totalSchoolStudents + otherActivity;
+    if (grandTotal === 0) return [];
+
+    const sortedCities = Array.from(cityCount.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, count]) => ({
+        name,
+        count,
+        percent: Math.round((count / grandTotal) * 100),
+      }));
+
+    const otherPercent = grandTotal > 0
+      ? Math.round((otherActivity / grandTotal) * 100)
+      : 0;
+
+    const result: RegionStatDto[] = sortedCities;
+    if (otherActivity > 0) {
+      result.push({ name: 'Другие регионы', count: otherActivity, percent: otherPercent });
+    }
+    return result;
   }
 
   async getDashboardStats(): Promise<DashboardStatsDto> {

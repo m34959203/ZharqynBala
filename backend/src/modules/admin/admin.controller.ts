@@ -29,7 +29,10 @@ import {
   CreateTestDto,
   UpdateTestDto,
 } from './dto/admin.dto';
-import { AdminOverviewDto, RevenueTimeseriesDto } from './dto/admin-overview.dto';
+import {
+  AdminOverviewDto, RevenueTimeseriesDto,
+  PsychologistInModerationDto, TopTestDto, RegionStatDto,
+} from './dto/admin-overview.dto';
 
 @ApiTags('Admin')
 @Controller('admin')
@@ -53,6 +56,37 @@ export class AdminController {
   @Header('Cache-Control', 'private, max-age=60')
   async getOverview(): Promise<AdminOverviewDto> {
     return this.adminService.getOverview();
+  }
+
+  @Get('moderation/queue')
+  @ApiOperation({ summary: 'Очередь психологов на модерации' })
+  @ApiResponse({ status: 200, type: [PsychologistInModerationDto] })
+  @Header('Cache-Control', 'private, max-age=30')
+  async getModerationQueue(@Query('limit') limit?: string): Promise<PsychologistInModerationDto[]> {
+    const n = limit ? parseInt(limit, 10) : 5;
+    return this.adminService.getModerationQueue(Number.isFinite(n) && n > 0 ? n : 5);
+  }
+
+  @Get('stats/top-tests')
+  @ApiOperation({ summary: 'Топ тестов по прохождениям' })
+  @ApiResponse({ status: 200, type: [TopTestDto] })
+  @Header('Cache-Control', 'private, max-age=60')
+  async getTopTests(
+    @Query('period') period?: string,
+    @Query('limit') limit?: string,
+  ): Promise<TopTestDto[]> {
+    const safePeriod: 'current' | 'previous' | 'all' =
+      period === 'previous' || period === 'all' ? period : 'current';
+    const n = limit ? parseInt(limit, 10) : 5;
+    return this.adminService.getTopTests(safePeriod, Number.isFinite(n) && n > 0 ? n : 5);
+  }
+
+  @Get('stats/regions')
+  @ApiOperation({ summary: 'Распределение детей по регионам Казахстана' })
+  @ApiResponse({ status: 200, type: [RegionStatDto] })
+  @Header('Cache-Control', 'private, max-age=120')
+  async getRegions(): Promise<RegionStatDto[]> {
+    return this.adminService.getRegions();
   }
 
   @Get('stats/revenue-timeseries')

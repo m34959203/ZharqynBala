@@ -104,6 +104,30 @@ export interface ParentOverviewDto {
   } | null;
 }
 
+export interface PsychologistInModerationDto {
+  id: string;
+  fullName: string;
+  initials: string;
+  tone: string;
+  experienceYears: number;
+  education: string;
+  appliedAt: string;
+}
+
+export interface TopTestDto {
+  rank: number;
+  name: string;
+  author: string;
+  count: number;
+  max: number;
+}
+
+export interface RegionStatDto {
+  name: string;
+  count: number;
+  percent: number;
+}
+
 export interface RevenueTimeseriesPoint {
   label: string;
   value: number;
@@ -218,6 +242,21 @@ export const adminApi = {
 
   getRevenueTimeseries: async (range: 'week' | 'month' | 'year'): Promise<RevenueTimeseriesDto> => {
     const response = await api.get<RevenueTimeseriesDto>('/admin/stats/revenue-timeseries', { params: { range } });
+    return response.data;
+  },
+
+  getModerationQueue: async (limit = 5): Promise<PsychologistInModerationDto[]> => {
+    const response = await api.get<PsychologistInModerationDto[]>('/admin/moderation/queue', { params: { limit } });
+    return response.data;
+  },
+
+  getTopTests: async (period: 'current' | 'previous' | 'all' = 'current', limit = 5): Promise<TopTestDto[]> => {
+    const response = await api.get<TopTestDto[]>('/admin/stats/top-tests', { params: { period, limit } });
+    return response.data;
+  },
+
+  getRegions: async (): Promise<RegionStatDto[]> => {
+    const response = await api.get<RegionStatDto[]>('/admin/stats/regions');
     return response.data;
   },
 

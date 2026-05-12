@@ -59,6 +59,31 @@ class HealthOverviewDto {
   lastIncidentAt!: string | null;
 }
 
+export class PsychologistInModerationDto {
+  @ApiProperty() id!: string;
+  @ApiProperty({ example: 'Аяна Каримова' }) fullName!: string;
+  @ApiProperty({ example: 'АК' }) initials!: string;
+  @ApiProperty({ example: 'tone-rose' }) tone!: string;
+  @ApiProperty({ example: 6 }) experienceYears!: number;
+  @ApiProperty({ example: 'КазНУ им. аль-Фараби' }) education!: string;
+  @ApiProperty({ example: '2026-05-12T10:00:00Z' }) appliedAt!: string;
+}
+
+export class TopTestDto {
+  @ApiProperty({ example: 1 }) rank!: number;
+  @ApiProperty({ example: 'Школьная мотивация' }) name!: string;
+  @ApiProperty({ example: 'Лусканова Н. Г.' }) author!: string;
+  @ApiProperty({ example: 8142 }) count!: number;
+  @ApiProperty({ example: 8142, description: 'Максимум из всех топов для нормирования прогресс-бара' })
+  max!: number;
+}
+
+export class RegionStatDto {
+  @ApiProperty({ example: 'Алматы' }) name!: string;
+  @ApiProperty({ example: 250 }) count!: number;
+  @ApiProperty({ example: 42, description: 'Доля от total в %' }) percent!: number;
+}
+
 export class RevenueTimeseriesPointDto {
   @ApiProperty({ example: 'Май' }) label!: string;
   @ApiProperty({ example: 18450000 }) value!: number;

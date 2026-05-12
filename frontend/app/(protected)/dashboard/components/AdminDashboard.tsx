@@ -2,7 +2,14 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { adminApi, type AdminOverviewDto, type RevenueTimeseriesDto } from '@/lib/api';
+import {
+  adminApi,
+  type AdminOverviewDto,
+  type RevenueTimeseriesDto,
+  type PsychologistInModerationDto,
+  type TopTestDto,
+  type RegionStatDto,
+} from '@/lib/api';
 
 interface AdminDashboardProps {
   userName: string;
@@ -36,6 +43,31 @@ const fmtCommissionCompact = (n: number) =>
   : `${fmt(n)} ₸`;
 const formatDelta = (n: number, suffix = '') =>
   n === 0 ? null : `${n > 0 ? '+' : ''}${fmt(n)}${suffix}`;
+
+const pluralYears = (n: number): string => {
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return `${n} год`;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return `${n} года`;
+  return `${n} лет`;
+};
+
+const relativeTime = (iso: string): string => {
+  const t = new Date(iso).getTime();
+  const diffSec = Math.max(0, Math.floor((Date.now() - t) / 1000));
+  if (diffSec < 60) return 'только что';
+  const min = Math.floor(diffSec / 60);
+  if (min < 60) return `${min} мин назад`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} ч назад`;
+  const days = Math.floor(hr / 24);
+  if (days < 7) return `${days} ${days === 1 ? 'день' : days < 5 ? 'дня' : 'дней'} назад`;
+  if (days < 30) {
+    const w = Math.floor(days / 7);
+    return `${w} ${w === 1 ? 'неделю' : w < 5 ? 'недели' : 'недель'} назад`;
+  }
+  // > 30 days — абсолютная дата
+  return new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+};
 
 const today = () => {
   const d = new Date();
@@ -654,11 +686,22 @@ export default function AdminDashboard({ userName }: AdminDashboardProps) {
   const [overview, setOverview] = useState<AdminOverviewDto | null>(null);
   const [overviewError, setOverviewError] = useState(false);
 
+  // Block-level state: модерация, top tests, регионы
+  const [moderation, setModeration] = useState<PsychologistInModerationDto[] | null>(null);
+  const [topTestsPeriod, setTopTestsPeriod] = useState<'current' | 'previous' | 'all'>('all');
+  const [topTests, setTopTests] = useState<TopTestDto[] | null>(null);
+  const [regions, setRegions] = useState<RegionStatDto[] | null>(null);
+
   useEffect(() => {
-    adminApi.getOverview()
-      .then(setOverview)
-      .catch(() => setOverviewError(true));
+    adminApi.getOverview().then(setOverview).catch(() => setOverviewError(true));
+    adminApi.getModerationQueue(5).then(setModeration).catch(() => setModeration([]));
+    adminApi.getRegions().then(setRegions).catch(() => setRegions([]));
   }, []);
+
+  useEffect(() => {
+    setTopTests(null);
+    adminApi.getTopTests(topTestsPeriod, 5).then(setTopTests).catch(() => setTopTests([]));
+  }, [topTestsPeriod]);
 
   const refetchOverview = () => {
     setOverviewError(false);
@@ -803,14 +846,38 @@ export default function AdminDashboard({ userName }: AdminDashboardProps) {
                 </Link>
               </div>
               <div style={{ marginTop: 12 }}>
-                <PsyModRow initials="АК" tone="tone-rose" name="Аяна Каримова" years="6 лет"
-                  edu="КазНУ им. аль-Фараби, психология" applied="2 ч назад" />
-                <PsyModRow initials="ЕМ" tone="tone-mint" name="Ерлан Мухамеджанов" years="4 года"
-                  edu="МУИТ, клиническая психология" applied="5 ч назад" />
-                <PsyModRow initials="ГС" tone="tone-sun" name="Гульмира Сариева" years="11 лет"
-                  edu="КазНПУ, детская психология" applied="1 день назад" />
-                <PsyModRow initials="БТ" tone="tone-sky" name="Бахытжан Турсунов" years="8 лет"
-                  edu="Назарбаев Универ., MA Psychology" applied="2 дня назад" />
+                {moderation === null ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {[0, 1, 2].map(i => (
+                      <div key={i} style={{
+                        height: 56, borderRadius: 12,
+                        backgroundImage: 'linear-gradient(90deg, var(--ink-100) 0%, var(--ink-50) 50%, var(--ink-100) 100%)',
+                        backgroundSize: '200% 100%',
+                        animation: 'adminShimmer 1.6s linear infinite',
+                      }} />
+                    ))}
+                  </div>
+                ) : moderation.length === 0 ? (
+                  <div style={{
+                    padding: '24px 16px', textAlign: 'center',
+                    background: 'var(--ok-50)', borderRadius: 12,
+                    color: 'var(--ok-700)', fontSize: 13.5,
+                  }}>
+                    Очередь свободна. Все заявки обработаны.
+                  </div>
+                ) : (
+                  moderation.map(p => (
+                    <PsyModRow
+                      key={p.id}
+                      initials={p.initials}
+                      tone={p.tone as AvatarTone}
+                      name={p.fullName}
+                      years={pluralYears(p.experienceYears)}
+                      edu={p.education}
+                      applied={relativeTime(p.appliedAt)}
+                    />
+                  ))
+                )}
               </div>
             </div>
 
@@ -820,21 +887,66 @@ export default function AdminDashboard({ userName }: AdminDashboardProps) {
             <div className="card" style={{ padding: 24 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 12 }}>
                 <div>
-                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16 }}>Популярные тесты месяца</div>
-                  <div style={{ fontSize: 13, color: 'var(--ink-500)', marginTop: 4 }}>Май 2026 · по числу прохождений</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16 }}>
+                    Популярные тесты {topTestsPeriod === 'current' ? 'месяца' : topTestsPeriod === 'previous' ? '· прошлый месяц' : 'за всё время'}
+                  </div>
+                  <div style={{ fontSize: 13, color: 'var(--ink-500)', marginTop: 4 }}>По числу завершённых прохождений</div>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button className="chip is-active">Май</button>
-                  <button className="chip">Апрель</button>
-                  <button className="chip">Квартал</button>
+                  <button
+                    type="button"
+                    className={`chip ${topTestsPeriod === 'current' ? 'is-active' : ''}`}
+                    onClick={() => setTopTestsPeriod('current')}
+                  >
+                    Месяц
+                  </button>
+                  <button
+                    type="button"
+                    className={`chip ${topTestsPeriod === 'previous' ? 'is-active' : ''}`}
+                    onClick={() => setTopTestsPeriod('previous')}
+                  >
+                    Прошлый
+                  </button>
+                  <button
+                    type="button"
+                    className={`chip ${topTestsPeriod === 'all' ? 'is-active' : ''}`}
+                    onClick={() => setTopTestsPeriod('all')}
+                  >
+                    Всё время
+                  </button>
                 </div>
               </div>
               <div style={{ marginTop: 12 }}>
-                <TopTest rank={1} name="Школьная мотивация" author="Лусканова Н. Г." count={8142} max={8142} />
-                <TopTest rank={2} name="Шкала самооценки" author="Ковалёв С. В." count={6781} max={8142} />
-                <TopTest rank={3} name="ДДО" author="Климов Е. А." count={5940} max={8142} />
-                <TopTest rank={4} name="Школьная тревожность" author="Филлипс" count={4322} max={8142} />
-                <TopTest rank={5} name="Реактивная и личностная тревожность" author="Спилбергер–Ханин" count={3815} max={8142} />
+                {topTests === null ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {[0, 1, 2, 3, 4].map(i => (
+                      <div key={i} style={{
+                        height: 38, borderRadius: 8,
+                        backgroundImage: 'linear-gradient(90deg, var(--ink-100) 0%, var(--ink-50) 50%, var(--ink-100) 100%)',
+                        backgroundSize: '200% 100%',
+                        animation: 'adminShimmer 1.6s linear infinite',
+                      }} />
+                    ))}
+                  </div>
+                ) : topTests.length === 0 ? (
+                  <div style={{
+                    padding: '24px 16px', textAlign: 'center',
+                    color: 'var(--ink-500)', fontSize: 13.5,
+                  }}>
+                    Прохождений за этот период не было.
+                  </div>
+                ) : (
+                  topTests.map(t => (
+                    <TopTest
+                      key={t.rank}
+                      rank={t.rank}
+                      name={t.name}
+                      author={t.author || ' '}
+                      count={t.count}
+                      max={t.max}
+                    />
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -873,20 +985,50 @@ export default function AdminDashboard({ userName }: AdminDashboardProps) {
             <div className="card" style={{ padding: 24 }}>
               <div style={{ marginBottom: 12 }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16 }}>Регионы Казахстана</div>
-                <div style={{ fontSize: 13, color: 'var(--ink-500)', marginTop: 4 }}>Распределение активных аккаунтов</div>
+                <div style={{ fontSize: 13, color: 'var(--ink-500)', marginTop: 4 }}>Дети по городам школ</div>
               </div>
               <div style={{ marginTop: 8 }}>
-                <RegionRow name="Алматы" percent={42} tone="var(--brand-grad)" />
-                <RegionRow name="Астана" percent={28} tone="linear-gradient(90deg, #8A6BFF 0%, #B66BFF 100%)" />
-                <RegionRow name="Шымкент" percent={12} tone="linear-gradient(90deg, #FFB36B 0%, #FF7BB5 100%)" />
-                <RegionRow name="Другие регионы" percent={18} tone="linear-gradient(90deg, #6BC8FF 0%, #6BE0B5 100%)" />
+                {regions === null ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {[0, 1, 2, 3].map(i => (
+                      <div key={i} style={{
+                        height: 32, borderRadius: 8,
+                        backgroundImage: 'linear-gradient(90deg, var(--ink-100) 0%, var(--ink-50) 50%, var(--ink-100) 100%)',
+                        backgroundSize: '200% 100%',
+                        animation: 'adminShimmer 1.6s linear infinite',
+                      }} />
+                    ))}
+                  </div>
+                ) : regions.length === 0 ? (
+                  <div style={{
+                    padding: '20px 16px', textAlign: 'center',
+                    color: 'var(--ink-500)', fontSize: 13.5,
+                  }}>
+                    Школы не подключены — карта регионов появится после первой регистрации школы.
+                  </div>
+                ) : (() => {
+                  const TONES = [
+                    'var(--brand-grad)',
+                    'linear-gradient(90deg, #8A6BFF 0%, #B66BFF 100%)',
+                    'linear-gradient(90deg, #FFB36B 0%, #FF7BB5 100%)',
+                    'linear-gradient(90deg, #6BC8FF 0%, #6BE0B5 100%)',
+                    'linear-gradient(90deg, #6BE0B5 0%, #FFD56B 100%)',
+                  ];
+                  return regions.map((r, i) => (
+                    <RegionRow key={r.name} name={r.name} percent={r.percent} tone={TONES[i % TONES.length]} />
+                  ));
+                })()}
               </div>
-              <div style={{
-                fontSize: 12, color: 'var(--ink-500)', marginTop: 16,
-                paddingTop: 14, borderTop: '1px solid var(--line)',
-              }}>
-                Всего активных за 30 дней: <b style={{ color: 'var(--ink-900)' }}>9 248</b>
-              </div>
+              {regions && regions.length > 0 && (
+                <div style={{
+                  fontSize: 12, color: 'var(--ink-500)', marginTop: 16,
+                  paddingTop: 14, borderTop: '1px solid var(--line)',
+                }}>
+                  Всего детей в системе: <b style={{ color: 'var(--ink-900)' }}>
+                    {fmt(regions.reduce((s, r) => s + r.count, 0))}
+                  </b>
+                </div>
+              )}
             </div>
           </div>
         </div>
