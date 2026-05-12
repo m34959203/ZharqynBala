@@ -69,6 +69,48 @@ api.interceptors.response.use(
 // Admin overview DTO (mirror backend AdminOverviewDto)
 // ──────────────────────────────────────────────────
 
+export interface ParentOverviewDto {
+  parent: { id: string; firstName: string; lastName: string };
+  children: Array<{
+    id: string; firstName: string; lastName: string;
+    ageYears: number; gradeLevel: number | null;
+    joinedAt: string; progressPct: number; testsInProgress: number;
+    avatarTone: string;
+  }>;
+  totals: {
+    childrenCount: number; testsPassed: number; testsPassedDeltaMonth: number;
+    avgScore: number | null; avgScoreDeltaMonth: number | null;
+    consultationsTotal: number; consultationsThisMonth: number;
+  };
+  recentResults: Array<{
+    id: string; testName: string; category: string; completedAt: string;
+    scorePct: number; riskZone: 'GREEN' | 'YELLOW' | 'RED';
+    childName: string; childId: string;
+  }>;
+  attentionZone: Array<{
+    resultId: string; testName: string; shortLabel: string;
+    scorePct: number; riskZone: 'YELLOW' | 'RED';
+    childId: string; childName: string;
+  }>;
+  aiRecommendation: {
+    testId: string; testName: string; reason: string;
+    childId: string; childName: string;
+    source: 'rule_v1' | 'llm_v1'; generatedAt: string;
+  } | null;
+  upcomingConsultation: {
+    id: string; startsAt: string;
+    psychologist: { id: string; fullName: string; avatarUrl: string | null };
+    topic: string;
+  } | null;
+}
+
+export const parentsApi = {
+  getOverview: async (): Promise<ParentOverviewDto> => {
+    const response = await api.get<ParentOverviewDto>('/parents/me/overview');
+    return response.data;
+  },
+};
+
 export interface AdminOverviewDto {
   users: { total: number; parents: number; psychologists: number; admins: number; deltaWeek: number };
   children: { total: number; perParent: number | null; deltaWeek: number };
