@@ -415,6 +415,7 @@ export class AdminService {
       totalUsers,
       totalChildren,
       totalTests,
+      testsCatalogSize: totalTests, // алиас с ясным именем (totalTests deprecated)
       completedSessions: totalSessions,
       totalRevenue: totalPayments._sum.amount || 0,
       newUsersToday,

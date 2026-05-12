@@ -222,8 +222,11 @@ export class DashboardStatsDto {
   @ApiProperty()
   totalChildren: number;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Размер каталога методик (count of Test rows), не путать с completedSessions' })
   totalTests: number;
+
+  @ApiProperty({ description: 'Алиас для totalTests с более ясным именем' })
+  testsCatalogSize: number;
 
   @ApiProperty()
   completedSessions: number;
