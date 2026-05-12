@@ -2,10 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
-import { useForm } from 'react-hook-form';
 import Cookies from 'js-cookie';
-import type { LoginRequest } from '@/types/auth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -31,27 +28,15 @@ function LoginContent() {
     }
   }, [searchParams]);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginRequest>();
-
-  const onSubmit = async (data: LoginRequest) => {
+  const performLogin = async (email: string, password: string) => {
     try {
       setIsLoading(true);
       setError('');
 
-      // Direct API call to backend
       const response = await fetch(`${API_URL}/api/v1/auth/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: data.email,
-          password: data.password,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
       });
 
       const result = await response.json();
@@ -61,23 +46,20 @@ function LoginContent() {
         return;
       }
 
-      // Store tokens in both cookies (for API client) and localStorage (for protected layout)
-      Cookies.set('accessToken', result.accessToken, { expires: 1 }); // 1 day
-      Cookies.set('refreshToken', result.refreshToken, { expires: 7 }); // 7 days
+      // Clear stale onboarding-complete flag from previous role
+      localStorage.removeItem('onboardingComplete');
+
+      Cookies.set('accessToken', result.accessToken, { expires: 1 });
+      Cookies.set('refreshToken', result.refreshToken, { expires: 7 });
       localStorage.setItem('accessToken', result.accessToken);
       localStorage.setItem('refreshToken', result.refreshToken);
       localStorage.setItem('user', JSON.stringify(result.user));
 
-      // Redirect to dashboard
       router.push('/dashboard');
     } catch (err: any) {
       console.error('Login error:', err);
       if (err instanceof TypeError && err.message === 'Failed to fetch') {
         setError('Сервер недоступен. Проверьте подключение к интернету.');
-      } else if (err?.response?.status === 401) {
-        setError('Неверный email или пароль');
-      } else if (err?.response?.status === 429) {
-        setError('Слишком много попыток. Подождите минуту.');
       } else {
         setError(err?.response?.data?.message || 'Ошибка входа. Попробуйте позже.');
       }
@@ -85,6 +67,53 @@ function LoginContent() {
       setIsLoading(false);
     }
   };
+
+  // Тестовые учётки (все пароль Admin123!). На прод-запуске убрать,
+  // вернуть обычную форму. См. issue #?? «restore production login».
+  type TestRole = {
+    key: string;
+    email: string;
+    label: string;
+    role: string;
+    accent: string;
+    description: string;
+  };
+  const TEST_ROLES: TestRole[] = [
+    {
+      key: 'parent',
+      email: 'parent@test.kz',
+      label: 'Айгуль Тестова',
+      role: 'Родитель',
+      accent: 'from-purple-500 to-violet-500',
+      description: '2 ребёнка, 30 тестов, AI-рекомендация активна',
+    },
+    {
+      key: 'psy',
+      email: 'psychologist@test.kz',
+      label: 'Алия Серикова',
+      role: 'Психолог',
+      accent: 'from-blue-500 to-indigo-600',
+      description: 'Очередь консультаций, расписание, заработок',
+    },
+    {
+      key: 'school',
+      email: 'school@test.kz',
+      label: 'Школа Тестовая',
+      role: 'Школа',
+      accent: 'from-emerald-500 to-teal-600',
+      description: 'Классы, групповые тесты, риск-мониторинг',
+    },
+    {
+      key: 'admin',
+      email: 'admin@zharqynbala.kz',
+      label: 'Админ Системы',
+      role: 'Администратор',
+      accent: 'from-gray-700 to-gray-900',
+      description: 'Операционный центр платформы, аналитика',
+    },
+  ];
+
+  const loginAs = (email: string) => performLogin(email, 'Admin123!');
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4 sm:px-6 lg:px-8">
@@ -99,12 +128,16 @@ function LoginContent() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl p-8">
-          <div className="mb-6">
-            <h3 className="text-2xl font-semibold text-gray-900 text-center">
-              Вход в систему
+          <div className="mb-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 border border-amber-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+              <span className="text-xs font-semibold text-amber-800 uppercase tracking-wider">Тестовый стенд</span>
+            </div>
+            <h3 className="text-2xl font-semibold text-gray-900 mt-3">
+              Войти как
             </h3>
-            <p className="text-sm text-gray-500 text-center mt-2">
-              Введите свои данные для продолжения
+            <p className="text-sm text-gray-500 mt-1">
+              Логин/пароль временно отключены. Выберите роль для входа.
             </p>
           </div>
 
@@ -114,72 +147,49 @@ function LoginContent() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                {...register('email', {
-                  required: 'Email обязателен',
-                  pattern: {
-                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                    message: 'Неверный формат email',
-                  },
-                })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200 text-gray-900 bg-white placeholder:text-gray-500"
-                placeholder="ivan@example.com"
-              />
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
-              )}
+          <div className="space-y-3">
+            {TEST_ROLES.map(r => (
+              <button
+                key={r.key}
+                type="button"
+                disabled={isLoading}
+                onClick={() => loginAs(r.email)}
+                className="w-full group relative overflow-hidden rounded-xl border border-gray-200 hover:border-transparent hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed text-left bg-white"
+                aria-label={`Войти как ${r.role}: ${r.label}`}
+              >
+                <div className="flex items-center gap-4 px-4 py-4 min-h-[72px]">
+                  <div
+                    className={`shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br ${r.accent} flex items-center justify-center text-white font-bold text-lg shadow-md`}
+                  >
+                    {r.label.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-gray-900">{r.role}</span>
+                      <span className="text-xs text-gray-400">·</span>
+                      <span className="text-sm text-gray-600 truncate">{r.label}</span>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-0.5 truncate">{r.description}</div>
+                  </div>
+                  <svg className="w-4 h-4 text-gray-400 group-hover:text-gray-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {isLoading && (
+            <div className="mt-4 flex items-center justify-center gap-2 text-sm text-gray-500">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
+              Вход...
             </div>
+          )}
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Пароль
-              </label>
-              <input
-                id="password"
-                type="password"
-                {...register('password', {
-                  required: 'Пароль обязателен',
-                  minLength: {
-                    value: 6,
-                    message: 'Пароль должен быть минимум 6 символов',
-                  },
-                })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200 text-gray-900 bg-white placeholder:text-gray-500"
-                placeholder="••••••••"
-              />
-              {errors.password && (
-                <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
-              )}
-            </div>
-
-            <div className="flex items-center justify-end">
-              <Link href="/forgot-password" className="text-sm font-medium text-indigo-600 hover:text-indigo-500">
-                Забыли пароль?
-              </Link>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
-            >
-              {isLoading ? 'Вход...' : 'Войти'}
-            </button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              Нет аккаунта?{' '}
-              <Link href="/register" className="font-medium text-indigo-600 hover:text-indigo-500">
-                Зарегистрироваться
-              </Link>
+          <div className="mt-6 pt-5 border-t border-gray-100">
+            <p className="text-xs text-gray-400 text-center">
+              На production обычный логин/пароль будет восстановлен.
+              Все тестовые учётки используют пароль <code className="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-[10px]">Admin123!</code>
             </p>
           </div>
         </div>
