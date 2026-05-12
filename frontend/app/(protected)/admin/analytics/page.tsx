@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { adminApi } from '@/lib/api';
+import api, { adminApi } from '@/lib/api';
 
 interface TestReport {
   id: string;
@@ -13,69 +13,81 @@ interface TestReport {
   averageScore: number;
 }
 
+type CategoryRow = { category: string; count: number; percentage: number; isOther?: boolean };
+
 export default function AdminAnalyticsPage() {
   const [loading, setLoading] = useState(true);
-  const [testsByCategory, setTestsByCategory] = useState<{ category: string; count: number; percentage: number }[]>([]);
+  const [error, setError] = useState(false);
+  const [testsByCategory, setTestsByCategory] = useState<CategoryRow[]>([]);
   const [stats, setStats] = useState({
     totalUsers: 0,
+    childrenCount: 0,
     totalTests: 0,
     avgTestScore: 0,
     totalRevenue: 0,
   });
 
+  const fetchAnalytics = async () => {
+    setLoading(true);
+    setError(false);
+    try {
+      // Все запросы — через api (axios с auto-token), параллельно
+      const [dashboardStats, overview, testsReportRes] = await Promise.all([
+        adminApi.getDashboardStats(),
+        adminApi.getOverview(),
+        api.get<TestReport[]>('/admin/reports/tests').then(r => r.data).catch(() => [] as TestReport[]),
+      ]);
+
+      // Tests by category — топ-5 + «Другие»
+      const categoryMap = new Map<string, number>();
+      let totalSessions = 0;
+      testsReportRes.forEach(test => {
+        const count = test.completedSessions || 0;
+        totalSessions += count;
+        categoryMap.set(test.category, (categoryMap.get(test.category) || 0) + count);
+      });
+
+      const allCategories = Array.from(categoryMap.entries())
+        .map(([category, count]) => ({
+          category: getCategoryName(category),
+          count,
+          percentage: totalSessions > 0 ? Math.round((count / totalSessions) * 100) : 0,
+        }))
+        .sort((a, b) => b.count - a.count);
+
+      const top5 = allCategories.slice(0, 5);
+      const otherCount = allCategories.slice(5).reduce((s, c) => s + c.count, 0);
+      const otherPct = totalSessions > 0 ? Math.round((otherCount / totalSessions) * 100) : 0;
+      const categories: CategoryRow[] = otherCount > 0
+        ? [...top5, { category: 'Другие', count: otherCount, percentage: otherPct, isOther: true }]
+        : top5;
+
+      setTestsByCategory(categories);
+
+      const completedTests = testsReportRes.filter(t => t.completedSessions > 0);
+      const avgScore = completedTests.length > 0
+        ? Math.round(completedTests.reduce((sum, t) => sum + (t.averageScore || 0), 0) / completedTests.length)
+        : 0;
+
+      setStats({
+        totalUsers: dashboardStats.totalUsers || overview.users.total || 0,
+        childrenCount: overview.children.total || 0,
+        totalTests: overview.tests.passed || dashboardStats.completedSessions || 0,
+        avgTestScore: avgScore,
+        totalRevenue: dashboardStats.totalRevenue || 0,
+      });
+
+    } catch (err) {
+      console.error('Failed to fetch analytics:', err);
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchAnalytics = async () => {
-      try {
-        setLoading(true);
-
-        const dashboardStats = await adminApi.getDashboardStats();
-
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/admin/reports/tests`, {
-          headers: {
-            'Authorization': `Bearer ${document.cookie.split('accessToken=')[1]?.split(';')[0] || ''}`,
-          },
-        });
-        const testsReport: TestReport[] = response.ok ? await response.json() : [];
-
-        const categoryMap = new Map<string, number>();
-        let totalSessions = 0;
-        testsReport.forEach((test: TestReport) => {
-          const count = test.completedSessions || 0;
-          totalSessions += count;
-          categoryMap.set(test.category, (categoryMap.get(test.category) || 0) + count);
-        });
-
-        const categories = Array.from(categoryMap.entries())
-          .map(([category, count]) => ({
-            category: getCategoryName(category),
-            count,
-            percentage: totalSessions > 0 ? Math.round((count / totalSessions) * 100) : 0,
-          }))
-          .sort((a, b) => b.count - a.count)
-          .slice(0, 5);
-
-        setTestsByCategory(categories);
-
-        const completedTests = testsReport.filter((t: any) => t.completedSessions > 0);
-        const avgScore = completedTests.length > 0
-          ? Math.round(completedTests.reduce((sum: number, t: any) => sum + (t.averageScore || 0), 0) / completedTests.length)
-          : 0;
-
-        setStats({
-          totalUsers: dashboardStats.totalUsers || 0,
-          totalTests: dashboardStats.completedSessions || 0,
-          avgTestScore: avgScore,
-          totalRevenue: dashboardStats.totalRevenue || 0,
-        });
-
-      } catch (error) {
-        console.error('Failed to fetch analytics:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchAnalytics();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getCategoryName = (category: string) => {
@@ -97,7 +109,8 @@ export default function AdminAnalyticsPage() {
     return new Intl.NumberFormat('ru-RU').format(value) + ' ₸';
   };
 
-  const getCategoryColor = (index: number) => {
+  const getCategoryColor = (index: number, isOther?: boolean) => {
+    if (isOther) return 'bg-gray-400';
     const colors = [
       'bg-indigo-500',
       'bg-purple-500',
@@ -113,6 +126,26 @@ export default function AdminAnalyticsPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-white rounded-2xl shadow-sm p-8 max-w-md mx-auto text-center">
+          <h3 className="font-semibold text-lg mb-2">Не удалось загрузить аналитику</h3>
+          <p className="text-sm text-gray-500 mb-4">
+            Проверьте интернет и попробуйте снова. Если повторится, напишите в поддержку.
+          </p>
+          <button
+            type="button"
+            onClick={fetchAnalytics}
+            className="px-5 py-2 bg-indigo-600 text-white rounded-full text-sm font-semibold hover:bg-indigo-700 min-h-[44px]"
+          >
+            Повторить
+          </button>
         </div>
       </div>
     );
@@ -214,7 +247,7 @@ export default function AdminAnalyticsPage() {
                   </div>
                   <div className="w-full bg-gray-100 rounded-full h-3">
                     <div
-                      className={`h-3 rounded-full ${getCategoryColor(i)} transition-all duration-500`}
+                      className={`h-3 rounded-full ${getCategoryColor(i, cat.isOther)} transition-all duration-500`}
                       style={{ width: `${Math.max(cat.percentage, 3)}%` }}
                     ></div>
                   </div>
@@ -304,10 +337,10 @@ export default function AdminAnalyticsPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
                   </svg>
                 </div>
-                <span className="font-medium text-gray-700">Тестов на пользователя</span>
+                <span className="font-medium text-gray-700">Тестов на ребёнка</span>
               </div>
               <span className="text-xl font-bold text-gray-900">
-                {stats.totalUsers > 0 ? (stats.totalTests / stats.totalUsers).toFixed(1) : '—'}
+                {stats.childrenCount > 0 ? (stats.totalTests / stats.childrenCount).toFixed(1) : '—'}
               </span>
             </div>
           </div>
