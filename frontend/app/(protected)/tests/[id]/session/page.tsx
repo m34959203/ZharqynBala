@@ -68,14 +68,34 @@ function TestSessionContent() {
     return () => clearInterval(timer);
   }, [timeLeft !== null && timeLeft > 0]);
 
-  // Auto-submit when timer runs out
+  // BUG-043: время вышло — мягкий финиш вместо разрушающего setError.
+  // Пытаемся форсированно завершить сессию на сервере, чтобы ребёнок
+  // увидел итог по уже отвеченным вопросам, а не «Произошла ошибка».
+  // Если эндпоинта /complete нет — fall back на простой переход
+  // в список результатов: ответы и так сохранены пошагово.
+  const [timedOut, setTimedOut] = useState(false);
   useEffect(() => {
-    if (timeLeft === 0 && !completed) {
-      // Time is up — if there's a selected answer we could submit, but safest
-      // is to just show a message. The backend may also enforce the time limit.
-      setError('Время вышло! Тест завершён автоматически.');
-    }
-  }, [timeLeft, completed]);
+    if (timeLeft !== 0 || completed || timedOut) return;
+    setTimedOut(true);
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.post(`/tests/sessions/${sessionId}/complete`);
+        if (cancelled) return;
+        if (res.data?.resultId) {
+          setResultId(res.data.resultId);
+          setCompleted(true);
+          return;
+        }
+      } catch {
+        // нет force-complete на бэке — просто переведём на список результатов
+      }
+      if (!cancelled) {
+        router.push('/results?expired=1');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [timeLeft, completed, timedOut, sessionId, router]);
 
   const fetchSession = async () => {
     try {

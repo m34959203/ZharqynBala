@@ -89,10 +89,19 @@ export function TestSession({
       <div className="mb-8">
         <div className="flex justify-between text-sm text-gray-600 mb-2">
           <span>{progress}%</span>
+          {isSubmitting && (
+            <span className="flex items-center gap-2 text-purple-700" aria-live="polite">
+              <svg className="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              Сохраняем ответ…
+            </span>
+          )}
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
+        <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
           <div
-            className="bg-purple-600 h-2 rounded-full transition-all duration-300"
+            className={`bg-purple-600 h-2 rounded-full transition-all duration-300 ${isSubmitting ? 'animate-pulse' : ''}`}
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -115,30 +124,36 @@ export function TestSession({
         {question.questionType === 'TEXT' ? (
           <textarea
             value={reviewMode ? (reviewEntry?.textAnswer || '') : textAnswer}
-            onChange={(e) => !reviewMode && setTextAnswer(e.target.value)}
-            className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+            onChange={(e) => !reviewMode && !isSubmitting && setTextAnswer(e.target.value)}
+            className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 disabled:bg-gray-50 disabled:cursor-wait"
             rows={4}
             placeholder="Введите ваш ответ..."
             readOnly={reviewMode}
+            disabled={isSubmitting}
           />
         ) : (
           <div className="space-y-3">
             {question.options.map((option) => {
               const isSelected = displaySelectedOption === option.id;
               const hasSelection = displaySelectedOption !== null;
+              // BUG-044: на время submitting блокируем выбор, чтобы
+              // ребёнок не успел нажать «Б», пока сервер обрабатывает «А»,
+              // и не получил после задержки чужой ответ во вторую попытку.
+              const locked = reviewMode || isSubmitting;
 
               return (
                 <button
                   key={option.id}
-                  onClick={() => !reviewMode && setSelectedOption(option.id)}
-                  disabled={reviewMode}
+                  onClick={() => !locked && setSelectedOption(option.id)}
+                  disabled={locked}
+                  aria-pressed={isSelected}
                   className={`w-full p-4 text-left rounded-lg border-2 transition-all duration-200 ${
                     isSelected
                       ? 'ring-2 ring-purple-500 bg-purple-50 border-purple-500'
                       : hasSelection
                         ? 'border-gray-200 opacity-60 hover:opacity-80'
                         : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                  } ${reviewMode ? 'cursor-default' : ''}`}
+                  } ${reviewMode ? 'cursor-default' : ''} ${isSubmitting ? 'cursor-wait' : ''}`}
                 >
                   <div className="flex items-center">
                     <div

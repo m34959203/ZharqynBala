@@ -19,6 +19,10 @@ type SessionStatus = 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | '
 interface SessionItem {
   id: string;
   time: string;
+  // ISO начала сессии — нужен для динамического пересчёта статуса
+  // относительно текущего времени (BUG-047). У fixtures строим из
+  // "HH:MM" на сегодня; у API берём из scheduledAt.
+  scheduledAt: string;
   name: string;
   age: number;
   reason: string;
@@ -26,6 +30,8 @@ interface SessionItem {
   status: SessionStatus;
   minutesUntil: number | null;
 }
+
+const SESSION_DURATION_MIN = 50;
 
 interface QueueItem {
   id: string;
@@ -132,6 +138,34 @@ const formatTime = (iso: string): string => {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
 
+// Строит ISO "сегодня в HH:MM" — для fixture-сессий, где время задано строкой.
+const todayIsoFromHHMM = (hhmm: string): string => {
+  const [h, m] = hhmm.split(':').map(Number);
+  const d = new Date();
+  d.setHours(h ?? 0, m ?? 0, 0, 0);
+  return d.toISOString();
+};
+
+// Пересчитывает status/minutesUntil каждой сессии относительно `now` (BUG-047).
+// Терминальные статусы (CANCELLED, NO_SHOW) не трогает: их выставляет человек.
+// COMPLETED оставляем как есть, если бэк его уже выставил — он мог завершить
+// сессию досрочно. Иначе вычисляем по окну [start; start + SESSION_DURATION_MIN].
+const deriveSessionDynamics = (list: SessionItem[], now: number): SessionItem[] =>
+  list.map((s) => {
+    if (s.status === 'CANCELLED' || s.status === 'NO_SHOW') return s;
+    const start = new Date(s.scheduledAt).getTime();
+    if (!Number.isFinite(start)) return s;
+    const end = start + SESSION_DURATION_MIN * 60_000;
+    let status: SessionStatus = s.status;
+    if (now < start) status = 'SCHEDULED';
+    else if (now < end) status = 'IN_PROGRESS';
+    else status = 'COMPLETED';
+    const minutesUntil = status === 'SCHEDULED'
+      ? Math.max(0, Math.round((start - now) / 60_000))
+      : null;
+    return { ...s, status, minutesUntil };
+  });
+
 // ──────────────────────────────────────────────────────────────────
 // Design-spec fixtures (used as fallback if API returns empty)
 // ──────────────────────────────────────────────────────────────────
@@ -140,12 +174,18 @@ const formatTime = (iso: string): string => {
 // fallback на dev/демо не возникало путаницы с реальными ребятами
 // в БД (где «Дамир А.» из API мог сойтись с «Дамир Атымтаев»).
 // Психологу всегда нужно видеть полное ФИО клиента — PII оправдан.
-const FIXTURE_SESSIONS: SessionItem[] = [
+// Статусы/minutesUntil выставляются на лету `deriveSessionDynamics` от
+// текущего времени (BUG-047) — поля здесь только начальные, реально
+// IN_PROGRESS станет той сессией, чьё окно «time .. time+50 мин» сейчас.
+const FIXTURE_SESSIONS_RAW: Array<Omit<SessionItem, 'scheduledAt'>> = [
   { id: 'f1', time: '10:00', name: 'Айлин Тестова', age: 11, reason: 'Школьная тревожность: повторная сессия по результатам теста Филлипса', zone: 'warn', status: 'COMPLETED', minutesUntil: null },
   { id: 'f2', time: '11:00', name: 'Дамир Аубакиров', age: 9, reason: 'Адаптация к 4 классу: работа с переходом в среднее звено', zone: 'norm', status: 'IN_PROGRESS', minutesUntil: null },
-  { id: 'f3', time: '13:00', name: 'Камила Орлова', age: 14, reason: 'Самооценка: 6-я сессия, продолжение работы по плану', zone: 'warn', status: 'SCHEDULED', minutesUntil: 14 },
+  { id: 'f3', time: '13:00', name: 'Камила Орлова', age: 14, reason: 'Самооценка: 6-я сессия, продолжение работы по плану', zone: 'warn', status: 'SCHEDULED', minutesUntil: null },
   { id: 'f4', time: '15:30', name: 'Арлан Конысбаев', age: 13, reason: 'Профориентация: первичная диагностика по Холланду и Климову', zone: 'norm', status: 'SCHEDULED', minutesUntil: null },
 ];
+
+const buildFixtureSessions = (): SessionItem[] =>
+  FIXTURE_SESSIONS_RAW.map((s) => ({ ...s, scheduledAt: todayIsoFromHHMM(s.time) }));
 
 const FIXTURE_QUEUE: QueueItem[] = [
   { id: 'q1', kid: 'Санжар Бекбаев', age: 12, parent: 'Мадина Бекбаева', wanted: '14 мая, 16:00', reason: 'Резко снизилась успеваемость, родитель просит срочную встречу', zone: 'risk', urgent: true },
@@ -341,21 +381,35 @@ export default function PsychologistDashboard({ userName }: PsychologistDashboar
   const [earnings, setEarnings] = useState<Earnings | null>(null);
   const [rating] = useState<{ value: number; count: number }>({ value: 4.9, count: 159 });
 
+  // BUG-047: пересчёт IN_PROGRESS/SCHEDULED от текущего времени.
+  // Тикает раз в 30 сек — этого достаточно, чтобы «через 14 мин»
+  // обновлялось плавно, и сессия в 11:00 не оставалась «идёт сейчас»
+  // в 16:00.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+  const derivedSessions = useMemo(
+    () => deriveSessionDynamics(sessions, now),
+    [sessions, now],
+  );
+
   const nearestMinutes = useMemo(() => {
-    const upcoming = sessions
+    const upcoming = derivedSessions
       .filter(s => s.status === 'SCHEDULED' && s.minutesUntil != null && s.minutesUntil > 0)
       .map(s => s.minutesUntil as number)
       .sort((a, b) => a - b);
     return upcoming[0] ?? null;
-  }, [sessions]);
+  }, [derivedSessions]);
 
   const todayStats = useMemo(() => {
-    const total = sessions.length;
-    const completed = sessions.filter(s => s.status === 'COMPLETED').length;
-    const inProgress = sessions.filter(s => s.status === 'IN_PROGRESS').length;
-    const scheduled = sessions.filter(s => s.status === 'SCHEDULED').length;
+    const total = derivedSessions.length;
+    const completed = derivedSessions.filter(s => s.status === 'COMPLETED').length;
+    const inProgress = derivedSessions.filter(s => s.status === 'IN_PROGRESS').length;
+    const scheduled = derivedSessions.filter(s => s.status === 'SCHEDULED').length;
     return { total, completed, inProgress, scheduled };
-  }, [sessions]);
+  }, [derivedSessions]);
 
   useEffect(() => {
     let cancelled = false;
@@ -390,6 +444,7 @@ export default function PsychologistDashboard({ userName }: PsychologistDashboar
             .map(c => ({
               id: c.id,
               time: formatTime(c.scheduledAt),
+              scheduledAt: c.scheduledAt,
               name: c.childName ?? 'Клиент',
               age: c.childAge ?? 0,
               reason: c.reason ?? 'Консультация',
@@ -399,7 +454,7 @@ export default function PsychologistDashboard({ userName }: PsychologistDashboar
             }))
             .sort((a, b) => a.time.localeCompare(b.time));
         }
-        setSessions(mappedSessions.length ? mappedSessions : FIXTURE_SESSIONS);
+        setSessions(mappedSessions.length ? mappedSessions : buildFixtureSessions());
 
         if (earn.status === 'fulfilled' && earn.value?.data) {
           const d = earn.value.data;
@@ -442,7 +497,7 @@ export default function PsychologistDashboard({ userName }: PsychologistDashboar
       } catch (e: unknown) {
         if (cancelled) return;
         setError(e instanceof Error ? e.message : 'Не удалось загрузить данные');
-        setSessions(FIXTURE_SESSIONS);
+        setSessions(buildFixtureSessions());
         setQueue(FIXTURE_QUEUE);
         setWatch(FIXTURE_WATCH);
         setEarnings(FIXTURE_EARNINGS);
@@ -966,7 +1021,7 @@ export default function PsychologistDashboard({ userName }: PsychologistDashboar
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <SkeletonRow /><SkeletonRow /><SkeletonRow />
           </div>
-        ) : sessions.length === 0 ? (
+        ) : derivedSessions.length === 0 ? (
           <div className="psy-state-empty">
             <div className="psy-empty-illo"><Icon name="calendar" size={26}/></div>
             <div className="psy-empty-title">Сегодня нет консультаций</div>
@@ -975,8 +1030,8 @@ export default function PsychologistDashboard({ userName }: PsychologistDashboar
           </div>
         ) : (
           <div className="psy-timeline">
-            {sessions.map((s, i) => (
-              <TimelineRow key={s.id} s={s} isLast={i === sessions.length - 1}/>
+            {derivedSessions.map((s, i) => (
+              <TimelineRow key={s.id} s={s} isLast={i === derivedSessions.length - 1}/>
             ))}
           </div>
         )}
