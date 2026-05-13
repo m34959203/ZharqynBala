@@ -52,9 +52,9 @@ const pluralYears = (n: number): string => {
   return `${n} лет`;
 };
 
-const relativeTime = (iso: string): string => {
+const formatRelative = (iso: string, now: number): string => {
   const t = new Date(iso).getTime();
-  const diffSec = Math.max(0, Math.floor((Date.now() - t) / 1000));
+  const diffSec = Math.max(0, Math.floor((now - t) / 1000));
   if (diffSec < 60) return 'только что';
   const min = Math.floor(diffSec / 60);
   if (min < 60) return `${min} мин назад`;
@@ -68,6 +68,17 @@ const relativeTime = (iso: string): string => {
   }
   // > 30 days — абсолютная дата
   return new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+};
+
+// BUG-014: auto-tick раз в минуту, чтобы «2 ч назад» не оставались
+// «2 ч назад» через сутки. Один интервал на компонент, дёшево.
+const RelativeTime: React.FC<{ iso: string }> = ({ iso }) => {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  return <>{formatRelative(iso, now)}</>;
 };
 
 const today = () => {
@@ -363,7 +374,7 @@ const toneBg: Record<AvatarTone, string> = {
 
 function PsyModRow({
   initials, tone, name, years, edu, applied,
-}: { initials: string; tone: AvatarTone; name: string; years: string; edu: string; applied: string }) {
+}: { initials: string; tone: AvatarTone; name: string; years: string; edu: string; applied: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 0', borderBottom: '1px solid var(--line)' }}>
       <div style={{
@@ -603,7 +614,7 @@ function PaymentRow({
 
 function SysNote({
   icon, tone, title, time,
-}: { icon: IconName; tone: 'warn' | 'brand' | 'ok'; title: string; time: string }) {
+}: { icon: IconName; tone: 'warn' | 'brand' | 'ok'; title: string; time: React.ReactNode }) {
   const bg = tone === 'warn' ? 'var(--warn-50)' : tone === 'brand' ? 'var(--brand-50)' : 'var(--ok-50)';
   const fg = tone === 'warn' ? 'var(--warn-700)' : tone === 'brand' ? 'var(--brand-600)' : 'var(--ok-700)';
   return (
@@ -887,7 +898,7 @@ export default function AdminDashboard({ userName }: AdminDashboardProps) {
                       name={p.fullName}
                       years={pluralYears(p.experienceYears)}
                       edu={p.education}
-                      applied={relativeTime(p.appliedAt)}
+                      applied={<RelativeTime iso={p.appliedAt} />}
                     />
                   ))
                 )}
@@ -1012,7 +1023,7 @@ export default function AdminDashboard({ userName }: AdminDashboardProps) {
                       icon={n.icon as IconName}
                       tone={n.tone === 'risk' ? 'warn' : (n.tone as 'warn' | 'brand' | 'ok')}
                       title={n.title}
-                      time={`${relativeTime(n.at)} · ${n.meta}`}
+                      time={<><RelativeTime iso={n.at} /> · {n.meta}</>}
                     />
                   ))
                 )}

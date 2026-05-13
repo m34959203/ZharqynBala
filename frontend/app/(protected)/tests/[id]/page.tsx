@@ -14,6 +14,10 @@ export default function TestDetailPage() {
   const [test, setTest] = useState<TestDetail | null>(null);
   const [children, setChildren] = useState<Child[]>([]);
   const [selectedChild, setSelectedChild] = useState<string>('');
+  // BUG-039 / BUG-042: кто фактически отвечает. На текст вопросов сами
+  // не лезем (это клинический контент, BUG-038), но контекст показываем
+  // явно ещё до старта и на каждом шаге.
+  const [respondent, setRespondent] = useState<'CHILD' | 'PARENT'>('CHILD');
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState('');
@@ -59,6 +63,24 @@ export default function TestDetailPage() {
       const response = await api.post(`/tests/${testId}/start`, {
         childId: selectedChild,
       });
+      // Контекст «кто отвечает» нужен только на странице сессии — храним
+      // в sessionStorage с привязкой к sessionId, чтобы при F5 не терялось,
+      // но и не оставалось мусора после закрытия вкладки.
+      const child = children.find(c => c.id === selectedChild);
+      const ageYears = child?.birthDate
+        ? Math.floor((Date.now() - new Date(child.birthDate).getTime()) / (365.25 * 24 * 3600 * 1000))
+        : null;
+      const ctx = {
+        respondent,
+        childName: child ? `${child.firstName} ${child.lastName}`.trim() : '',
+        childFirstName: child?.firstName ?? '',
+        childAge: ageYears,
+      };
+      try {
+        sessionStorage.setItem(`test-ctx:${response.data.sessionId}`, JSON.stringify(ctx));
+      } catch {
+        /* ignore storage quotas */
+      }
       router.push(`/tests/${testId}/session?sessionId=${response.data.sessionId}`);
     } catch (err: any) {
       if (err.response?.status === 403) {
@@ -215,6 +237,40 @@ export default function TestDetailPage() {
                         </option>
                       ))}
                     </select>
+                  </div>
+
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Кто будет отвечать
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setRespondent('CHILD')}
+                        aria-pressed={respondent === 'CHILD'}
+                        className={`p-3 rounded-lg border-2 text-sm text-left transition-all ${
+                          respondent === 'CHILD'
+                            ? 'border-indigo-500 bg-indigo-50 text-indigo-900'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="font-medium">Сам ребёнок</div>
+                        <div className="text-xs text-gray-500 mt-1">отвечает за себя</div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRespondent('PARENT')}
+                        aria-pressed={respondent === 'PARENT'}
+                        className={`p-3 rounded-lg border-2 text-sm text-left transition-all ${
+                          respondent === 'PARENT'
+                            ? 'border-indigo-500 bg-indigo-50 text-indigo-900'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="font-medium">Я как родитель</div>
+                        <div className="text-xs text-gray-500 mt-1">отвечаю за ребёнка</div>
+                      </button>
+                    </div>
                   </div>
 
                   <button

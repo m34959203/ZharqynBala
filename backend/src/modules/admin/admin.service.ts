@@ -445,12 +445,20 @@ export class AdminService {
     const now = new Date();
     const last24h = new Date(now.getTime() - 24 * 3600_000);
 
-    const [failedPayments, paymentsLast24h, noShowConsults, completedConsults, pendingPsy] = await Promise.all([
+    const [failedPayments, paymentsLast24h, noShowConsults, completedConsults, pendingPsy, oldestPending] = await Promise.all([
       this.prisma.payment.count({ where: { status: 'FAILED', createdAt: { gte: last24h } } }),
       this.prisma.payment.count({ where: { createdAt: { gte: last24h } } }),
       this.prisma.consultation.count({ where: { status: 'NO_SHOW', updatedAt: { gte: last24h } } }),
       this.prisma.consultation.count({ where: { status: 'COMPLETED', completedAt: { gte: last24h } } }),
       this.prisma.psychologist.count({ where: { isApproved: false } }),
+      // BUG-008: возраст самой старой pending-заявки — это реальная
+      // метрика модерации. «Среднее время сверки 47 мин» было статикой;
+      // approvedAt в схеме нет, поэтому считаем именно очередь.
+      this.prisma.psychologist.findFirst({
+        where: { isApproved: false },
+        orderBy: { createdAt: 'asc' },
+        select: { createdAt: true },
+      }),
     ]);
 
     const out: Array<{ id: 'payments' | 'consultations' | 'support'; tone: 'ok' | 'warn' | 'risk'; title: string; sub: string; cta?: string }> = [];
@@ -479,14 +487,22 @@ export class AdminService {
       cta: noShowRate > 0 ? 'Открыть' : undefined,
     });
 
-    // Поддержка/модерация: pendingPsy >= 10 — warn
+    // Поддержка/модерация: pendingPsy >= 10 — warn,
+    // самая старая заявка > 48ч — warn независимо от количества.
+    const oldestAgeHours = oldestPending
+      ? (now.getTime() - oldestPending.createdAt.getTime()) / 3600_000
+      : 0;
+    const supportWarn = pendingPsy >= 10 || oldestAgeHours >= 48;
     out.push({
       id: 'support',
-      tone: pendingPsy >= 10 ? 'warn' : pendingPsy > 0 ? 'ok' : 'ok',
-      title: pendingPsy >= 10 ? `Очередь модерации психологов растёт`
+      tone: supportWarn ? 'warn' : 'ok',
+      title: pendingPsy >= 10 ? 'Очередь модерации психологов растёт'
         : pendingPsy > 0 ? `${pendingPsy} психологов на модерации`
         : 'Очередь модерации пуста',
-      sub: pendingPsy > 0 ? 'Среднее время сверки диплома — 47 минут' : 'Все заявки обработаны',
+      sub: pendingPsy === 0 ? 'Все заявки обработаны'
+        : oldestAgeHours >= 1
+          ? `Самая старая заявка ждёт ${Math.round(oldestAgeHours)} ч`
+          : `Самая старая заявка ждёт ${Math.max(1, Math.round(oldestAgeHours * 60))} мин`,
       cta: pendingPsy > 0 ? 'Открыть' : undefined,
     });
 

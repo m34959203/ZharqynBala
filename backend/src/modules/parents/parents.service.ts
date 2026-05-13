@@ -139,10 +139,13 @@ export class ParentsService {
           },
         },
       }),
+      // BUG-030: берём с запасом, а потом миксуем по детям (см. ниже),
+      // чтобы «Последние результаты» не оказались полностью у одного
+      // ребёнка, пока у второго недавний прогресс не отобразится.
       this.prisma.result.findMany({
         where: { session: { childId: { in: childIds }, status: 'COMPLETED' } },
         orderBy: { createdAt: 'desc' },
-        take: 4,
+        take: 20,
         include: {
           session: {
             include: {
@@ -213,7 +216,33 @@ export class ParentsService {
         childName: r.session.child.firstName,
       }));
 
-    const recentResults = recentRaw.map(r => ({
+    // BUG-030: микс по детям. У родителя с ≥2 детьми берём не больше 2
+    // записей подряд на одного ребёнка, чтобы лента отражала всех
+    // активных, а не одного «гипер-активного». Если детей 1 — оставляем
+    // как было (просто 4 свежих).
+    const perChildCap = childIds.length >= 2 ? 2 : 4;
+    const mixedRaw: typeof recentRaw = [];
+    const perChildCount: Record<string, number> = {};
+    for (const r of recentRaw) {
+      const cid = r.session.child.id;
+      const taken = perChildCount[cid] ?? 0;
+      if (taken >= perChildCap) continue;
+      perChildCount[cid] = taken + 1;
+      mixedRaw.push(r);
+      if (mixedRaw.length >= 4) break;
+    }
+    // Если детей много, а свежих записей у одного — доберём остальное
+    // обычным порядком (но в пределах того, что вернул запрос).
+    if (mixedRaw.length < 4) {
+      const seen = new Set(mixedRaw.map(r => r.id));
+      for (const r of recentRaw) {
+        if (seen.has(r.id)) continue;
+        mixedRaw.push(r);
+        if (mixedRaw.length >= 4) break;
+      }
+    }
+
+    const recentResults = mixedRaw.map(r => ({
       id: r.id,
       testName: r.session.test.titleRu,
       category: r.session.test.category,

@@ -39,6 +39,19 @@ function TestSessionContent() {
   // Timer state
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
 
+  // BUG-039 / BUG-042: контекст «кто отвечает» — берётся из sessionStorage,
+  // куда его кладёт страница `/tests/[id]` перед запуском сессии.
+  const [respondentCtx, setRespondentCtx] = useState<{
+    respondent: 'CHILD' | 'PARENT'; childName: string; childFirstName: string; childAge: number | null;
+  } | null>(null);
+  useEffect(() => {
+    if (!sessionId) return;
+    try {
+      const raw = sessionStorage.getItem(`test-ctx:${sessionId}`);
+      if (raw) setRespondentCtx(JSON.parse(raw));
+    } catch { /* ignore */ }
+  }, [sessionId]);
+
   useEffect(() => {
     if (sessionId) {
       fetchSession();
@@ -247,8 +260,23 @@ function TestSessionContent() {
     : testSession.currentQuestion;
   const displayIndex = isReviewMode ? reviewIndex : testSession.currentQuestionIndex;
 
+  const respondentBanner = respondentCtx ? (
+    <div className="max-w-2xl mx-auto mb-4 flex items-center justify-between gap-3 px-4 py-2.5 bg-indigo-50 border border-indigo-100 rounded-lg text-sm">
+      <span className="text-indigo-900">
+        {respondentCtx.respondent === 'CHILD'
+          ? <>Отвечает <b>{respondentCtx.childFirstName || respondentCtx.childName || 'ребёнок'}</b>{respondentCtx.childAge ? `, ${respondentCtx.childAge} лет` : ''} — сам про себя</>
+          : <>Отвечает <b>родитель</b> за {respondentCtx.childFirstName || respondentCtx.childName || 'ребёнка'}{respondentCtx.childAge ? `, ${respondentCtx.childAge} лет` : ''}</>
+        }
+      </span>
+      <span className="text-xs text-indigo-600">
+        {respondentCtx.respondent === 'CHILD' ? 'отвечайте про себя' : 'отвечайте про ребёнка'}
+      </span>
+    </div>
+  ) : null;
+
   return (
     <div className="min-h-screen bg-gray-50 py-12">
+      {respondentBanner}
       <TestSessionComponent
         question={displayQuestion}
         currentIndex={displayIndex}
