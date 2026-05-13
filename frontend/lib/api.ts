@@ -1,60 +1,40 @@
 import axios from 'axios';
 import type { AuthResponse, LoginRequest, RegisterRequest, User } from '@/types/auth';
-import Cookies from 'js-cookie';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-// Создаем axios instance с базовой конфигурацией
+// SEC-CRIT-001: токены живут в HttpOnly cookies, выставленных бэкендом.
+// `withCredentials: true` → axios автоматически прицепит cookie к каждому
+// запросу, нам не нужно ни Cookies.get/set, ни Authorization header.
+// JS этих токенов не видит — XSS перестаёт эскалировать в кражу сессии.
 const api = axios.create({
   baseURL: `${API_URL}/api/v1`,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Добавляем interceptor для добавления токена в каждый запрос
-api.interceptors.request.use(
-  (config) => {
-    const token = Cookies.get('accessToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Добавляем interceptor для обработки ошибок авторизации
+// На 401 пробуем один разворот через /auth/refresh. Refresh token лежит
+// в HttpOnly cookie, передаётся сам; тело запроса пустое.
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    const isRefreshCall = typeof originalRequest?.url === 'string'
+      && originalRequest.url.includes('/auth/refresh');
 
-    // Если получили 401 и еще не пытались обновить токен
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest._retry && !isRefreshCall) {
       originalRequest._retry = true;
-
       try {
-        const refreshToken = Cookies.get('refreshToken');
-        if (refreshToken) {
-          const response = await axios.post<AuthResponse>(
-            `${API_URL}/api/v1/auth/refresh`,
-            { refreshToken }
-          );
-
-          const { accessToken } = response.data;
-          Cookies.set('accessToken', accessToken);
-
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-          return api(originalRequest);
-        }
+        await axios.post(
+          `${API_URL}/api/v1/auth/refresh`,
+          {},
+          { withCredentials: true },
+        );
+        return api(originalRequest);
       } catch (refreshError) {
-        // Если refresh token не валиден, очищаем cookies и редиректим на логин
-        Cookies.remove('accessToken');
-        Cookies.remove('refreshToken');
-        if (typeof window !== 'undefined') {
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
           window.location.href = '/login';
         }
         return Promise.reject(refreshError);
@@ -341,21 +321,16 @@ export const adminApi = {
   },
 };
 
-// Auth API
+// Auth API. SEC-CRIT-001: токены ставит сервер через Set-Cookie с HttpOnly;
+// клиент не трогает Cookies.set / localStorage — JS этих токенов не видит.
 export const authApi = {
   login: async (data: LoginRequest): Promise<AuthResponse> => {
     const response = await api.post<AuthResponse>('/auth/login', data);
-    // Сохраняем токены в cookies
-    Cookies.set('accessToken', response.data.accessToken, { expires: 1 }); // 1 день
-    Cookies.set('refreshToken', response.data.refreshToken, { expires: 7 }); // 7 дней
     return response.data;
   },
 
   register: async (data: RegisterRequest): Promise<AuthResponse> => {
     const response = await api.post<AuthResponse>('/auth/register', data);
-    // Сохраняем токены в cookies
-    Cookies.set('accessToken', response.data.accessToken, { expires: 1 });
-    Cookies.set('refreshToken', response.data.refreshToken, { expires: 7 });
     return response.data;
   },
 
@@ -363,8 +338,6 @@ export const authApi = {
     try {
       await api.post('/auth/logout');
     } finally {
-      Cookies.remove('accessToken');
-      Cookies.remove('refreshToken');
       if (typeof window !== 'undefined') {
         window.location.href = '/login';
       }

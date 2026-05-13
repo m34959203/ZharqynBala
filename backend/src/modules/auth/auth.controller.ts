@@ -6,7 +6,11 @@ import {
   HttpStatus,
   UseGuards,
   Get,
+  Res,
+  Req,
 } from '@nestjs/common';
+import { Response, Request } from 'express';
+import { ConfigService } from '@nestjs/config';
 import {
   ApiTags,
   ApiOperation,
@@ -25,10 +29,44 @@ import {
 import { Public } from './decorators/public.decorator';
 import { CurrentUser, CurrentUserData } from './decorators/current-user.decorator';
 
+// SEC-CRIT-001: HttpOnly cookies для access/refresh токенов.
+// Опции единые на login/register/refresh — secure только в production
+// (HTTPS), sameSite=lax чтобы навигация (включая social-login redirect)
+// тащила куку обратно. Длительность совпадает с JWT_*_EXPIRES_IN.
+const ACCESS_COOKIE = 'accessToken';
+const REFRESH_COOKIE = 'refreshToken';
+const ACCESS_MAX_AGE_MS = 15 * 60 * 1000; // 15m default
+const REFRESH_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7d default
+
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService,
+  ) {}
+
+  private cookieOptions() {
+    const isProd = (this.configService.get<string>('NODE_ENV') ?? '') === 'production';
+    return {
+      httpOnly: true as const,
+      secure: isProd,
+      sameSite: 'lax' as const,
+      path: '/',
+    };
+  }
+
+  private setAuthCookies(res: Response, accessToken: string, refreshToken: string) {
+    const base = this.cookieOptions();
+    res.cookie(ACCESS_COOKIE, accessToken, { ...base, maxAge: ACCESS_MAX_AGE_MS });
+    res.cookie(REFRESH_COOKIE, refreshToken, { ...base, maxAge: REFRESH_MAX_AGE_MS });
+  }
+
+  private clearAuthCookies(res: Response) {
+    const base = this.cookieOptions();
+    res.clearCookie(ACCESS_COOKIE, base);
+    res.clearCookie(REFRESH_COOKIE, base);
+  }
 
   @Public()
   @Post('register')
@@ -46,8 +84,13 @@ export class AuthController {
     status: 400,
     description: 'Некорректные данные для регистрации',
   })
-  async register(@Body() dto: RegisterDto): Promise<AuthResponseDto> {
-    return this.authService.register(dto);
+  async register(
+    @Body() dto: RegisterDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthResponseDto> {
+    const result = await this.authService.register(dto);
+    this.setAuthCookies(res, result.accessToken, result.refreshToken);
+    return result;
   }
 
   @Public()
@@ -63,8 +106,13 @@ export class AuthController {
     status: 401,
     description: 'Неверный email или пароль',
   })
-  async login(@Body() dto: LoginDto): Promise<AuthResponseDto> {
-    return this.authService.login(dto);
+  async login(
+    @Body() dto: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthResponseDto> {
+    const result = await this.authService.login(dto);
+    this.setAuthCookies(res, result.accessToken, result.refreshToken);
+    return result;
   }
 
   @Public()
@@ -80,8 +128,20 @@ export class AuthController {
     status: 401,
     description: 'Невалидный refresh token',
   })
-  async refresh(@Body() dto: RefreshTokenDto): Promise<AuthResponseDto> {
-    return this.authService.refreshTokens(dto.refreshToken);
+  async refresh(
+    @Body() dto: RefreshTokenDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthResponseDto> {
+    // Приоритет: cookie (HttpOnly), fallback на body (Swagger/legacy).
+    const token = req.cookies?.[REFRESH_COOKIE] || dto.refreshToken;
+    if (!token) {
+      throw new (await import('@nestjs/common')).UnauthorizedException('Refresh token required');
+    }
+    const result = await this.authService.refreshTokens(token);
+    // Rotation: новый refresh кладём в cookie, старый перетирается.
+    this.setAuthCookies(res, result.accessToken, result.refreshToken);
+    return result;
   }
 
   @Post('logout')
@@ -96,8 +156,12 @@ export class AuthController {
     status: 401,
     description: 'Требуется авторизация',
   })
-  async logout(@CurrentUser('id') userId: string): Promise<{ message: string }> {
+  async logout(
+    @CurrentUser('id') userId: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{ message: string }> {
     await this.authService.logout(userId);
+    this.clearAuthCookies(res);
     return { message: 'Вы успешно вышли из системы' };
   }
 

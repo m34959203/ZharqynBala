@@ -3,7 +3,6 @@
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import Cookies from 'js-cookie';
 import { navigationByRole, roleLabels, roleColors } from '@/config/navigation';
 import { UserRole } from '@/types/auth';
 
@@ -91,26 +90,31 @@ export default function ProtectedLayout({
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for token in both cookies and localStorage
-    const token = Cookies.get('accessToken') || localStorage.getItem('accessToken');
-    const userData = localStorage.getItem('user');
-
-    if (!token || !userData) {
-      router.push('/login');
-      return;
+    // SEC-CRIT-001: токен в HttpOnly cookie, JS его не видит. Существование
+    // активной сессии проверяем через /auth/me — это единственный надёжный
+    // тест. localStorage.user — это всего лишь кеш профиля для мгновенного
+    // рендера; авторитетом он не считается.
+    let cancelled = false;
+    const cached = localStorage.getItem('user');
+    if (cached) {
+      try { setUser(JSON.parse(cached)); } catch { /* старый формат — игнор */ }
     }
-
-    try {
-      setUser(JSON.parse(userData));
-    } catch {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
-      router.push('/login');
-      return;
-    }
-
-    setIsLoading(false);
+    const api = process.env.NEXT_PUBLIC_API_URL || '';
+    fetch(`${api}/api/v1/auth/me`, { credentials: 'include' })
+      .then(async (r) => {
+        if (cancelled) return;
+        if (!r.ok) throw new Error('unauthenticated');
+        const fresh = await r.json();
+        setUser(fresh);
+        localStorage.setItem('user', JSON.stringify(fresh));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        localStorage.removeItem('user');
+        router.push('/login');
+      })
+      .finally(() => { if (!cancelled) setIsLoading(false); });
+    return () => { cancelled = true; };
   }, [router]);
 
   if (isLoading) {
@@ -125,16 +129,17 @@ export default function ProtectedLayout({
     return null;
   }
 
-  const handleLogout = () => {
-    // Clear all cookies
-    document.cookie.split(';').forEach(c => {
-      const name = c.split('=')[0].trim();
-      document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
-    });
-    // Clear all storage
+  const handleLogout = async () => {
+    // SEC-CRIT-001: HttpOnly cookies может стереть только сервер.
+    // Шлём /auth/logout — он зачистит cookies через res.clearCookie.
+    const api = process.env.NEXT_PUBLIC_API_URL || '';
+    try {
+      await fetch(`${api}/api/v1/auth/logout`, { method: 'POST', credentials: 'include' });
+    } catch {
+      /* network — всё равно зачистим локально и пойдём */
+    }
     localStorage.clear();
     sessionStorage.clear();
-    // Redirect (full page reload to reset all state)
     window.location.href = '/login';
   };
 

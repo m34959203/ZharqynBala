@@ -1,8 +1,22 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { RegisterDto, LoginDto, AuthResponseDto } from './dto';
 import { UserRole, Language } from '@prisma/client';
+
+// SEC-CRIT-001: контроллер теперь устанавливает HttpOnly cookies через
+// Response.cookie / clearCookie. В тестах мокаем только эти два метода —
+// сами cookies в контракт не входят, проверять их в unit-тестах
+// избыточно (для этого e2e).
+const mockRes = () => ({
+  cookie: jest.fn().mockReturnThis(),
+  clearCookie: jest.fn().mockReturnThis(),
+}) as any;
+
+const mockReq = (refreshToken?: string) => ({
+  cookies: refreshToken ? { refreshToken } : {},
+}) as any;
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -37,10 +51,8 @@ describe('AuthController', () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
       providers: [
-        {
-          provide: AuthService,
-          useValue: mockAuthService,
-        },
+        { provide: AuthService, useValue: mockAuthService },
+        { provide: ConfigService, useValue: { get: jest.fn(() => 'test') } },
       ],
     }).compile();
 
@@ -67,7 +79,7 @@ describe('AuthController', () => {
 
       mockAuthService.register.mockResolvedValue(mockAuthResponse);
 
-      const result = await controller.register(registerDto);
+      const result = await controller.register(registerDto, mockRes());
 
       expect(result).toEqual(mockAuthResponse);
       expect(authService.register).toHaveBeenCalledWith(registerDto);
@@ -83,7 +95,7 @@ describe('AuthController', () => {
 
       mockAuthService.login.mockResolvedValue(mockAuthResponse);
 
-      const result = await controller.login(loginDto);
+      const result = await controller.login(loginDto, mockRes());
 
       expect(result).toEqual(mockAuthResponse);
       expect(authService.login).toHaveBeenCalledWith(loginDto);
@@ -96,7 +108,11 @@ describe('AuthController', () => {
 
       mockAuthService.refreshTokens.mockResolvedValue(mockAuthResponse);
 
-      const result = await controller.refresh(refreshTokenDto);
+      const result = await controller.refresh(
+        refreshTokenDto,
+        mockReq(refreshTokenDto.refreshToken),
+        mockRes(),
+      );
 
       expect(result).toEqual(mockAuthResponse);
       expect(authService.refreshTokens).toHaveBeenCalledWith(
@@ -111,7 +127,7 @@ describe('AuthController', () => {
 
       mockAuthService.logout.mockResolvedValue(undefined);
 
-      const result = await controller.logout(userId);
+      const result = await controller.logout(userId, mockRes());
 
       expect(result).toEqual({ message: 'Вы успешно вышли из системы' });
       expect(authService.logout).toHaveBeenCalledWith(userId);

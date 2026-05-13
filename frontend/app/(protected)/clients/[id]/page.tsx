@@ -31,17 +31,15 @@ export default function ClientDetailPage() {
   useEffect(() => {
     const fetchClient = async () => {
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
+        // SEC-CRIT-001: токен в HttpOnly cookie, credentials:include тащит его сам.
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/users/${clientId}`, {
+          credentials: 'include',
+        });
+
+        if (response.status === 401) {
           router.push('/login');
           return;
         }
-
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/users/${clientId}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
 
         if (response.status === 404) {
           setError('Клиент не найден');

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Cookies from 'js-cookie';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -12,12 +11,17 @@ function LoginContent() {
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Check if already logged in
+  // SEC-CRIT-001: токен в HttpOnly cookie, со страницы его не видно.
+  // Проверяем активность сессии через /auth/me — это единственный
+  // надёжный способ узнать «логин ещё валиден».
   useEffect(() => {
-    const token = Cookies.get('accessToken') || localStorage.getItem('accessToken');
-    if (token) {
-      router.push('/dashboard');
-    }
+    let cancelled = false;
+    fetch(`${API_URL}/api/v1/auth/me`, { credentials: 'include' })
+      .then(r => {
+        if (!cancelled && r.ok) router.push('/dashboard');
+      })
+      .catch(() => { /* not logged in — оставляем форму */ });
+    return () => { cancelled = true; };
   }, [router]);
 
   // Check for error in URL
@@ -35,6 +39,8 @@ function LoginContent() {
 
       const response = await fetch(`${API_URL}/api/v1/auth/login`, {
         method: 'POST',
+        // SEC-CRIT-001: получаем Set-Cookie с HttpOnly accessToken/refreshToken.
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
@@ -46,13 +52,10 @@ function LoginContent() {
         return;
       }
 
-      // Clear stale onboarding-complete flag from previous role
+      // Clear stale onboarding-complete flag from previous role.
+      // user-объект кешируем в localStorage — это не секрет (имя/роль),
+      // токенов тут больше не храним: они в HttpOnly cookie.
       localStorage.removeItem('onboardingComplete');
-
-      Cookies.set('accessToken', result.accessToken, { expires: 1 });
-      Cookies.set('refreshToken', result.refreshToken, { expires: 7 });
-      localStorage.setItem('accessToken', result.accessToken);
-      localStorage.setItem('refreshToken', result.refreshToken);
       localStorage.setItem('user', JSON.stringify(result.user));
 
       router.push('/dashboard');
