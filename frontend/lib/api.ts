@@ -271,6 +271,26 @@ export const adminApi = {
     return response.data;
   },
 
+  getNotifications: async (limit = 5): Promise<Array<{
+    id: string;
+    type: 'payment' | 'user' | 'psychologist' | 'consultation';
+    icon: string;
+    tone: 'ok' | 'warn' | 'brand' | 'risk';
+    title: string; meta: string; at: string;
+  }>> => {
+    const response = await api.get('/admin/notifications/recent', { params: { limit } });
+    return response.data;
+  },
+
+  getSlaHealth: async (): Promise<Array<{
+    id: 'payments' | 'consultations' | 'support';
+    tone: 'ok' | 'warn' | 'risk';
+    title: string; sub: string; cta?: string;
+  }>> => {
+    const response = await api.get('/admin/health/sla');
+    return response.data;
+  },
+
   // Users
   getUsers: async (params?: { role?: string; search?: string; page?: number; limit?: number }) => {
     const response = await api.get('/admin/users', { params });

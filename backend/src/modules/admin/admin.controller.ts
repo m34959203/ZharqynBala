@@ -81,6 +81,21 @@ export class AdminController {
     return this.adminService.getTopTests(safePeriod, Number.isFinite(n) && n > 0 ? n : 5);
   }
 
+  @Get('notifications/recent')
+  @ApiOperation({ summary: 'Системные уведомления — лайв-фид платежей/регистраций/psy/консультаций' })
+  @Header('Cache-Control', 'private, max-age=30')
+  async getSystemNotifications(@Query('limit') limit?: string) {
+    const n = limit ? parseInt(limit, 10) : 5;
+    return this.adminService.getSystemNotifications(Number.isFinite(n) && n > 0 ? n : 5);
+  }
+
+  @Get('health/sla')
+  @ApiOperation({ summary: 'SLA-светофор: платежи / консультации / поддержка' })
+  @Header('Cache-Control', 'private, max-age=60')
+  async getSlaHealth() {
+    return this.adminService.getSlaHealth();
+  }
+
   @Get('payments/totals')
   @ApiOperation({ summary: 'Итоговые суммы по платежам: lifetime/month/pending/failed' })
   @Header('Cache-Control', 'private, max-age=60')

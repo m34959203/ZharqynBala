@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { plural } from '@/lib/i18n/plural';
 import {
   adminApi,
   type AdminOverviewDto,
@@ -686,16 +687,28 @@ export default function AdminDashboard({ userName }: AdminDashboardProps) {
   const [overview, setOverview] = useState<AdminOverviewDto | null>(null);
   const [overviewError, setOverviewError] = useState(false);
 
-  // Block-level state: модерация, top tests, регионы
+  // Block-level state: модерация, top tests, регионы, notifications, SLA
   const [moderation, setModeration] = useState<PsychologistInModerationDto[] | null>(null);
   const [topTestsPeriod, setTopTestsPeriod] = useState<'current' | 'previous' | 'all'>('all');
   const [topTests, setTopTests] = useState<TopTestDto[] | null>(null);
   const [regions, setRegions] = useState<RegionStatDto[] | null>(null);
+  const [notifications, setNotifications] = useState<Array<{
+    id: string; type: 'payment' | 'user' | 'psychologist' | 'consultation';
+    icon: string; tone: 'ok' | 'warn' | 'brand' | 'risk';
+    title: string; meta: string; at: string;
+  }> | null>(null);
+  const [slaHealth, setSlaHealth] = useState<Array<{
+    id: 'payments' | 'consultations' | 'support';
+    tone: 'ok' | 'warn' | 'risk';
+    title: string; sub: string; cta?: string;
+  }> | null>(null);
 
   useEffect(() => {
     adminApi.getOverview().then(setOverview).catch(() => setOverviewError(true));
     adminApi.getModerationQueue(5).then(setModeration).catch(() => setModeration([]));
     adminApi.getRegions().then(setRegions).catch(() => setRegions([]));
+    adminApi.getNotifications(5).then(setNotifications).catch(() => setNotifications([]));
+    adminApi.getSlaHealth().then(setSlaHealth).catch(() => setSlaHealth([]));
   }, []);
 
   useEffect(() => {
@@ -968,16 +981,41 @@ export default function AdminDashboard({ userName }: AdminDashboardProps) {
               </div>
             </div>
 
-            {/* System notifications */}
+            {/* System notifications — live feed from real events */}
             <div className="card" style={{ padding: 24 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16 }}>Системные уведомления</div>
-                <span className="badge-plain">3 новых</span>
+                <span className="badge-plain">
+                  {notifications === null ? '—' : `${notifications.length} ${plural(notifications.length, 'свежее', 'свежих', 'свежих')}`}
+                </span>
               </div>
               <div style={{ marginTop: 12 }}>
-                <SysNote icon="info" tone="warn" title="Новый психолог ожидает сверку диплома" time="2 ч назад · модерация" />
-                <SysNote icon="check" tone="brand" title="Платёж #2811b470 — оверрайд оператора, успешно завершён" time="3 ч назад · K. Орлова" />
-                <SysNote icon="shield" tone="ok" title="Бэкап БД выполнен успешно (4.2 ГБ)" time="06:00 · автоматически" />
+                {notifications === null ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {[0, 1, 2].map(i => (
+                      <div key={i} style={{
+                        height: 44, borderRadius: 10,
+                        backgroundImage: 'linear-gradient(90deg, var(--ink-100) 0%, var(--ink-50) 50%, var(--ink-100) 100%)',
+                        backgroundSize: '200% 100%',
+                        animation: 'adminShimmer 1.6s linear infinite',
+                      }} />
+                    ))}
+                  </div>
+                ) : notifications.length === 0 ? (
+                  <div style={{ padding: '16px 0', textAlign: 'center', color: 'var(--ink-500)', fontSize: 13 }}>
+                    Пока тихо. Уведомления появятся при первых платежах и регистрациях.
+                  </div>
+                ) : (
+                  notifications.map(n => (
+                    <SysNote
+                      key={n.id}
+                      icon={n.icon as IconName}
+                      tone={n.tone === 'risk' ? 'warn' : (n.tone as 'warn' | 'brand' | 'ok')}
+                      title={n.title}
+                      time={`${relativeTime(n.at)} · ${n.meta}`}
+                    />
+                  ))
+                )}
               </div>
             </div>
 
@@ -1041,25 +1079,33 @@ export default function AdminDashboard({ userName }: AdminDashboardProps) {
                 <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 20 }}>Операционные риски</div>
                 <span className="badge-plain">светофор SLA</span>
               </div>
-              <div style={{ fontSize: 13, color: 'var(--ink-500)', marginTop: 4 }}>Обновляется каждые 5 минут · последняя проверка 09:40</div>
+              <div style={{ fontSize: 13, color: 'var(--ink-500)', marginTop: 4 }}>
+                Обновляется автоматически · последняя проверка {new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+              </div>
             </div>
             <button className="btn btn-secondary btn-sm">
               <Icon name="settings" size={13} /> Настроить пороги
             </button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <RiskRow tone="risk"
-              title="2 жалобы от клиентов без ответа более 24 часов"
-              sub="Кейсы #C-841, #C-839 · поддержка Динара К. в отпуске, требуется переадресация"
-              cta="Разобрать" />
-            <RiskRow tone="warn"
-              title="Среднее время ответа поддержки — 4 ч 12 м (выше SLA 2 ч)"
-              sub="Тренд за неделю: +38% · рекомендуется добавить агента или включить шаблоны"
-              cta="Открыть" />
-            <RiskRow tone="ok"
-              title="Квартальный аудит информационной безопасности — пройден"
-              sub="Акт KZ87VQQ-2026Q1 действует до 30 июня · ISO/IEC 27001, ЗРК ПДн"
-              cta="Скачать акт" />
+            {slaHealth === null ? (
+              <>
+                <div className="skeleton" style={{ height: 64, borderRadius: 12 }} />
+                <div className="skeleton" style={{ height: 64, borderRadius: 12 }} />
+                <div className="skeleton" style={{ height: 64, borderRadius: 12 }} />
+              </>
+            ) : slaHealth.length === 0 ? (
+              <div style={{
+                padding: 24, textAlign: 'center', color: 'var(--ink-500)', fontSize: 14,
+                border: '1px dashed var(--line)', borderRadius: 12,
+              }}>
+                Все системы работают штатно — рисков нет.
+              </div>
+            ) : (
+              slaHealth.map((r) => (
+                <RiskRow key={r.id} tone={r.tone} title={r.title} sub={r.sub} cta={r.cta ?? 'Открыть'} />
+              ))
+            )}
           </div>
         </div>
 

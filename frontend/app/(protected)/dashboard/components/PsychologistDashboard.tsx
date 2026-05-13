@@ -136,11 +136,15 @@ const formatTime = (iso: string): string => {
 // Design-spec fixtures (used as fallback if API returns empty)
 // ──────────────────────────────────────────────────────────────────
 
+// BUG-046: полные фамилии вместо инициалов в fixtures, чтобы при
+// fallback на dev/демо не возникало путаницы с реальными ребятами
+// в БД (где «Дамир А.» из API мог сойтись с «Дамир Атымтаев»).
+// Психологу всегда нужно видеть полное ФИО клиента — PII оправдан.
 const FIXTURE_SESSIONS: SessionItem[] = [
-  { id: 'f1', time: '10:00', name: 'Айлин Т.', age: 11, reason: 'Школьная тревожность: повторная сессия по результатам теста Филлипса', zone: 'warn', status: 'COMPLETED', minutesUntil: null },
-  { id: 'f2', time: '11:00', name: 'Дамир А.', age: 9, reason: 'Адаптация к 4 классу: работа с переходом в среднее звено', zone: 'norm', status: 'IN_PROGRESS', minutesUntil: null },
-  { id: 'f3', time: '13:00', name: 'Камила О.', age: 14, reason: 'Самооценка: 6-я сессия, продолжение работы по плану', zone: 'warn', status: 'SCHEDULED', minutesUntil: 14 },
-  { id: 'f4', time: '15:30', name: 'Арлан К.', age: 13, reason: 'Профориентация: первичная диагностика по Холланду и Климову', zone: 'norm', status: 'SCHEDULED', minutesUntil: null },
+  { id: 'f1', time: '10:00', name: 'Айлин Тестова', age: 11, reason: 'Школьная тревожность: повторная сессия по результатам теста Филлипса', zone: 'warn', status: 'COMPLETED', minutesUntil: null },
+  { id: 'f2', time: '11:00', name: 'Дамир Аубакиров', age: 9, reason: 'Адаптация к 4 классу: работа с переходом в среднее звено', zone: 'norm', status: 'IN_PROGRESS', minutesUntil: null },
+  { id: 'f3', time: '13:00', name: 'Камила Орлова', age: 14, reason: 'Самооценка: 6-я сессия, продолжение работы по плану', zone: 'warn', status: 'SCHEDULED', minutesUntil: 14 },
+  { id: 'f4', time: '15:30', name: 'Арлан Конысбаев', age: 13, reason: 'Профориентация: первичная диагностика по Холланду и Климову', zone: 'norm', status: 'SCHEDULED', minutesUntil: null },
 ];
 
 const FIXTURE_QUEUE: QueueItem[] = [

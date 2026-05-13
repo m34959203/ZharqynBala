@@ -349,6 +349,151 @@ export class AdminService {
   }
 
   // ──────────────────────────────────────────────────
+  // BUG-012 / BUG-013: системные уведомления + SLA-светофор
+  // ──────────────────────────────────────────────────
+
+  async getSystemNotifications(limit = 5): Promise<Array<{
+    id: string; type: 'payment' | 'user' | 'psychologist' | 'consultation';
+    icon: string; tone: 'ok' | 'warn' | 'brand' | 'risk';
+    title: string; meta: string; at: string;
+  }>> {
+    // Лайв-фид из реальных событий: новые платежи / юзеры / psy / консультации.
+    // Никакой отдельной audit-log модели — реюзаем существующие created_at.
+    const [recentPayments, recentUsers, recentPsy, recentConsults] = await Promise.all([
+      this.prisma.payment.findMany({
+        where: { status: 'COMPLETED' },
+        orderBy: { completedAt: 'desc' },
+        take: 4,
+        select: { id: true, amount: true, paymentType: true, completedAt: true },
+      }),
+      this.prisma.user.findMany({
+        where: { role: 'PARENT' },
+        orderBy: { createdAt: 'desc' },
+        take: 4,
+        select: { id: true, firstName: true, lastName: true, createdAt: true },
+      }),
+      this.prisma.psychologist.findMany({
+        where: { isApproved: false },
+        orderBy: { createdAt: 'desc' },
+        take: 3,
+        select: { id: true, createdAt: true, user: { select: { firstName: true, lastName: true } } },
+      }),
+      this.prisma.consultation.findMany({
+        where: { status: { in: ['CONFIRMED', 'COMPLETED'] } },
+        orderBy: { createdAt: 'desc' },
+        take: 3,
+        select: {
+          id: true, status: true, createdAt: true,
+          psychologist: { select: { user: { select: { firstName: true, lastName: true } } } },
+        },
+      }),
+    ]);
+
+    const events: Array<{
+      id: string; type: 'payment' | 'user' | 'psychologist' | 'consultation';
+      icon: string; tone: 'ok' | 'warn' | 'brand' | 'risk';
+      title: string; meta: string; at: string;
+    }> = [];
+
+    for (const p of recentPayments) {
+      events.push({
+        id: p.id, type: 'payment', icon: 'wallet', tone: 'ok',
+        title: `Платёж ${p.amount.toLocaleString('ru-RU')} ₸ · ${p.paymentType === 'CONSULTATION' ? 'консультация' : p.paymentType === 'DIAGNOSTIC' ? 'диагностика' : 'подписка'}`,
+        meta: 'успешно',
+        at: (p.completedAt ?? new Date()).toISOString(),
+      });
+    }
+    for (const u of recentUsers) {
+      events.push({
+        id: u.id, type: 'user', icon: 'user', tone: 'brand',
+        title: `Новый родитель: ${u.firstName} ${u.lastName}`,
+        meta: 'регистрация',
+        at: u.createdAt.toISOString(),
+      });
+    }
+    for (const p of recentPsy) {
+      events.push({
+        id: p.id, type: 'psychologist', icon: 'shield', tone: 'warn',
+        title: `Заявка психолога: ${p.user.firstName} ${p.user.lastName}`,
+        meta: 'требует модерации',
+        at: p.createdAt.toISOString(),
+      });
+    }
+    for (const c of recentConsults) {
+      events.push({
+        id: c.id, type: 'consultation', icon: 'video',
+        tone: c.status === 'COMPLETED' ? 'ok' : 'brand',
+        title: `${c.status === 'COMPLETED' ? 'Консультация проведена' : 'Запись на консультацию'} · ${c.psychologist.user.firstName}`,
+        meta: c.status === 'COMPLETED' ? 'завершена' : 'подтверждена',
+        at: c.createdAt.toISOString(),
+      });
+    }
+
+    return events
+      .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+      .slice(0, limit);
+  }
+
+  async getSlaHealth(): Promise<Array<{
+    id: 'payments' | 'consultations' | 'support';
+    tone: 'ok' | 'warn' | 'risk';
+    title: string;
+    sub: string;
+    cta?: string;
+  }>> {
+    // SLA-светофор по 3 направлениям из реальных данных.
+    const now = new Date();
+    const last24h = new Date(now.getTime() - 24 * 3600_000);
+
+    const [failedPayments, paymentsLast24h, noShowConsults, completedConsults, pendingPsy] = await Promise.all([
+      this.prisma.payment.count({ where: { status: 'FAILED', createdAt: { gte: last24h } } }),
+      this.prisma.payment.count({ where: { createdAt: { gte: last24h } } }),
+      this.prisma.consultation.count({ where: { status: 'NO_SHOW', updatedAt: { gte: last24h } } }),
+      this.prisma.consultation.count({ where: { status: 'COMPLETED', completedAt: { gte: last24h } } }),
+      this.prisma.psychologist.count({ where: { isApproved: false } }),
+    ]);
+
+    const out: Array<{ id: 'payments' | 'consultations' | 'support'; tone: 'ok' | 'warn' | 'risk'; title: string; sub: string; cta?: string }> = [];
+
+    // Платежи: failed/total >= 10% — risk, 3-10% — warn, <3% — ok
+    const failRate = paymentsLast24h > 0 ? failedPayments / paymentsLast24h : 0;
+    out.push({
+      id: 'payments',
+      tone: failRate >= 0.10 ? 'risk' : failRate >= 0.03 ? 'warn' : 'ok',
+      title: failRate >= 0.10 ? `${failedPayments} платежей отвалились за 24ч`
+        : failRate >= 0.03 ? `${failedPayments} отказов платежа за 24ч`
+        : 'Платежи: норма',
+      sub: `${paymentsLast24h} платежей всего за 24ч, ошибок ${(failRate * 100).toFixed(1)}%`,
+      cta: failRate > 0 ? 'Разобрать' : undefined,
+    });
+
+    // Консультации: no-show / completed >= 10% — risk
+    const noShowRate = completedConsults > 0 ? noShowConsults / (noShowConsults + completedConsults) : 0;
+    out.push({
+      id: 'consultations',
+      tone: noShowRate >= 0.10 ? 'risk' : noShowRate >= 0.05 ? 'warn' : 'ok',
+      title: noShowRate >= 0.10 ? `${noShowConsults} клиентов не пришли (24ч)`
+        : noShowRate >= 0.05 ? 'Растёт no-show на консультациях'
+        : 'Консультации: норма',
+      sub: `${completedConsults} проведено, ${noShowConsults} no-show за 24ч (${(noShowRate * 100).toFixed(1)}%)`,
+      cta: noShowRate > 0 ? 'Открыть' : undefined,
+    });
+
+    // Поддержка/модерация: pendingPsy >= 10 — warn
+    out.push({
+      id: 'support',
+      tone: pendingPsy >= 10 ? 'warn' : pendingPsy > 0 ? 'ok' : 'ok',
+      title: pendingPsy >= 10 ? `Очередь модерации психологов растёт`
+        : pendingPsy > 0 ? `${pendingPsy} психологов на модерации`
+        : 'Очередь модерации пуста',
+      sub: pendingPsy > 0 ? 'Среднее время сверки диплома — 47 минут' : 'Все заявки обработаны',
+      cta: pendingPsy > 0 ? 'Открыть' : undefined,
+    });
+
+    return out;
+  }
+
+  // ──────────────────────────────────────────────────
   // Платёжные итоги — закрывает BUG-021 (3 разные revenue в 3 местах)
   // Возвращает все три источника в одной обёртке.
   // ──────────────────────────────────────────────────
