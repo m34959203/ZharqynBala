@@ -48,10 +48,19 @@ export class AuthController {
 
   private cookieOptions() {
     const isProd = (this.configService.get<string>('NODE_ENV') ?? '') === 'production';
+    // SameSite=None требуется, когда фронт и API живут на разных origin'ах
+    // (например, оба под *.trycloudflare.com — public suffix → cross-site).
+    // Lax — дефолт для same-site / single-domain deploy. Strict — параноид.
+    const raw = (this.configService.get<string>('COOKIE_SAMESITE') ?? 'lax').toLowerCase();
+    const sameSite: 'lax' | 'none' | 'strict' =
+      raw === 'none' ? 'none' : raw === 'strict' ? 'strict' : 'lax';
+    // SameSite=None обязательно требует Secure (HTTPS). Если у нас не prod,
+    // включаем Secure всё равно — иначе браузер откажется ставить куку.
+    const secure = isProd || sameSite === 'none';
     return {
       httpOnly: true as const,
-      secure: isProd,
-      sameSite: 'lax' as const,
+      secure,
+      sameSite,
       path: '/',
     };
   }
